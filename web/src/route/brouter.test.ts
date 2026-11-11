@@ -100,6 +100,16 @@ describe('findStops', () => {
     ])
   })
 
+  it('counts a signalled crossing that is only tagged on the crossing way', () => {
+    const crossing = 'highway=cycleway cycleway=crossing crossing=traffic_signals'
+    expect(kinds([row(200, '', crossing)])).toEqual(['light'])
+    // The same crossing tagged on its node as well is still one set of lights.
+    expect(kinds([row(200, 'highway=crossing crossing=traffic_signals', crossing), row(12, '', crossing)])).toEqual([
+      'light',
+    ])
+    expect(kinds([row(200, '', 'highway=footway footway=crossing crossing=uncontrolled')])).toEqual([])
+  })
+
   it('ignores stop signs that face the other way', () => {
     expect(kinds([row(100, 'highway=stop direction=forward')])).toEqual(['stop'])
     expect(kinds([row(100, 'highway=stop direction=backward')])).toEqual([])

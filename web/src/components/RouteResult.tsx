@@ -2,7 +2,14 @@ import { useMemo, useState } from 'react'
 import { type MessageKey, useI18n } from '../i18n'
 import { LTS_COLORS, NO_BIKES_COLOR } from '../layers'
 import { LIGHT_BODY, LIGHT_COLORS, STOP_RED } from '../map/stopImage'
-import { COMFORT_KEYS, type ComfortKey, distanceByComfort, type Route } from '../route/brouter'
+import {
+  COMFORT_KEYS,
+  type ComfortKey,
+  distanceByComfort,
+  type Route,
+  type RouteHighlight,
+  type RouteStop,
+} from '../route/brouter'
 import { downloadText, toGpx } from '../route/gpx'
 import { routeProfile, smoothElevation } from '../route/profile'
 import type { RouteState } from '../route/useRoute'
@@ -19,44 +26,73 @@ const COMFORT: Record<ComfortKey, { color: string; label: MessageKey }> = {
   other: { color: NO_BIKES_COLOR, label: 'walk' },
 }
 
+/** What the legend needs to pick things out on the map: pointing shows them, a click keeps them and zooms there. */
+interface Picking {
+  /** The item currently picked out, by pointing or by a click. */
+  highlight: RouteHighlight | null
+  /** The item kept picked out by a click. */
+  pinned: RouteHighlight | null
+  onPoint: (item: RouteHighlight | null) => void
+  onPin: (item: RouteHighlight | null) => void
+}
+
+function pickingProps(item: RouteHighlight, { pinned, onPoint, onPin }: Picking) {
+  return {
+    'aria-pressed': pinned === item,
+    onPointerEnter: () => onPoint(item),
+    onPointerLeave: () => onPoint(null),
+    onFocus: () => onPoint(item),
+    onBlur: () => onPoint(null),
+    onClick: () => onPin(pinned === item ? null : item),
+  }
+}
+
+const STOP_LABELS: Record<RouteStop['kind'], MessageKey> = { stop: 'stopSigns', light: 'trafficLights' }
+
+function StopIcon({ kind }: { kind: RouteStop['kind'] }) {
+  return kind === 'stop' ? (
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20">
+      <path d="M6.5 1.5h7l5 5v7l-5 5h-7l-5-5v-7z" fill={STOP_RED} />
+      <rect x="5.5" y="8.75" width="9" height="2.5" fill="#fff" />
+    </svg>
+  ) : (
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20">
+      <rect x="5.5" y="1" width="9" height="18" rx="3" fill={LIGHT_BODY} />
+      {LIGHT_COLORS.map((color, i) => (
+        <circle key={color} cx="10" cy={4.8 + i * 5.2} r="2" fill={color} />
+      ))}
+    </svg>
+  )
+}
+
 /** Stop signs and traffic lights on the route, counted on one line. */
-function StopCounts({ route }: { route: Route }) {
+function StopCounts({ route, picking }: { route: Route; picking: Picking }) {
   const { t } = useI18n()
-  const count = (kind: 'stop' | 'light') => route.stops.filter((stop) => stop.kind === kind).length
   return (
     <p className="stop-counts">
-      <span>
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20">
-          <path d="M6.5 1.5h7l5 5v7l-5 5h-7l-5-5v-7z" fill={STOP_RED} />
-          <rect x="5.5" y="8.75" width="9" height="2.5" fill="#fff" />
-        </svg>
-        {t('stopSigns')} <b>{count('stop')}</b>
-      </span>
-      <span>
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20">
-          <rect x="5.5" y="1" width="9" height="18" rx="3" fill={LIGHT_BODY} />
-          {LIGHT_COLORS.map((color, i) => (
-            <circle key={color} cx="10" cy={4.8 + i * 5.2} r="2" fill={color} />
-          ))}
-        </svg>
-        {t('trafficLights')} <b>{count('light')}</b>
-      </span>
+      {(['stop', 'light'] as const).map((kind) => {
+        const count = route.stops.filter((stop) => stop.kind === kind).length
+        return (
+          <button
+            key={kind}
+            type="button"
+            className="stop-count"
+            title={t('showOnRoute')}
+            disabled={count === 0}
+            {...pickingProps(kind, picking)}
+          >
+            <StopIcon kind={kind} />
+            {t(STOP_LABELS[kind])} <b>{count}</b>
+          </button>
+        )
+      })}
     </p>
   )
 }
 
-interface ComfortProps {
-  route: Route
-  /** The part currently picked out on the map, by pointing or by a click. */
-  highlight: ComfortKey | null
-  /** The part kept picked out by a click. */
-  pinned: ComfortKey | null
-  onPoint: (part: ComfortKey | null) => void
-  onPin: (part: ComfortKey | null) => void
-}
-
 /** How the route splits by comfort. Pointing at a part picks it out on the map; a click keeps it and zooms there. */
-function ComfortBar({ route, highlight, pinned, onPoint, onPin }: ComfortProps) {
+function ComfortBar({ route, picking }: { route: Route; picking: Picking }) {
+  const { highlight, onPoint } = picking
   const { t } = useI18n()
   const totals = distanceByComfort(route)
   const sum = Object.values(totals).reduce((a, b) => a + b, 0) || 1
@@ -78,17 +114,7 @@ function ComfortBar({ route, highlight, pinned, onPoint, onPin }: ComfortProps) 
       <ul>
         {parts.map((key) => (
           <li key={key}>
-            <button
-              type="button"
-              className="comfort-part"
-              aria-pressed={pinned === key}
-              title={t('showOnRoute')}
-              onPointerEnter={() => onPoint(key)}
-              onPointerLeave={() => onPoint(null)}
-              onFocus={() => onPoint(key)}
-              onBlur={() => onPoint(null)}
-              onClick={() => onPin(pinned === key ? null : key)}
-            >
+            <button type="button" className="comfort-part" title={t('showOnRoute')} {...pickingProps(key, picking)}>
               <span className="swatch line" style={{ background: COMFORT[key].color }} />
               <span>{t(COMFORT[key].label)}</span>
               <span className="share">{Math.max(1, Math.round((totals[key] / sum) * 100))}%</span>
@@ -105,17 +131,18 @@ interface Props {
   /** Metres along the route being pointed at, on the chart or on the map. */
   hover: number | null
   onHover: (distance: number | null) => void
-  /** Part of the comfort breakdown picked out on the map. */
-  highlight: ComfortKey | null
-  pinned: ComfortKey | null
-  onPointPart: (part: ComfortKey | null) => void
-  onPinPart: (part: ComfortKey | null) => void
+  /** Legend item picked out on the map. */
+  highlight: RouteHighlight | null
+  pinned: RouteHighlight | null
+  onPointPart: (item: RouteHighlight | null) => void
+  onPinPart: (item: RouteHighlight | null) => void
 }
 
 export function RouteResult({ state, hover, onHover, highlight, pinned, onPointPart, onPinPart }: Props) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const route = visibleRoute(state)
+  const picking: Picking = { highlight, pinned, onPoint: onPointPart, onPin: onPinPart }
   const profile = useMemo(() => (route ? smoothElevation(routeProfile(route.coords)) : []), [route])
 
   if (state.status === 'error') return <p className="route-message error">{t('routeError')}</p>
@@ -147,8 +174,8 @@ export function RouteResult({ state, hover, onHover, highlight, pinned, onPointP
           <dt>{t('climb')}</dt>
         </div>
       </dl>
-      <ComfortBar route={route} highlight={highlight} pinned={pinned} onPoint={onPointPart} onPin={onPinPart} />
-      <StopCounts route={route} />
+      <ComfortBar route={route} picking={picking} />
+      <StopCounts route={route} picking={picking} />
       <ElevationChart profile={profile} label={t('elevation')} hover={hover} onHover={onHover} />
       <div className="route-actions">
         <button

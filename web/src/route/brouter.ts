@@ -75,7 +75,7 @@ const SAME_STOP_M = 30
 const SAME_LIGHTS_M = 60
 
 /**
- * Stop signs and traffic lights along the route, from the node tags in BRouter's
+ * Stop signs and traffic lights along the route, from the tags in BRouter's
  * messages. A stop sign counts only when it faces the direction of travel, and
  * the several signal heads of one junction count once.
  */
@@ -108,10 +108,15 @@ export function findStops(header: string[], rows: string[][]): RouteStop[] {
         sinceStop = 0
       }
     }
-    if (
-      (node.includes(' highway=traffic_signals ') || node.includes(' crossing=traffic_signals ')) &&
-      sinceLights > SAME_LIGHTS_M
-    ) {
+    // Signals are tagged on the junction node, on the crossing node, or only on
+    // the crossing way the route rides along.
+    const way = ` ${row[iWay] ?? ''} `
+    const signalled =
+      node.includes(' highway=traffic_signals ') ||
+      node.includes(' crossing=traffic_signals ') ||
+      way.includes(' crossing=traffic_signals ') ||
+      way.includes(' crossing=pedestrian_signals ')
+    if (signalled && sinceLights > SAME_LIGHTS_M) {
       stops.push({ kind: 'light', lngLat })
       sinceLights = 0
     }
@@ -187,6 +192,9 @@ export async function fetchRoute(
 /** The parts of the comfort breakdown, most comfortable first. */
 export const COMFORT_KEYS = ['lts1', 'lts2', 'lts3', 'lts4', 'sidewalk', 'stairs', 'other'] as const
 export type ComfortKey = (typeof COMFORT_KEYS)[number]
+
+/** Something in the route legend that can be picked out on the map: a part of the comfort breakdown, or the stop signs or traffic lights. */
+export type RouteHighlight = ComfortKey | RouteStop['kind']
 
 /** Which part of the comfort breakdown a segment belongs to. */
 export function comfortKeyOf(segment: Pick<RouteSegment, 'lts' | 'walk'>): ComfortKey {

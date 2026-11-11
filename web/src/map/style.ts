@@ -4,7 +4,7 @@ import type { ExpressionSpecification, FilterSpecification, LayerSpecification, 
 import type { Lang } from '../i18n'
 import { type BasemapId, INK, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_COLORS } from '../layers'
 import { type PlaceKind, placeImageId } from '../places'
-import { type ComfortKey, comfortKeyOf, type Route } from '../route/brouter'
+import { comfortKeyOf, type Route, type RouteHighlight } from '../route/brouter'
 
 export type Selected =
   | { kind: 'way'; id: number; props: Record<string, unknown> }
@@ -19,8 +19,8 @@ export interface StyleState {
   selected: Selected | null
   /** Planned route to draw, coloured by comfort. */
   route: Route | null
-  /** Part of the comfort breakdown to pick out on the route, the rest of it stepping back. */
-  routeHighlight: ComfortKey | null
+  /** Legend item to pick out on the route, the rest of it stepping back. */
+  routeHighlight: RouteHighlight | null
 }
 
 /** Layers a click can hit, per data layer. */
@@ -131,10 +131,13 @@ export function stopImageId(kind: 'stop' | 'light' | ''): string {
 /** Marks the stretches picked out from the comfort breakdown. */
 const HIGHLIGHT_COLOR = '#FFD60A'
 
-function routeLayers(theme: Theme, highlight: ComfortKey | null): LayerSpecification[] {
+function routeLayers(theme: Theme, highlight: RouteHighlight | null): LayerSpecification[] {
   const round = { 'line-cap': 'round' as const, 'line-join': 'round' as const }
-  // With a part picked out, the rest of the route fades so short stretches are easy to find.
+  // With something picked out, everything else on the route fades so it is easy to find.
   const rest: ExpressionSpecification | number = highlight ? ['case', ['==', ['get', 'part'], highlight], 1, 0.3] : 1
+  const otherStops: ExpressionSpecification | number = highlight
+    ? ['case', ['==', ['get', 'kind'], highlight], 1, 0.3]
+    : 1
   return [
     {
       id: 'route-highlight',
@@ -175,10 +178,23 @@ function routeLayers(theme: Theme, highlight: ComfortKey | null): LayerSpecifica
       },
     },
     {
+      id: 'route-stops-highlight',
+      type: 'circle',
+      source: 'route-stops',
+      filter: ['==', ['get', 'kind'], highlight ?? ''],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 7, 15, 14, 18, 18],
+        'circle-color': HIGHLIGHT_COLOR,
+        'circle-stroke-color': theme.contrast,
+        'circle-stroke-width': 1,
+      },
+    },
+    {
       id: 'route-stops',
       type: 'symbol',
       source: 'route-stops',
-      minzoom: 12,
+      // Too many to show from far out, unless they are what is being looked for.
+      minzoom: highlight === 'stop' || highlight === 'light' ? 0 : 12,
       layout: {
         // Drawn on demand by the map view.
         'icon-image': ['concat', stopImageId(''), ['get', 'kind']],
@@ -186,6 +202,7 @@ function routeLayers(theme: Theme, highlight: ComfortKey | null): LayerSpecifica
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
       },
+      paint: { 'icon-opacity': otherStops },
     },
   ]
 }

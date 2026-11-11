@@ -86,6 +86,20 @@ describe('buildStyle', () => {
     expect(line.paint['line-opacity']).toEqual(['case', ['==', ['get', 'part'], 'sidewalk'], 1, 0.3])
   })
 
+  it('picks out stop signs or traffic lights and fades the route', () => {
+    const picked = build({ routeHighlight: 'light' })
+    expect(layer(picked, 'route-stops-highlight').filter).toEqual(['==', ['get', 'kind'], 'light'])
+    const icons = picked.layers.find((l) => l.id === 'route-stops') as {
+      paint: Record<string, unknown>
+      minzoom: number
+    }
+    expect(icons.paint['icon-opacity']).toEqual(['case', ['==', ['get', 'kind'], 'light'], 1, 0.3])
+    expect(icons.minzoom).toBe(0)
+    expect((build().layers.find((l) => l.id === 'route-stops') as { minzoom: number }).minzoom).toBe(12)
+    // No stretch of the route is a "light", so all of it fades.
+    expect(layer(picked, 'route-highlight').filter).toEqual(['==', ['get', 'part'], 'light'])
+  })
+
   it('restyles the same tiles for each drawn basemap', () => {
     for (const basemap of ['light', 'grey', 'dark'] as const) {
       const style = build({ basemap })

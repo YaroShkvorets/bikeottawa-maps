@@ -701,19 +701,35 @@ a {
 
 .stop-counts {
   display: flex;
-  gap: 18px;
-  margin: -6px 0 0;
+  gap: 6px;
+  margin: -8px -6px 0;
   font-size: 13px;
   white-space: nowrap;
 }
 
-.stop-counts span {
+.stop-count {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 28px;
+  padding: 2px 8px 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: inherit;
 }
 
-.stop-counts b {
+.stop-count:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.stop-count:enabled:hover,
+.stop-count[aria-pressed="true"] {
+  background: #fff3b0;
+}
+
+.stop-count b {
   font-variant-numeric: tabular-nums;
 }
 

@@ -12,7 +12,7 @@ import { type BasemapId, isBasemapId, isLayerId, type LayerId } from './layers'
 import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, type PlaceKind } from './places'
-import type { ComfortKey, LngLat } from './route/brouter'
+import type { LngLat, RouteHighlight } from './route/brouter'
 import { reverseLabel } from './route/geocode'
 import {
   formatParams,
@@ -134,9 +134,9 @@ export function App() {
   const [selected, setSelected] = useState<Selected | null>(null)
   // Metres along the route under the pointer, shared by the map and the elevation chart.
   const [routeHover, setRouteHover] = useState<number | null>(null)
-  // Part of the comfort breakdown picked out on the route: pointed at for now, or pinned by a click.
-  const [pointedPart, setPointedPart] = useState<ComfortKey | null>(null)
-  const [pinnedPart, setPinnedPart] = useState<ComfortKey | null>(null)
+  // Legend item picked out on the route: pointed at for now, or pinned by a click.
+  const [pointedPart, setPointedPart] = useState<RouteHighlight | null>(null)
+  const [pinnedPart, setPinnedPart] = useState<RouteHighlight | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
