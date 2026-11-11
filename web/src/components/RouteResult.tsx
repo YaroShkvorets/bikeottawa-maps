@@ -12,6 +12,7 @@ import {
 } from '../route/brouter'
 import { downloadText, toGpx } from '../route/gpx'
 import { routeProfile, smoothElevation } from '../route/profile'
+import { stressLevel, stressScore } from '../route/stress'
 import type { RouteState } from '../route/useRoute'
 import { visibleRoute } from '../route/useRoute'
 import { ElevationChart } from './ElevationChart'
@@ -148,6 +149,8 @@ export function RouteResult({ state, hover, onHover, highlight, pinned, onPointP
   if (state.status === 'error') return <p className="route-message error">{t('routeError')}</p>
   if (!route) return <p className="route-message">{state.status === 'loading' ? t('routeLoading') : t('routeHint')}</p>
 
+  const stress = stressScore(route.segments)
+
   const copyLink = () => {
     navigator.clipboard
       .writeText(window.location.href)
@@ -172,6 +175,18 @@ export function RouteResult({ state, hover, onHover, highlight, pinned, onPointP
         <div className="route-stat">
           <dd>{Math.round(route.ascent)} m</dd>
           <dt>{t('climb')}</dt>
+        </div>
+        <div className="route-stat" title={t('stressAbout')}>
+          <dd>
+            <span
+              className={`stress-score level-${stressLevel(stress)}`}
+              style={{ background: LTS_COLORS[stressLevel(stress) - 1] }}
+            >
+              {stress}
+              <span className="out-of">/10</span>
+            </span>
+          </dd>
+          <dt>{t('stress')}</dt>
         </div>
       </dl>
       <ComfortBar route={route} picking={picking} />
