@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatParams, formatPoints, parseParams, parsePoints } from './state'
+import { formatParams, formatPoints, formatVias, parseParams, parsePoints, parseVias } from './state'
 import { PRESETS } from './styles'
 
 describe('route points in the URL', () => {
@@ -19,6 +19,25 @@ describe('route points in the URL', () => {
   it('ignores junk', () => {
     expect(parsePoints(undefined)).toEqual([null, null])
     expect(parsePoints('abc;999,999')).toEqual([null, null])
+  })
+})
+
+describe('via points in the URL', () => {
+  it('round-trips in order', () => {
+    const text = formatVias([
+      [-75.691234, 45.42],
+      [-75.68, 45.431111],
+    ])
+    expect(text).toBe('-75.69123,45.42;-75.68,45.43111')
+    expect(parseVias(text ?? undefined)).toEqual([
+      [-75.69123, 45.42],
+      [-75.68, 45.43111],
+    ])
+  })
+  it('is absent when there are none and ignores junk', () => {
+    expect(formatVias([])).toBeNull()
+    expect(parseVias(undefined)).toEqual([])
+    expect(parseVias('abc;1,2,3;999,0;-75.6,45.4')).toEqual([[-75.6, 45.4]])
   })
 })
 

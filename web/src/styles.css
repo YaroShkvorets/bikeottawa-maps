@@ -480,12 +480,54 @@ a {
   cursor: grab;
 }
 
+/* Start, end and via points stay grabbable when the hover dot is next to them. */
+.maplibregl-marker.route-marker {
+  z-index: 2;
+}
+
+.maplibregl-marker.route-hover {
+  z-index: 1;
+}
+
 .route-marker.start {
   background: var(--accent);
 }
 
 .route-marker.end {
   background: var(--ink);
+}
+
+.route-marker.via {
+  width: 18px;
+  height: 18px;
+  border: 4px solid var(--ink);
+  background: #fff;
+  cursor: grab;
+}
+
+.via-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.via-summary button {
+  margin-left: auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+/* Via points are added by hovering the route, which touch screens cannot do. */
+@media (hover: none) {
+  .via-hint {
+    display: none;
+  }
 }
 
 .route-marker.inline {
@@ -643,11 +685,50 @@ a {
   color: var(--muted);
 }
 
+.elevation-plot {
+  position: relative;
+  margin-top: 4px;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
 .elevation svg {
   display: block;
   width: 100%;
   height: 56px;
-  margin-top: 4px;
+}
+
+.elevation-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.elevation-dot,
+.route-hover {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: #fff;
+  pointer-events: none;
+}
+
+.elevation-dot {
+  position: absolute;
+  margin: -6px 0 0 -6px;
+}
+
+.route-hover {
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 2px #fff;
+  pointer-events: auto;
+  cursor: grab;
 }
 
 .elevation-area {

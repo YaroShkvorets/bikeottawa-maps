@@ -13,7 +13,16 @@ import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, type PlaceKind } from './places'
 import type { LngLat } from './route/brouter'
-import { formatParams, formatPoints, parseParams, parsePoints, type RoutePoint, type RoutePoints } from './route/state'
+import {
+  formatParams,
+  formatPoints,
+  formatVias,
+  parseParams,
+  parsePoints,
+  parseVias,
+  type RoutePoint,
+  type RoutePoints,
+} from './route/state'
 import {
   DEFAULT_STYLE,
   isStyleId,
@@ -34,6 +43,8 @@ interface UrlState {
   placeKinds: readonly PlaceKind[]
   mode: Mode
   points: RoutePoints
+  /** Places the route must pass through, in riding order. */
+  vias: readonly LngLat[]
   style: StyleId
   custom: RouteParams
 }
@@ -45,6 +56,7 @@ function readUrl(): UrlState {
     placeKinds: (hash.places ?? '').split(',').filter(isPlaceKind),
     mode: ROUTER_URL && hash.mode === 'route' ? 'route' : 'explore',
     points: parsePoints(hash.route),
+    vias: parseVias(hash.via),
     style: isStyleId(hash.style) ? hash.style : DEFAULT_STYLE,
     custom: parseParams(hash.custom, PRESETS.balanced),
   }
@@ -57,6 +69,7 @@ function writeUrl(state: UrlState): void {
     ['places', state.placeKinds.length ? state.placeKinds.join(',') : null],
     ['mode', routing ? 'route' : null],
     ['route', routing ? formatPoints(state.points) : null],
+    ['via', routing ? formatVias(state.vias) : null],
     ['style', routing && state.style !== DEFAULT_STYLE ? state.style : null],
     ['custom', routing && state.style === 'custom' ? formatParams(state.custom) : null],
   ]
@@ -98,13 +111,15 @@ export function App() {
   const [url, setUrl] = useState<UrlState>(readUrl)
   const [basemap, setBasemap] = useState<BasemapId>(initialBasemap)
   const [selected, setSelected] = useState<Selected | null>(null)
+  // Metres along the route under the pointer, shared by the map and the elevation chart.
+  const [routeHover, setRouteHover] = useState<number | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
-  const { layer, placeKinds, mode, points, style, custom } = url
+  const { layer, placeKinds, mode, points, vias, style, custom } = url
   const routing = mode === 'route'
-  const routeState = useRoute(ROUTER_URL, points, paramsFor(style, custom), routing)
+  const routeState = useRoute(ROUTER_URL, points, vias, paramsFor(style, custom), routing)
   const route = routing ? visibleRoute(routeState) : null
 
   useEffect(() => {
@@ -173,9 +188,24 @@ export function App() {
     setUrl((current) => {
       const next: RoutePoints = [...current.points]
       next[index] = point
-      return { ...current, points: next }
+      // Via points only make sense between a start and an end.
+      return { ...current, points: next, vias: point ? current.vias : [] }
     })
   }, [])
+
+  const editVias = useCallback((edit: (vias: LngLat[]) => void) => {
+    setUrl((current) => {
+      const next = [...current.vias]
+      edit(next)
+      return { ...current, vias: next }
+    })
+  }, [])
+  const addVia = useCallback((index: number, lngLat: LngLat) => editVias((v) => v.splice(index, 0, lngLat)), [editVias])
+  const moveVia = useCallback(
+    (index: number, lngLat: LngLat) => editVias((v) => v.splice(index, 1, lngLat)),
+    [editVias],
+  )
+  const removeVia = useCallback((index: number) => editVias((v) => v.splice(index, 1)), [editVias])
 
   // A click on the map fills the first point that is still missing.
   const placePoint = useCallback((lngLat: LngLat) => {
@@ -208,9 +238,26 @@ export function App() {
     [lang, basemap, layer, placeKinds, selected, route],
   )
   const mapRouting = useMemo(
-    () => (routing ? { points, onMapClick: placePoint, onMovePoint: movePoint } : null),
-    [routing, points, placePoint, movePoint],
+    () =>
+      routing
+        ? {
+            points,
+            vias,
+            onMapClick: placePoint,
+            onMovePoint: movePoint,
+            onAddVia: addVia,
+            onMoveVia: moveVia,
+            onRemoveVia: removeVia,
+            hover: routeHover,
+            onHover: setRouteHover,
+          }
+        : null,
+    [routing, points, vias, placePoint, movePoint, addVia, moveVia, removeVia, routeHover],
   )
+
+  // A spot pointed at on the old route means nothing on a new one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the route changes
+  useEffect(() => setRouteHover(null), [route])
   const hasResult = routing && routeState.status !== 'idle'
 
   return (
@@ -253,7 +300,9 @@ export function App() {
               style={style}
               params={paramsFor(style, custom)}
               onPointChange={setPoint}
-              onReverse={() => update({ points: [points[1], points[0]] })}
+              viaCount={vias.length}
+              onReverse={() => update({ points: [points[1], points[0]], vias: [...vias].reverse() })}
+              onClearVias={() => update({ vias: [] })}
               onStyleChange={changeStyle}
               onParamChange={changeParam}
             />
@@ -262,7 +311,7 @@ export function App() {
           )}
         </div>
         <div className="card sheet" ref={sheet}>
-          {routing && <RouteResult state={routeState} />}
+          {routing && <RouteResult state={routeState} hover={routeHover} onHover={setRouteHover} />}
           {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
           <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
             {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}

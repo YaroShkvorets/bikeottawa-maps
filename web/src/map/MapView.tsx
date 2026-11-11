@@ -10,7 +10,7 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { Protocol } from 'pmtiles'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { BasemapSwitch } from '../components/BasemapSwitch'
@@ -18,6 +18,7 @@ import { ASSETS_BASE, REGION } from '../config'
 import type { BasemapId } from '../layers'
 import { isPlaceKind, placeImageId } from '../places'
 import type { LngLat } from '../route/brouter'
+import { nearestOnRoute, pointAtDistance, routeProfile } from '../route/profile'
 import type { RoutePoints } from '../route/state'
 import { renderPlaceImage } from './placeImage'
 import { buildStyle, INTERACTIVE_LAYERS, type Selected, type StyleState } from './style'
@@ -28,6 +29,8 @@ addProtocol('pmtiles', new Protocol().tile)
 
 /** How far around a click or tap, in pixels, a feature still counts as hit. */
 const HIT_RADIUS = 8
+/** How close to the route, in pixels, the pointer has to be to mark a spot on it. */
+const ROUTE_HOVER_RADIUS = 16
 /** The basemap only covers the region, so panning stops a little beyond it. */
 const BOUNDS_MARGIN = 0.05
 const PHONE_LAYOUT = '(max-width: 720px)'
@@ -40,7 +43,15 @@ interface Props {
   routing: {
     points: RoutePoints
     onMapClick: (lngLat: LngLat) => void
+    /** Places the route must pass through, in riding order. */
+    vias: readonly LngLat[]
     onMovePoint: (index: 0 | 1, lngLat: LngLat) => void
+    onAddVia: (index: number, lngLat: LngLat) => void
+    onMoveVia: (index: number, lngLat: LngLat) => void
+    onRemoveVia: (index: number) => void
+    /** Metres along the route being pointed at, here or on the elevation chart. */
+    hover: number | null
+    onHover: (distance: number | null) => void
   } | null
 }
 
@@ -64,11 +75,16 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
+  const hoverMarker = useRef<Marker | null>(null)
+  const viaMarkers = useRef<Marker[]>([])
+  // True while the hover dot is being dragged out into a via point.
+  const dragging = useRef(false)
+  const profile = useMemo(() => (state.route ? routeProfile(state.route.coords) : []), [state.route])
   // Home of the map-style switcher, placed by MapLibre among its own controls.
   const [styleControl, setStyleControl] = useState<HTMLElement | null>(null)
-  const latest = useRef({ state, onSelect, routing })
+  const latest = useRef({ state, onSelect, routing, profile })
   const applied = useRef(state)
-  latest.current = { state, onSelect, routing }
+  latest.current = { state, onSelect, routing, profile }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the map is created once; later state goes through setStyle below
   useEffect(() => {
@@ -130,9 +146,24 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
       else onSelect(featureAt(e.point))
     })
     map.on('mousemove', (e) => {
-      const { routing } = latest.current
-      if (routing) map.getCanvas().style.cursor = routing.points.includes(null) ? 'crosshair' : ''
-      else map.getCanvas().style.cursor = featureAt(e.point) ? 'pointer' : ''
+      const { routing, profile } = latest.current
+      if (!routing) {
+        map.getCanvas().style.cursor = featureAt(e.point) ? 'pointer' : ''
+        return
+      }
+      if (dragging.current) return
+      map.getCanvas().style.cursor = routing.points.includes(null) ? 'crosshair' : ''
+      // Pointing near the route marks that spot on the elevation chart.
+      const hit = nearestOnRoute(profile, [e.lngLat.lng, e.lngLat.lat])
+      const metresPerPixel = (40075016.686 * Math.cos((e.lngLat.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom())
+      const near = hit !== null && hit.off <= ROUTE_HOVER_RADIUS * metresPerPixel
+      if (near || routing.hover !== null) routing.onHover(near ? hit.point.distance : null)
+    })
+    map.on('mouseout', (e) => {
+      // Moving onto the hover dot itself is not leaving the route.
+      const onto = e.originalEvent.relatedTarget
+      const ontoDot = onto instanceof Node && hoverMarker.current?.getElement().contains(onto)
+      if (!dragging.current && !ontoDot) latest.current.routing?.onHover(null)
     })
 
     mapRef.current = map
@@ -140,6 +171,8 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
     return () => {
       mapRef.current = null
       markers.current = [null, null]
+      hoverMarker.current = null
+      viaMarkers.current = []
       // MapLibre deletes its position from the URL when removed. Put it back so a
       // remount (React does one in development) starts where the link pointed.
       const { hash, pathname, search } = window.location
@@ -199,6 +232,76 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
       }
     }
   }, [points])
+
+  // Via points: drag to move, click to remove.
+  const vias = routing?.vias
+  useEffect(() => {
+    const map = mapRef.current
+    for (const marker of viaMarkers.current) marker.remove()
+    viaMarkers.current = []
+    if (!map || !vias) return
+    viaMarkers.current = vias.map((lngLat, index) => {
+      const el = document.createElement('div')
+      el.className = 'route-marker via'
+      const marker = new Marker({ element: el, draggable: true }).setLngLat(lngLat).addTo(map)
+      let moved = false
+      marker.on('dragstart', () => {
+        moved = true
+      })
+      marker.on('dragend', () => {
+        const { lng, lat } = marker.getLngLat()
+        latest.current.routing?.onMoveVia(index, [lng, lat])
+      })
+      // The browser also reports a click at the end of a drag; only a plain click removes.
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (!moved) latest.current.routing?.onRemoveVia(index)
+        moved = false
+      })
+      return marker
+    })
+  }, [vias])
+
+  // A dot on the route at the spot being pointed at, on the map or on the elevation
+  // chart. Dragging it off the route anchors a via point where it is dropped.
+  const hover = routing?.hover ?? null
+  useEffect(() => {
+    const map = mapRef.current
+    if (dragging.current) return
+    const spot = hover === null ? null : pointAtDistance(profile, hover)
+    if (!map || !spot) {
+      hoverMarker.current?.remove()
+      hoverMarker.current = null
+      return
+    }
+    if (hoverMarker.current) {
+      hoverMarker.current.setLngLat(spot.lngLat)
+      return
+    }
+    const el = document.createElement('div')
+    el.className = 'route-hover'
+    const marker = new Marker({ element: el, draggable: true }).setLngLat(spot.lngLat).addTo(map)
+    let grabbedAt = 0
+    marker.on('dragstart', () => {
+      dragging.current = true
+      grabbedAt = latest.current.routing?.hover ?? 0
+    })
+    marker.on('dragend', () => {
+      dragging.current = false
+      const { routing, profile } = latest.current
+      if (!routing) return
+      // The new point goes after every via point the route reaches before the grabbed spot.
+      const before = routing.vias.filter((via) => (nearestOnRoute(profile, via)?.point.distance ?? 0) < grabbedAt)
+      const { lng, lat } = marker.getLngLat()
+      routing.onAddVia(before.length, [lng, lat])
+      routing.onHover(null)
+    })
+    // Leaving the dot for anything but the map (a panel, say) ends the hover.
+    el.addEventListener('mouseleave', (e) => {
+      if (!dragging.current && !(e.relatedTarget instanceof HTMLCanvasElement)) latest.current.routing?.onHover(null)
+    })
+    hoverMarker.current = marker
+  }, [hover, profile])
 
   return (
     <>

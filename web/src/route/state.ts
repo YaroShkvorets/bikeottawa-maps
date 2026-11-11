@@ -28,6 +28,21 @@ export function parsePoints(text: string | undefined): RoutePoints {
   return [a ?? null, b ?? null]
 }
 
+/** Via points between start and end, in riding order: `-75.69,45.42;-75.68,45.43`. */
+export function formatVias(vias: readonly LngLat[]): string | null {
+  return vias.length ? vias.map(([lon, lat]) => `${round(lon)},${round(lat)}`).join(';') : null
+}
+
+export function parseVias(text: string | undefined): LngLat[] {
+  return (text ?? '')
+    .split(';')
+    .map((part) => part.split(',').map(Number))
+    .filter(
+      (pair): pair is LngLat =>
+        pair.length === 2 && pair.every(Number.isFinite) && Math.abs(pair[0]) <= 180 && Math.abs(pair[1]) <= 90,
+    )
+}
+
 export function formatParams(params: RouteParams): string {
   return PARAM_KEYS.map((key) => params[key]).join(',')
 }

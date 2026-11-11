@@ -5,6 +5,8 @@ import { PlaceInput } from './PlaceInput'
 
 interface Props {
   points: RoutePoints
+  viaCount: number
+  onClearVias: () => void
   style: StyleId
   params: RouteParams
   onPointChange: (index: 0 | 1, point: RoutePoint | null) => void
@@ -13,7 +15,17 @@ interface Props {
   onParamChange: (key: ParamKey, value: number) => void
 }
 
-export function RouteForm({ points, style, params, onPointChange, onReverse, onStyleChange, onParamChange }: Props) {
+export function RouteForm({
+  points,
+  viaCount,
+  style,
+  params,
+  onPointChange,
+  onReverse,
+  onClearVias,
+  onStyleChange,
+  onParamChange,
+}: Props) {
   const { t } = useI18n()
   return (
     <div className="route-form">
@@ -56,6 +68,15 @@ export function RouteForm({ points, style, params, onPointChange, onReverse, onS
           </svg>
         </button>
       </div>
+      {viaCount > 0 && (
+        <p className="via-summary">
+          <span className="route-marker via inline" aria-hidden="true" />
+          {t('viaPoints')}: {viaCount}
+          <button type="button" onClick={onClearVias}>
+            {t('clearVias')}
+          </button>
+        </p>
+      )}
       <fieldset className="style-picker">
         <legend className="eyebrow">{t('ridingStyle')}</legend>
         <div className="style-buttons">

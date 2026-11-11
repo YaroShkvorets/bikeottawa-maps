@@ -1,57 +1,72 @@
-import type { Route } from '../route/brouter'
+import type { PointerEvent } from 'react'
+import { type ProfilePoint, pointAtDistance } from '../route/profile'
 
 const WIDTH = 320
 const HEIGHT = 56
 /** Keeps a flat route from looking like a mountain stage. */
 const MIN_RANGE_M = 20
 
-type Point = Route['coords'][number]
-
-function metresBetween([lon1, lat1]: Point, [lon2, lat2]: Point): number {
-  const rad = Math.PI / 180
-  const x = (lon2 - lon1) * rad * Math.cos(((lat1 + lat2) / 2) * rad)
-  const y = (lat2 - lat1) * rad
-  return Math.hypot(x, y) * 6371000
+interface Props {
+  profile: ProfilePoint[]
+  label: string
+  /** Metres along the route being pointed at, here or on the map. */
+  hover: number | null
+  onHover: (distance: number | null) => void
 }
 
-/** Elevation against distance, or null when the route has no elevation data. */
-export function elevationProfile(coords: Route['coords']): { x: number; ele: number }[] | null {
-  const profile: { x: number; ele: number }[] = []
-  let travelled = 0
-  coords.forEach((point, i) => {
-    if (i > 0) travelled += metresBetween(coords[i - 1], point)
-    if (point[2] !== undefined) profile.push({ x: travelled, ele: point[2] })
-  })
-  return profile.length > 1 && travelled > 0 ? profile : null
-}
+/** Elevation against distance. Pointing at it marks the spot on the map, and the other way round. */
+export function ElevationChart({ profile, label, hover, onHover }: Props) {
+  const points = profile.filter((p): p is ProfilePoint & { ele: number } => p.ele !== undefined)
+  const length = profile.at(-1)?.distance ?? 0
+  if (points.length < 2 || length === 0) return null
 
-export function ElevationChart({ route, label }: { route: Route; label: string }) {
-  const profile = elevationProfile(route.coords)
-  if (!profile) return null
-  const low = Math.min(...profile.map((p) => p.ele))
-  const high = Math.max(...profile.map((p) => p.ele))
+  const low = Math.min(...points.map((p) => p.ele))
+  const high = Math.max(...points.map((p) => p.ele))
   const range = Math.max(high - low, MIN_RANGE_M)
-  const length = profile[profile.length - 1].x
-  const line = profile.map(
-    (p) => `${((p.x / length) * WIDTH).toFixed(1)},${(HEIGHT - 4 - ((p.ele - low) / range) * (HEIGHT - 8)).toFixed(1)}`,
-  )
+  const yOf = (ele: number) => HEIGHT - 4 - ((ele - low) / range) * (HEIGHT - 8)
+  const line = points.map((p) => `${((p.distance / length) * WIDTH).toFixed(1)},${yOf(p.ele).toFixed(1)}`)
+
+  const spot = hover === null ? null : pointAtDistance(profile, hover)
+  const pointTo = (e: PointerEvent<HTMLDivElement>) => {
+    const box = e.currentTarget.getBoundingClientRect()
+    onHover(Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * length)
+  }
+
   return (
     <figure className="elevation">
       <figcaption>
         <span>{label}</span>
         <span>
-          {Math.round(low)}–{Math.round(high)} m
+          {spot?.ele !== undefined
+            ? `${(spot.distance / 1000).toFixed(1)} km · ${Math.round(spot.ele)} m`
+            : `${Math.round(low)}–${Math.round(high)} m`}
         </span>
       </figcaption>
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`${label}: ${Math.round(low)}–${Math.round(high)} m`}
+      <div
+        className="elevation-plot"
+        onPointerMove={pointTo}
+        onPointerDown={pointTo}
+        onPointerLeave={() => onHover(null)}
       >
-        <path d={`M0,${HEIGHT} L${line.join(' L')} L${WIDTH},${HEIGHT} Z`} className="elevation-area" />
-        <path d={`M${line.join(' L')}`} className="elevation-line" />
-      </svg>
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`${label}: ${Math.round(low)}–${Math.round(high)} m`}
+        >
+          <path d={`M0,${HEIGHT} L${line.join(' L')} L${WIDTH},${HEIGHT} Z`} className="elevation-area" />
+          <path d={`M${line.join(' L')}`} className="elevation-line" />
+        </svg>
+        {spot?.ele !== undefined && (
+          <>
+            <span className="elevation-cursor" style={{ left: `${(spot.distance / length) * 100}%` }} />
+            <span
+              className="elevation-dot"
+              style={{ left: `${(spot.distance / length) * 100}%`, top: `${(yOf(spot.ele) / HEIGHT) * 100}%` }}
+            />
+          </>
+        )}
+      </div>
     </figure>
   )
 }

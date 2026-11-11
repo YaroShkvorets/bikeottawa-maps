@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { type MessageKey, useI18n } from '../i18n'
 import { LTS_COLORS, NO_BIKES_COLOR } from '../layers'
 import { distanceByLts, type Route } from '../route/brouter'
 import { downloadText, toGpx } from '../route/gpx'
+import { routeProfile } from '../route/profile'
 import type { RouteState } from '../route/useRoute'
 import { visibleRoute } from '../route/useRoute'
 import { ElevationChart } from './ElevationChart'
@@ -37,10 +38,18 @@ function ComfortBar({ route }: { route: Route }) {
   )
 }
 
-export function RouteResult({ state }: { state: RouteState }) {
+interface Props {
+  state: RouteState
+  /** Metres along the route being pointed at, on the chart or on the map. */
+  hover: number | null
+  onHover: (distance: number | null) => void
+}
+
+export function RouteResult({ state, hover, onHover }: Props) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const route = visibleRoute(state)
+  const profile = useMemo(() => (route ? routeProfile(route.coords) : []), [route])
 
   if (state.status === 'error') return <p className="route-message error">{t('routeError')}</p>
   if (!route) return <p className="route-message">{state.status === 'loading' ? t('routeLoading') : t('routeHint')}</p>
@@ -72,7 +81,8 @@ export function RouteResult({ state }: { state: RouteState }) {
         </div>
       </dl>
       <ComfortBar route={route} />
-      <ElevationChart route={route} label={t('elevation')} />
+      <ElevationChart profile={profile} label={t('elevation')} hover={hover} onHover={onHover} />
+      <p className="footnote via-hint">{t('viaHint')}</p>
       <div className="route-actions">
         <button
           type="button"

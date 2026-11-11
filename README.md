@@ -69,5 +69,5 @@ docker compose up -d    # http://localhost:8080
 ## Roadmap
 
 1. Editing from the map (plowed or not, parking details) saved to OpenStreetMap
-2. Planner: via points, turn-by-turn, a gravel style
+2. Planner: turn-by-turn, a gravel style, via points on touch screens
 3. Collisions layer, offline use
