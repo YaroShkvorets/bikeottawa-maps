@@ -5,8 +5,9 @@ ARG BROUTER_IMAGE=ghcr.io/abrensch/brouter:master@sha256:1e73860a13994eb49871bd3
 FROM ${BROUTER_IMAGE} AS base
 USER root
 # Tags the profile needs that stock BRouter data does not carry.
-COPY lookups-extra.dat extend-lookups.sh /tmp/
-RUN /tmp/extend-lookups.sh /profiles2/lookups.dat /tmp/lookups-extra.dat && rm /tmp/lookups-extra.dat /tmp/extend-lookups.sh
+COPY lookups-extra.dat lookups-extra-node.dat extend-lookups.sh /tmp/
+RUN /tmp/extend-lookups.sh /profiles2/lookups.dat /tmp/lookups-extra.dat /tmp/lookups-extra-node.dat \
+    && rm /tmp/lookups-extra.dat /tmp/lookups-extra-node.dat /tmp/extend-lookups.sh
 COPY profiles/ /profiles2/
 # No profile uploads on a public server.
 RUN chown root:root /customprofiles && chmod 555 /customprofiles

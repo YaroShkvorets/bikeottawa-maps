@@ -110,6 +110,12 @@ describe('findStops', () => {
     expect(kinds([row(200, '', 'highway=footway footway=crossing crossing=uncontrolled')])).toEqual([])
   })
 
+  it('understands the newer crossing:signals tag on nodes and ways', () => {
+    expect(kinds([row(200, 'highway=crossing crossing:signals=yes')])).toEqual(['light'])
+    expect(kinds([row(200, '', 'highway=footway footway=crossing crossing:signals=yes')])).toEqual(['light'])
+    expect(kinds([row(200, 'highway=crossing crossing:signals=no')])).toEqual([])
+  })
+
   it('ignores stop signs that face the other way', () => {
     expect(kinds([row(100, 'highway=stop direction=forward')])).toEqual(['stop'])
     expect(kinds([row(100, 'highway=stop direction=backward')])).toEqual([])

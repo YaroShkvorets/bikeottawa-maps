@@ -114,8 +114,10 @@ export function findStops(header: string[], rows: string[][]): RouteStop[] {
     const signalled =
       node.includes(' highway=traffic_signals ') ||
       node.includes(' crossing=traffic_signals ') ||
+      node.includes(' crossing:signals=yes ') ||
       way.includes(' crossing=traffic_signals ') ||
-      way.includes(' crossing=pedestrian_signals ')
+      way.includes(' crossing=pedestrian_signals ') ||
+      way.includes(' crossing:signals=yes ')
     if (signalled && sinceLights > SAME_LIGHTS_M) {
       stops.push({ kind: 'light', lngLat })
       sinceLights = 0

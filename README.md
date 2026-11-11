@@ -35,7 +35,7 @@ Tiles land in `web/public/tiles` and are not committed.
 
 The planner asks a BRouter server for routes. Riding styles are sets of weights for the `ottbike` profile in `routing/profiles` (how hard to avoid busy roads, sidewalks, rough surfaces, unplowed paths, unlit sections and stops); they live in `web/src/route/styles.ts`.
 
-The router image builds its own routing data, because the profile uses tags that stock BRouter data leaves out (`winter_service`, `width`, lane counts). To run it locally:
+The router image builds its own routing data, because it needs tags that stock BRouter data leaves out (`winter_service`, `width`, lane counts, `crossing:signals`). To run it locally:
 
 ```sh
 npm run router:build   # OSM clip, elevation tiles and the image; about 5 minutes

@@ -24,3 +24,6 @@ lanes:backward;0000000001 3
 lanes:backward;0000000001 4
 lanes:backward;0000000001 5
 lanes:backward;0000000001 6
+
+crossing:signals;0000000001 yes
+crossing:signals;0000000001 no

@@ -443,7 +443,7 @@ assign stoppenalty =
       else 0
 assign signalspenalty multiply stopSignPen 100 # 0-100 meters penalty for traffic signals (usually 2-3 signals per intersection)
 assign signalspenalty =
-      if or highway=traffic_signals crossing=traffic_signals then
+      if or or highway=traffic_signals crossing=traffic_signals crossing:signals=yes then
        (
          if direction= then signalspenalty
          else if and way:iswayreverse direction=backward then signalspenalty
