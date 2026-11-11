@@ -466,7 +466,7 @@ assign signalspenalty = multiply issignals multiply stopSignPen 100  # 0-100 met
 
 # Seconds lost there, for travel times: slowing, stopping and starting again at a
 # stop sign; the average wait at a signal (often mapped once per approach).
-assign stopdelay = add multiply isstop 6 multiply issignals 10
+assign stopdelay = add multiply isstop 5 multiply issignals 10
 assign initialcost =
       add
         if bikeaccess then 0
