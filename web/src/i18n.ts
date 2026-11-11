@@ -261,7 +261,7 @@ const fr: Record<keyof typeof en, string> = {
   'place.convenience': 'Dépanneur',
   'place.general': 'Magasin général',
   'place.pharmacy': 'Pharmacie',
-  'place.station': 'Gare',
+  'place.station': 'Train', // O-Train stations are « stations », VIA's are « gares »; this covers both
   'place.ferry': 'Traversier',
   'place.cafe': 'Café',
   'place.restaurant': 'Restaurant',
