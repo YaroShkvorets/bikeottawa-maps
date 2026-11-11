@@ -51,11 +51,13 @@ export interface Photo {
   link: string
   /** When it was taken, ms since 1970, if known. */
   takenAt?: number
+  /** The Mapillary capture run it belongs to. */
+  sequence?: string
 }
 
 export async function fetchMapillaryPhoto(id: string, token: string, signal?: AbortSignal): Promise<Photo | null> {
   const params = new URLSearchParams({
-    fields: 'thumb_1024_url,thumb_2048_url,creator,captured_at',
+    fields: 'thumb_1024_url,thumb_2048_url,creator,captured_at,sequence',
     access_token: token,
   })
   const res = await fetch(`https://graph.mapillary.com/${id}?${params}`, { signal })
@@ -65,6 +67,7 @@ export async function fetchMapillaryPhoto(id: string, token: string, signal?: Ab
     thumb_2048_url?: string
     creator?: { username?: string }
     captured_at?: number
+    sequence?: string
   }
   if (!data.thumb_1024_url) return null
   const by = data.creator?.username
@@ -74,6 +77,7 @@ export async function fetchMapillaryPhoto(id: string, token: string, signal?: Ab
     credit: by ? `© ${by} · Mapillary` : '© Mapillary',
     link: mapillaryViewerUrl(id),
     takenAt: data.captured_at,
+    sequence: data.sequence,
   }
 }
 
@@ -95,6 +99,8 @@ interface MapillaryImage {
 export interface NearbyImage {
   id: string
   distance: number
+  /** The capture run, to leave out near-copies of a photo already shown. */
+  sequence?: string
 }
 
 /** Metres between two nearby points. */
@@ -117,9 +123,11 @@ export function nearbyImages(images: readonly MapillaryImage[], at: readonly [nu
     const score = distance + (image.is_pano ? 15 : 0)
     const run = image.sequence ?? image.id
     const best = bestPerRun.get(run)
-    if (!best || score < best.score) bestPerRun.set(run, { id: image.id, distance, score })
+    if (!best || score < best.score) bestPerRun.set(run, { id: image.id, distance, sequence: image.sequence, score })
   }
-  return [...bestPerRun.values()].sort((a, b) => a.score - b.score).map(({ id, distance }) => ({ id, distance }))
+  return [...bestPerRun.values()]
+    .sort((a, b) => a.score - b.score)
+    .map(({ id, distance, sequence }) => ({ id, distance, sequence }))
 }
 
 /**

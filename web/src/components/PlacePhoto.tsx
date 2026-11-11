@@ -27,67 +27,82 @@ function takenOn(photo: Photo, lang: Lang): string | null {
     : null
 }
 
-const NO_ITEMS: readonly NearbyImage[] = []
+/** Starts loading an image so it shows at once when its turn comes. */
+function preload(photo: Photo | null) {
+  if (photo) new Image().src = photo.largeUrl
+}
 
-/** Mapillary photos the larger view can step through; the first is the one in the card. */
-interface Gallery {
+/** Photos the larger view can step to after the card's own, and a line about each. */
+interface More {
   items: readonly NearbyImage[]
-  /** A line about each, e.g. how far away it was taken. */
   noteFor: (item: NearbyImage) => string
 }
 
+const NOTHING_MORE: More = { items: [], noteFor: () => '' }
+
 /**
  * A photo in the card (a grey box while it loads), larger over the map on a
- * click. With a gallery the larger view steps through it with ‹ › or the arrow
- * keys, loading each photo when it is reached.
+ * click. With more photos the larger view steps through them with ‹ › or the
+ * arrow keys; the ones either side of the photo shown are loaded ahead.
  */
 function PhotoFigure({
   photo,
   note,
-  gallery,
+  more = NOTHING_MORE,
   onBroken,
 }: {
   photo: Photo | null
   note?: string
-  gallery?: Gallery
+  more?: More
   onBroken: () => void
 }) {
   const { t, lang } = useI18n()
-  const items = gallery?.items ?? NO_ITEMS
-  const count = Math.max(1, items.length)
-  // Which photo the larger view shows; null when it is closed.
+  const count = 1 + more.items.length
+  // Which photo the larger view shows (0 is the card's); null when it is closed.
   const [index, setIndex] = useState<number | null>(null)
   const [shown, setShown] = useState<Photo | null>(null)
-  const loaded = useRef(new Map<string, Photo>())
+  const loads = useRef(new Map<string, Promise<Photo | null>>())
 
-  // A new card photo closes the larger view and forgets the old gallery.
+  // A new card photo closes the larger view and forgets what was loaded for it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: resets when the photo changes
   useEffect(() => {
     setIndex(null)
-    loaded.current = new Map()
+    loads.current = new Map()
   }, [photo])
 
+  // The photo at a position, loaded once and kept.
+  const load = (at: number): Promise<Photo | null> => {
+    if (at === 0) return Promise.resolve(photo)
+    const item = more.items[at - 1]
+    if (!item || !MAPILLARY_TOKEN) return Promise.resolve(null)
+    let pending = loads.current.get(item.id)
+    if (!pending) {
+      pending = fetchMapillaryPhoto(item.id, MAPILLARY_TOKEN).catch(() => null)
+      loads.current.set(item.id, pending)
+    }
+    return pending
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load reads the current photos
   useEffect(() => {
     if (index === null) return
-    const item = items[index]
-    if (index === 0 || !item || !MAPILLARY_TOKEN) return setShown(photo)
-    const cached = loaded.current.get(item.id)
-    if (cached) return setShown(cached)
-    setShown(null)
-    const controller = new AbortController()
-    fetchMapillaryPhoto(item.id, MAPILLARY_TOKEN, controller.signal)
-      .then((found) => {
-        if (!found) return
-        loaded.current.set(item.id, found)
-        setShown(found)
-      })
-      .catch(() => {})
-    return () => controller.abort()
-  }, [index, items, photo])
+    let current = true
+    setShown(index === 0 ? photo : null)
+    load(index).then((found) => {
+      if (current) setShown(found)
+    })
+    // Get the neighbours ready, so stepping either way is instant.
+    if (count > 1) {
+      for (const next of [(index + 1) % count, (index - 1 + count) % count]) load(next).then(preload)
+    }
+    return () => {
+      current = false
+    }
+  }, [index, photo, more.items])
 
   const step = (by: number) => setIndex((i) => (i === null ? i : (i + by + count) % count))
 
-  // Esc closes the larger view; the arrow keys step through the gallery.
+  // Esc closes the larger view; the arrow keys step through the photos.
   // biome-ignore lint/correctness/useExhaustiveDependencies: step reads only the count
   useEffect(() => {
     if (index === null) return
@@ -102,7 +117,7 @@ function PhotoFigure({
 
   const captionOf = (p: Photo | null, line?: string) =>
     [line, p?.credit, p && takenOn(p, lang)].filter(Boolean).join(' · ')
-  const viewerNote = index !== null && gallery && items[index] ? gallery.noteFor(items[index]) : note
+  const viewerNote = index ? more.noteFor(more.items[index - 1]) : note
 
   return (
     <figure className="place-photo">
@@ -116,7 +131,7 @@ function PhotoFigure({
       )}
       <figcaption>
         {captionOf(photo, note)}
-        {count > 1 && ` · ${t('photoMore').replace('{count}', String(count - 1))}`}
+        {photo && count > 1 && ` · ${t('photoMore').replace('{count}', String(count - 1))}`}
       </figcaption>
       {photo &&
         index !== null &&
@@ -172,85 +187,75 @@ function PhotoFigure({
   )
 }
 
-/**
- * The photo a mapper linked to the place. A Mapillary photo needs a token and
- * is only requested once the card is open; a picture linked directly is shown
- * as it is.
- */
-export function PlacePhoto({ props }: { props: Record<string, unknown> }) {
-  const id = MAPILLARY_TOKEN ? mapillaryId(props.mapillary) : null
-  const direct = directImage(props.image)
-  const [photo, setPhoto] = useState<Photo | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    setPhoto(null)
-    setFailed(false)
-    if (!id || !MAPILLARY_TOKEN) {
-      if (direct) setPhoto(directPhoto(direct))
-      return
-    }
-    const controller = new AbortController()
-    fetchMapillaryPhoto(id, MAPILLARY_TOKEN, controller.signal)
-      .then((found) => {
-        if (found) setPhoto(found)
-        else if (direct) setPhoto(directPhoto(direct))
-        else setFailed(true)
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setFailed(true)
-      })
-    return () => controller.abort()
-  }, [id, direct])
-
-  if (failed || (!id && !direct)) return null
-  return <PhotoFigure photo={photo} onBroken={() => setFailed(true)} />
+interface Found {
+  photo: Photo
+  /** Set when the card's photo is not the place's own but one taken nearby. */
+  distance?: number
+  more: NearbyImage[]
 }
 
 /**
- * For a street or path: the Mapillary photo taken closest to where it was
- * clicked, and in the larger view the closest from other capture runs nearby.
- * Nothing shows if there is none nearby.
+ * Photos for a card. A place's own photo (its mapillary or image tag) comes
+ * first; then, or for a street or a place without one, the Mapillary photos
+ * taken nearby: the closest of each capture run, leaving out near-copies of
+ * the place's own. They are only looked up once the card is open, and nothing
+ * shows when there are none.
  */
-export function NearbyPhoto({ at }: { at: readonly [number, number] }) {
+export function CardPhoto({ at, props }: { at: readonly [number, number]; props?: Record<string, unknown> }) {
   const { t } = useI18n()
   const [lon, lat] = at
-  const [items, setItems] = useState<NearbyImage[]>([])
-  const [photo, setPhoto] = useState<Photo | null>(null)
+  const tagged = props && MAPILLARY_TOKEN ? mapillaryId(props.mapillary) : null
+  const direct = props ? directImage(props.image) : null
+  const [found, setFound] = useState<Found | null>(null)
   const [state, setState] = useState<'loading' | 'shown' | 'none'>('loading')
 
   useEffect(() => {
-    setItems([])
-    setPhoto(null)
+    setFound(null)
     setState('loading')
-    if (!MAPILLARY_TOKEN) return setState('none')
     const token = MAPILLARY_TOKEN
     const controller = new AbortController()
-    findNearbyMapillary([lon, lat], token, controller.signal)
-      .then(async (found) => {
-        const first = found[0] ? await fetchMapillaryPhoto(found[0].id, token, controller.signal) : null
-        setItems(found)
-        setPhoto(first)
-        setState(first ? 'shown' : 'none')
+    const { signal } = controller
+    const own: Promise<Photo | null> =
+      tagged && token ? fetchMapillaryPhoto(tagged, token, signal).catch(() => null) : Promise.resolve(null)
+    const nearby: Promise<NearbyImage[]> = token
+      ? findNearbyMapillary([lon, lat], token, signal).catch(() => [])
+      : Promise.resolve([])
+    Promise.all([own, nearby])
+      .then(async ([ownPhoto, near]) => {
+        const first = ownPhoto ?? (direct ? directPhoto(direct) : null)
+        let result: Found | null = null
+        if (first) {
+          const others = near.filter((n) => n.id !== tagged && !(first.sequence && n.sequence === first.sequence))
+          result = { photo: first, more: others }
+        } else if (near[0] && token) {
+          const closest = await fetchMapillaryPhoto(near[0].id, token, signal)
+          if (closest) result = { photo: closest, distance: near[0].distance, more: near.slice(1) }
+        }
+        if (signal.aborted) return
+        setFound(result)
+        setState(result ? 'shown' : 'none')
       })
       .catch(() => {
-        if (!controller.signal.aborted) setState('none')
+        if (!signal.aborted) setState('none')
       })
     return () => controller.abort()
-  }, [lon, lat])
+  }, [lon, lat, tagged, direct])
 
-  if (state === 'none') return null
-  const noteFor = (item: NearbyImage) =>
-    t(item === items[0] ? 'photoNearby' : 'photoDistance').replace(
-      '{distance}',
-      String(Math.max(1, Math.round(item.distance))),
-    )
+  if (state === 'none' || (!MAPILLARY_TOKEN && !direct)) return null
+  const metres = (distance: number) => String(Math.max(1, Math.round(distance)))
+  const note =
+    found?.distance !== undefined ? t('photoNearby').replace('{distance}', metres(found.distance)) : undefined
   return (
     <PhotoFigure
-      photo={photo}
-      note={items[0] ? noteFor(items[0]) : undefined}
-      gallery={{ items, noteFor }}
+      photo={found?.photo ?? null}
+      note={note}
+      more={{
+        items: found?.more ?? NO_NEARBY,
+        noteFor: (item) => t('photoDistance').replace('{distance}', metres(item.distance)),
+      }}
       onBroken={() => setState('none')}
     />
   )
 }
+
+const NO_NEARBY: NearbyImage[] = []
