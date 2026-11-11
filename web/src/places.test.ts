@@ -21,6 +21,7 @@ describe('places', () => {
 
   it('recognises kinds', () => {
     expect(isPlaceKind('bench')).toBe(true)
+    expect(kindsInGroup('shops').sort()).toEqual(['convenience', 'general', 'grocery', 'pharmacy'])
     expect(isPlaceKind('bank')).toBe(false)
     // In the tiles, but not offered in the legend.
     expect(isPlaceKind('barrier')).toBe(false)

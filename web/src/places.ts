@@ -31,7 +31,7 @@ import bicycleRepair from '@rapideditor/temaki/icons/bicycle_repair.svg?raw'
 import splashPad from '@rapideditor/temaki/icons/splash_pad.svg?raw'
 import tire from '@rapideditor/temaki/icons/tire.svg?raw'
 
-export const PLACE_GROUP_IDS = ['cycling', 'facilities', 'rest', 'food', 'connections'] as const
+export const PLACE_GROUP_IDS = ['cycling', 'facilities', 'rest', 'food', 'shops', 'connections'] as const
 export type PlaceGroupId = (typeof PLACE_GROUP_IDS)[number]
 
 export const GROUP_COLORS: Record<PlaceGroupId, string> = {
@@ -39,6 +39,7 @@ export const GROUP_COLORS: Record<PlaceGroupId, string> = {
   facilities: '#1B5FAE',
   rest: '#4F7A32',
   food: '#A8480C',
+  shops: '#A82A5E',
   connections: '#5B3F9E',
 }
 
@@ -57,7 +58,6 @@ const DEFS = {
   toilets: { group: 'facilities', svg: toilet },
   shelter: { group: 'facilities', svg: shelter },
   telephone: { group: 'facilities', svg: telephone },
-  pharmacy: { group: 'facilities', svg: pharmacy },
   bench: { group: 'rest', svg: bench },
   picnic: { group: 'rest', svg: picnicSite },
   bbq: { group: 'rest', svg: bbq },
@@ -74,9 +74,10 @@ const DEFS = {
   brewery: { group: 'food', svg: alcoholShop },
   bakery: { group: 'food', svg: bakery },
   market: { group: 'food', svg: farm },
-  grocery: { group: 'food', svg: grocery },
-  convenience: { group: 'food', svg: convenience },
-  general: { group: 'food', svg: shop },
+  grocery: { group: 'shops', svg: grocery },
+  convenience: { group: 'shops', svg: convenience },
+  general: { group: 'shops', svg: shop },
+  pharmacy: { group: 'shops', svg: pharmacy },
   station: { group: 'connections', svg: railLight },
   ferry: { group: 'connections', svg: ferry },
 } as const satisfies Record<string, { group: PlaceGroupId; svg: string }>
