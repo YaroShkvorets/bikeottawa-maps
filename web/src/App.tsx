@@ -511,7 +511,7 @@ export function App() {
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
   const details =
     routing || !selected ? null : selected.kind === 'collision' ? (
-      <CollisionCard props={selected.props} at={selected.at} basemap={basemap} onClose={() => setSelected(null)} />
+      <CollisionCard items={selected.items} at={selected.at} basemap={basemap} onClose={() => setSelected(null)} />
     ) : (
       <FeatureCard selected={selected} onClose={() => setSelected(null)} />
     )

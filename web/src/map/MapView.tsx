@@ -15,6 +15,7 @@ import { Protocol } from 'pmtiles'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { collisionFilter, worstFirst } from '../collisions'
 import { BasemapSwitch } from '../components/BasemapSwitch'
 import { ASSETS_BASE, DATA_BASE, REGION } from '../config'
 import type { BasemapId } from '../layers'
@@ -25,7 +26,15 @@ import type { Reach } from '../route/reach'
 import type { RoutePoints } from '../route/state'
 import { renderPlaceImage } from './placeImage'
 import { renderStopImage } from './stopImage'
-import { buildStyle, INTERACTIVE_LAYERS, REACH_SOURCE, type Selected, type StyleState, stopImageId } from './style'
+import {
+  buildStyle,
+  COLLISIONS_SOURCE,
+  INTERACTIVE_LAYERS,
+  REACH_SOURCE,
+  type Selected,
+  type StyleState,
+  stopImageId,
+} from './style'
 
 // MapLibre finds its worker relative to its own file, which bundling breaks, so point it at the bundled copy.
 setWorkerUrl(workerUrl)
@@ -33,6 +42,8 @@ addProtocol('pmtiles', new Protocol().tile)
 
 /** How far around a click or tap, in pixels, a feature still counts as hit. */
 const HIT_RADIUS = 8
+/** Collisions under one location name this close to each other, in metres, are the same spot. */
+const SAME_SPOT_M = 25
 /** How close to the route, in pixels, the pointer has to be to mark a spot on it. */
 const ROUTE_HOVER_RADIUS = 16
 /** The basemap only covers the region, so panning stops a little beyond it. */
@@ -163,17 +174,36 @@ export function MapView({ state, onSelect, onBasemapChange, popup, reach, routin
 
     const featureAt = (point: { x: number; y: number }, lngLat: { lng: number; lat: number }): Selected | null => {
       const layers = INTERACTIVE_LAYERS[latest.current.state.layer].filter((id) => map.getLayer(id))
-      const [feature] = map.queryRenderedFeatures(
+      const hits = map.queryRenderedFeatures(
         [
           [point.x - HIT_RADIUS, point.y - HIT_RADIUS],
           [point.x + HIT_RADIUS, point.y + HIT_RADIUS],
         ],
         { layers },
       )
+      const [feature] = hits
       if (!feature) return null
-      if (feature.layer.id === 'collisions-point') {
-        const at = feature.geometry.type === 'Point' ? (feature.geometry.coordinates as [number, number]) : null
-        return { kind: 'collision', props: feature.properties, at: at ?? [lngLat.lng, lngLat.lat] }
+      if (feature.layer.id === 'collisions-point' && feature.geometry.type === 'Point') {
+        // An intersection often has many collisions, recorded a few metres apart:
+        // take every one shown under the same location name close by.
+        const [x, y] = feature.geometry.coordinates
+        const location = feature.properties.location
+        const candidates = location
+          ? map.querySourceFeatures(COLLISIONS_SOURCE, {
+              filter: ['all', collisionFilter(latest.current.state.collisions), ['==', ['get', 'location'], location]],
+            })
+          : hits
+        const seen = new Set<unknown>()
+        const here = candidates.filter((c) => {
+          if (c.geometry.type !== 'Point' || seen.has(c.properties.id)) return false
+          const [cx, cy] = c.geometry.coordinates
+          const metres = Math.hypot((cx - x) * 111320 * Math.cos((y * Math.PI) / 180), (cy - y) * 111320)
+          if (metres > SAME_SPOT_M) return false
+          seen.add(c.properties.id)
+          return true
+        })
+        const items = here.length ? here : [feature]
+        return { kind: 'collision', items: worstFirst(items.map((c) => c.properties)), at: [x, y] }
       }
       if (feature.sourceLayer === 'places') {
         // A place is anchored at its own position, a street where it was clicked.

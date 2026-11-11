@@ -119,3 +119,9 @@ export function collisionLocation(text: string, between: string): string {
     .replace(/ @ /g, ' & ')
     .replace(/\bBtwn\b/g, between)
 }
+
+/** Collisions at one spot, worst injury first, then the most recent. */
+export function worstFirst<T extends { severity?: unknown; date?: unknown }>(items: readonly T[]): T[] {
+  const rank = (s: unknown) => SEVERITIES.indexOf(s as Severity)
+  return [...items].sort((a, b) => rank(b.severity) - rank(a.severity) || String(b.date).localeCompare(String(a.date)))
+}

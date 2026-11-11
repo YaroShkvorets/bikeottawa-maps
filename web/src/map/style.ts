@@ -22,7 +22,8 @@ import { comfortKeyOf, type Route, type RouteHighlight } from '../route/brouter'
 export type Selected =
   | { kind: 'way'; id: number; props: Record<string, unknown>; at: [number, number] }
   | { kind: 'place'; osm: string; props: Record<string, unknown>; at: [number, number] }
-  | { kind: 'collision'; props: Record<string, unknown>; at: [number, number] }
+  /** Every collision recorded at the clicked spot, worst first. */
+  | { kind: 'collision'; items: Record<string, unknown>[]; at: [number, number] }
 
 export interface StyleState {
   lang: Lang

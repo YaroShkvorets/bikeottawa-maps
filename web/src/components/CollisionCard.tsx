@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { type CollisionProps, collisionLocation } from '../collisions'
 import { isMessageKey, type MessageKey, type Translate, useI18n } from '../i18n'
 import { type BasemapId, collisionColors } from '../layers'
@@ -5,7 +6,8 @@ import { streetViewUrl } from '../photos'
 import { CardPhoto } from './PlacePhoto'
 
 interface Props {
-  props: Record<string, unknown>
+  /** The collisions recorded at the spot, worst first; the card steps through them. */
+  items: Record<string, unknown>[]
   at: [number, number]
   basemap: BasemapId
   onClose: () => void
@@ -30,10 +32,16 @@ function involved(p: CollisionProps, t: Translate): string {
     .join(', ')
 }
 
-/** Details of one collision, from the city's record of it. */
-export function CollisionCard({ props, at, basemap, onClose }: Props) {
+/** Details of the collisions at a spot, from the city's records, one at a time. */
+export function CollisionCard({ items, at, basemap, onClose }: Props) {
   const { t, lang } = useI18n()
-  const p = props as unknown as CollisionProps
+  const [index, setIndex] = useState(0)
+  // A new spot starts again at its worst collision.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets when the collisions change
+  useEffect(() => setIndex(0), [items])
+  const count = items.length
+  const p = (items[index] ?? items[0]) as unknown as CollisionProps
+  const step = (by: number) => setIndex((i) => (i + by + count) % count)
   const bicycles = Number(p.bicycles) > 0
   const pedestrians = Number(p.pedestrians) > 0
   const title = t(bicycles && pedestrians ? 'crash.title.both' : bicycles ? 'crash.title.bike' : 'crash.title.foot')
@@ -65,6 +73,19 @@ export function CollisionCard({ props, at, basemap, onClose }: Props) {
           <h2>{title}</h2>
           <p>{date}</p>
         </div>
+        {count > 1 && (
+          <div className="card-step">
+            <button type="button" aria-label={t('crash.previous')} onClick={() => step(-1)}>
+              ‹
+            </button>
+            <span>
+              {index + 1} / {count}
+            </span>
+            <button type="button" aria-label={t('crash.next')} onClick={() => step(1)}>
+              ›
+            </button>
+          </div>
+        )}
         <button type="button" className="feature-close" aria-label={t('close')} onClick={onClose}>
           <svg
             aria-hidden="true"

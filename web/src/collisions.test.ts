@@ -7,6 +7,7 @@ import {
   formatCollisionFilters,
   matchesCollision,
   parseCollisionFilters,
+  worstFirst,
 } from './collisions'
 
 const collision = (patch: Partial<CollisionProps>): CollisionProps => ({
@@ -66,5 +67,17 @@ describe('collisionLocation', () => {
     expect(collisionLocation('MERIVALE RD btwn CALDWELL AVE & 3RD AVE', 'entre')).toBe(
       'Merivale Rd entre Caldwell Ave & 3rd Ave',
     )
+  })
+})
+
+describe('worstFirst', () => {
+  it('puts the worst injury first, then the most recent', () => {
+    const order = worstFirst([
+      { id: 'a', severity: 'minor', date: '2024-05-01' },
+      { id: 'b', severity: 'fatal', date: '2018-01-01' },
+      { id: 'c', severity: 'minor', date: '2021-05-01' },
+      { id: 'd', severity: 'none', date: '2024-06-01' },
+    ])
+    expect(order.map((c) => c.id)).toEqual(['b', 'a', 'c', 'd'])
   })
 })
