@@ -5,12 +5,13 @@ import {
   Map as MapLibreMap,
   Marker,
   NavigationControl,
+  Popup,
   ScaleControl,
   setWorkerUrl,
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { Protocol } from 'pmtiles'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { BasemapSwitch } from '../components/BasemapSwitch'
@@ -40,6 +41,8 @@ interface Props {
   state: StyleState
   onSelect: (selected: Selected | null) => void
   onBasemapChange: (basemap: BasemapId) => void
+  /** Details of the selection, shown in a popup beside it. Null where they go elsewhere (phones). */
+  popup: ReactNode | null
   /** When set, clicks place route points instead of selecting features. */
   routing: {
     points: RoutePoints
@@ -74,7 +77,7 @@ function panelPadding() {
   return { top: 50, bottom: 50, left: 420, right: 70 }
 }
 
-export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
+export function MapView({ state, onSelect, onBasemapChange, popup, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
@@ -85,6 +88,9 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
   const profile = useMemo(() => (state.route ? routeProfile(state.route.coords) : []), [state.route])
   // Home of the map-style switcher, placed by MapLibre among its own controls.
   const [styleControl, setStyleControl] = useState<HTMLElement | null>(null)
+  // The popup's content element lives as long as the map view; React renders into it.
+  const popupElement = useMemo(() => document.createElement('div'), [])
+  const popupRef = useRef<Popup | null>(null)
   const latest = useRef({ state, onSelect, routing, profile })
   const applied = useRef(state)
   latest.current = { state, onSelect, routing, profile }
@@ -134,7 +140,7 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
       if (marker) map.addImage(id, marker.image, { pixelRatio: marker.pixelRatio })
     })
 
-    const featureAt = (point: { x: number; y: number }): Selected | null => {
+    const featureAt = (point: { x: number; y: number }, lngLat: { lng: number; lat: number }): Selected | null => {
       const layers = INTERACTIVE_LAYERS[latest.current.state.layer].filter((id) => map.getLayer(id))
       const [feature] = map.queryRenderedFeatures(
         [
@@ -144,19 +150,27 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
         { layers },
       )
       if (!feature) return null
-      if (feature.sourceLayer === 'places')
-        return { kind: 'place', osm: String(feature.properties.osm), props: feature.properties }
-      return { kind: 'way', id: Number(feature.id), props: feature.properties }
+      if (feature.sourceLayer === 'places') {
+        // A place is anchored at its own position, a street where it was clicked.
+        const at = feature.geometry.type === 'Point' ? (feature.geometry.coordinates as [number, number]) : null
+        return {
+          kind: 'place',
+          osm: String(feature.properties.osm),
+          props: feature.properties,
+          at: at ?? [lngLat.lng, lngLat.lat],
+        }
+      }
+      return { kind: 'way', id: Number(feature.id), props: feature.properties, at: [lngLat.lng, lngLat.lat] }
     }
     map.on('click', (e) => {
       const { routing, onSelect } = latest.current
       if (routing) routing.onMapClick([e.lngLat.lng, e.lngLat.lat])
-      else onSelect(featureAt(e.point))
+      else onSelect(featureAt(e.point, e.lngLat))
     })
     map.on('mousemove', (e) => {
       const { routing, profile } = latest.current
       if (!routing) {
-        map.getCanvas().style.cursor = featureAt(e.point) ? 'pointer' : ''
+        map.getCanvas().style.cursor = featureAt(e.point, e.lngLat) ? 'pointer' : ''
         return
       }
       if (dragging.current) return
@@ -181,6 +195,7 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
       markers.current = [null, null]
       hoverMarker.current = null
       viaMarkers.current = []
+      popupRef.current = null
       // MapLibre deletes its position from the URL when removed. Put it back so a
       // remount (React does one in development) starts where the link pointed.
       const { hash, pathname, search } = window.location
@@ -258,6 +273,36 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: panelPadding(), maxZoom: 17, duration: 600 })
   }, [zoomTo])
 
+  // The details popup follows the selection. It is shown only when there is content for it.
+  const anchor = popup ? (state.selected?.at ?? null) : null
+  const [anchorLng, anchorLat] = anchor ?? [null, null]
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || anchorLng === null || anchorLat === null) {
+      popupRef.current?.remove()
+      popupRef.current = null
+      return
+    }
+    if (!popupRef.current) {
+      popupRef.current = new Popup({
+        closeButton: false,
+        closeOnClick: false,
+        maxWidth: '340px',
+        offset: 14,
+        className: 'feature-popup',
+      }).setDOMContent(popupElement)
+    }
+    popupRef.current.setLngLat([anchorLng, anchorLat]).addTo(map)
+
+    // MapLibre keeps the popup inside the map but knows nothing of the side panel; nudge the map if they overlap.
+    const frame = requestAnimationFrame(() => {
+      const box = popupRef.current?.getElement()?.getBoundingClientRect()
+      const panel = document.querySelector('.sidebar')?.getBoundingClientRect()
+      if (box && panel && box.left < panel.right + 12) map.panBy([box.left - panel.right - 12, 0], { duration: 300 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [anchorLng, anchorLat, popupElement])
+
   // Via points: drag to move, click to remove.
   const vias = routing?.vias
   useEffect(() => {
@@ -332,6 +377,7 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
     <>
       <div ref={container} className="map" />
       {styleControl && createPortal(<BasemapSwitch basemap={state.basemap} onChange={onBasemapChange} />, styleControl)}
+      {popup && createPortal(popup, popupElement)}
     </>
   )
 }

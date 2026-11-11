@@ -6,9 +6,10 @@ import { type BasemapId, INK, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_C
 import { type PlaceKind, placeImageId } from '../places'
 import { comfortKeyOf, type Route, type RouteHighlight } from '../route/brouter'
 
+/** What was clicked on the map; `at` is where its details are anchored. */
 export type Selected =
-  | { kind: 'way'; id: number; props: Record<string, unknown> }
-  | { kind: 'place'; osm: string; props: Record<string, unknown> }
+  | { kind: 'way'; id: number; props: Record<string, unknown>; at: [number, number] }
+  | { kind: 'place'; osm: string; props: Record<string, unknown>; at: [number, number] }
 
 export interface StyleState {
   lang: Lang

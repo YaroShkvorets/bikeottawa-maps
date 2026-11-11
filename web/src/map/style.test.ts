@@ -57,7 +57,11 @@ describe('buildStyle', () => {
   })
 
   it('filters the selection and the place kinds', () => {
-    const style = build({ layer: 'places', placeKinds: ['water'], selected: { kind: 'way', id: 42, props: {} } })
+    const style = build({
+      layer: 'places',
+      placeKinds: ['water'],
+      selected: { kind: 'way', id: 42, props: {}, at: [-75.7, 45.4] },
+    })
     expect(layer(style, 'selected-way').filter).toEqual(['==', ['id'], 42])
     expect(layer(style, 'selected-place').filter).toEqual(['==', ['get', 'osm'], ''])
     expect(layer(style, 'places-icon').filter).toEqual(['in', ['get', 'kind'], ['literal', ['water']]])

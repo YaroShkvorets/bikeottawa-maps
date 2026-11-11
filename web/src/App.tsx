@@ -96,6 +96,18 @@ function initialBasemap(): BasemapId {
   return 'light'
 }
 
+/** Whether the phone layout is in effect, kept current as the window is resized or rotated. */
+function usePhoneLayout(): boolean {
+  const [phone, setPhone] = useState(() => window.matchMedia(PHONE_LAYOUT).matches)
+  useEffect(() => {
+    const query = window.matchMedia(PHONE_LAYOUT)
+    const update = () => setPhone(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  return phone
+}
+
 /** Date of the OpenStreetMap data in the tiles, written by the pipeline. */
 function useDataDate(lang: Lang): string | null {
   const [timestamp, setTimestamp] = useState<string | null>(null)
@@ -142,6 +154,7 @@ export function App() {
   const sheet = useRef<HTMLDivElement>(null)
   const topbar = useRef<HTMLDivElement>(null)
   // On phones the bottom sheet starts folded away so the map gets the screen.
+  const phone = usePhoneLayout()
   const [sheetOpen, setSheetOpen] = useState(() => !window.matchMedia(PHONE_LAYOUT).matches)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
@@ -331,11 +344,15 @@ export function App() {
       ? t('mode.route')
       : t('legend')
 
+  // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
+  const details = !routing && selected ? <FeatureCard selected={selected} onClose={() => setSelected(null)} /> : null
+
   return (
     <LangContext.Provider value={i18n}>
       <MapView
         state={styleState}
         onSelect={routing ? ignoreSelection : setSelected}
+        popup={details && !phone ? details : null}
         onBasemapChange={setBasemap}
         routing={mapRouting}
       />
@@ -427,8 +444,8 @@ export function App() {
                 onPinPart={setPinnedPart}
               />
             )}
-            {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
-            <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
+            {phone && details}
+            <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
               {(!routing || dataDate) && (
                 <p className="footnote">
