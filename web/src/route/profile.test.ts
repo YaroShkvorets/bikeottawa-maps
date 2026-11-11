@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nearestOnRoute, pointAtDistance, routeProfile } from './profile'
+import { nearestOnRoute, type ProfilePoint, pointAtDistance, routeProfile, smoothElevation } from './profile'
 
 // About 786 m east, then about 1112 m north.
 const profile = routeProfile([
@@ -48,5 +48,44 @@ describe('nearestOnRoute', () => {
   })
   it('has nothing to offer for an empty route', () => {
     expect(nearestOnRoute([], [-75.7, 45.4])).toBeNull()
+  })
+})
+
+describe('smoothElevation', () => {
+  const along = (eles: number[], step = 20): ProfilePoint[] =>
+    eles.map((ele, i) => ({ distance: i * step, lngLat: [-75.7 + i * 0.0002, 45.4], ele }))
+  const range = (points: ProfilePoint[]) => {
+    const eles = points.map((p) => p.ele ?? 0)
+    return Math.max(...eles) - Math.min(...eles)
+  }
+
+  it('flattens a sawtooth', () => {
+    const jagged = along(Array.from({ length: 100 }, (_, i) => 60 + (i % 2 ? 4 : -4)))
+    expect(range(jagged)).toBe(8)
+    expect(range(smoothElevation(jagged))).toBeLessThan(1)
+  })
+
+  it('keeps a steady climb as it is, away from the ends', () => {
+    const ramp = along(Array.from({ length: 100 }, (_, i) => 50 + i))
+    const smooth = smoothElevation(ramp)
+    for (let i = 10; i < 90; i++) expect(smooth[i].ele).toBeCloseTo(50 + i, 6)
+  })
+
+  it('keeps a real hill', () => {
+    // 30 m up over 600 m, then flat.
+    const hill = along(Array.from({ length: 100 }, (_, i) => 60 + Math.min(30, i)))
+    const smooth = smoothElevation(hill)
+    expect(range(smooth)).toBeGreaterThan(27)
+    expect(smooth[80].ele).toBeCloseTo(90, 6)
+  })
+
+  it('leaves positions, distances and gaps in the data alone', () => {
+    const points = along([60, 64, 58, 66, 61, 63, 59, 65, 60, 62, 61])
+    points[4] = { ...points[4], ele: undefined }
+    const smooth = smoothElevation(points)
+    expect(smooth.map((p) => p.distance)).toEqual(points.map((p) => p.distance))
+    expect(smooth.map((p) => p.lngLat)).toEqual(points.map((p) => p.lngLat))
+    expect(smooth[4].ele).toBeUndefined()
+    expect(smoothElevation([])).toEqual([])
   })
 })

@@ -72,3 +72,46 @@ export function nearestOnRoute(profile: ProfilePoint[], lngLat: LngLat): { point
   const point = pointAtDistance(profile, best.distance)
   return point && { point, off: best.off }
 }
+
+/** Half-width of the stretch each smoothed elevation is averaged over, in metres. */
+const SMOOTHING_RADIUS_M = 100
+
+/**
+ * The profile with its elevations averaged over the surrounding stretch of route.
+ * The elevation data is a 30 m grid that catches buildings and trees, which shows
+ * up as a sawtooth; this keeps the hills and drops the noise.
+ */
+export function smoothElevation(profile: ProfilePoint[], radius = SMOOTHING_RADIUS_M): ProfilePoint[] {
+  const known = profile.filter((p): p is ProfilePoint & { ele: number } => p.ele !== undefined)
+  if (known.length < 2) return profile
+  const start = known[0].distance
+  const end = known[known.length - 1].distance
+  // Short routes get a narrower window so they are not flattened altogether.
+  const r = Math.min(radius, (end - start) / 10)
+  if (r <= 0) return profile
+
+  // Running integral of elevation over distance, so any window's average is one subtraction.
+  const area = [0]
+  for (let i = 1; i < known.length; i++) {
+    area.push(area[i - 1] + ((known[i - 1].ele + known[i].ele) / 2) * (known[i].distance - known[i - 1].distance))
+  }
+  let cursor = 0
+  const areaUpTo = (distance: number) => {
+    // Windows only ever move forward a little or back by one width, so a cursor finds the stretch quickly.
+    while (cursor > 0 && known[cursor].distance > distance) cursor--
+    while (cursor < known.length - 2 && known[cursor + 1].distance <= distance) cursor++
+    const a = known[cursor]
+    const b = known[cursor + 1]
+    const span = b.distance - a.distance
+    const x = distance - a.distance
+    const slope = span > 0 ? (b.ele - a.ele) / span : 0
+    return area[cursor] + a.ele * x + (slope * x * x) / 2
+  }
+
+  return profile.map((point) => {
+    if (point.ele === undefined) return point
+    const from = Math.max(start, point.distance - r)
+    const to = Math.min(end, point.distance + r)
+    return to > from ? { ...point, ele: (areaUpTo(to) - areaUpTo(from)) / (to - from) } : point
+  })
+}

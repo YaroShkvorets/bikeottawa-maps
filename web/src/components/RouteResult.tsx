@@ -3,7 +3,7 @@ import { type MessageKey, useI18n } from '../i18n'
 import { LTS_COLORS, NO_BIKES_COLOR } from '../layers'
 import { COMFORT_KEYS, type ComfortKey, distanceByComfort, type Route } from '../route/brouter'
 import { downloadText, toGpx } from '../route/gpx'
-import { routeProfile } from '../route/profile'
+import { routeProfile, smoothElevation } from '../route/profile'
 import type { RouteState } from '../route/useRoute'
 import { visibleRoute } from '../route/useRoute'
 import { ElevationChart } from './ElevationChart'
@@ -89,7 +89,7 @@ export function RouteResult({ state, hover, onHover, highlight, pinned, onPointP
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const route = visibleRoute(state)
-  const profile = useMemo(() => (route ? routeProfile(route.coords) : []), [route])
+  const profile = useMemo(() => (route ? smoothElevation(routeProfile(route.coords)) : []), [route])
 
   if (state.status === 'error') return <p className="route-message error">{t('routeError')}</p>
   if (!route) return <p className="route-message">{state.status === 'loading' ? t('routeLoading') : t('routeHint')}</p>
