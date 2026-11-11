@@ -667,14 +667,37 @@ a {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
   font-size: 13px;
 }
 
-.comfort li {
+.comfort-bar-part {
+  transition: opacity 0.15s;
+}
+
+.comfort-bar-part.faded {
+  opacity: 0.3;
+}
+
+.comfort-part {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  margin: 0 -6px;
+  padding: 2px 6px;
+  box-sizing: content-box;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: inherit;
+  text-align: left;
+}
+
+.comfort-part:hover,
+.comfort-part[aria-pressed="true"] {
+  background: #fff3b0;
 }
 
 .comfort .share {

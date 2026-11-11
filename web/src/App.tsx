@@ -12,7 +12,7 @@ import { type BasemapId, isBasemapId, isLayerId, type LayerId } from './layers'
 import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, type PlaceKind } from './places'
-import type { LngLat } from './route/brouter'
+import type { ComfortKey, LngLat } from './route/brouter'
 import {
   formatParams,
   formatPoints,
@@ -113,12 +113,16 @@ export function App() {
   const [selected, setSelected] = useState<Selected | null>(null)
   // Metres along the route under the pointer, shared by the map and the elevation chart.
   const [routeHover, setRouteHover] = useState<number | null>(null)
+  // Part of the comfort breakdown picked out on the route: pointed at for now, or pinned by a click.
+  const [pointedPart, setPointedPart] = useState<ComfortKey | null>(null)
+  const [pinnedPart, setPinnedPart] = useState<ComfortKey | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
   const { layer, placeKinds, mode, points, vias, style, custom } = url
   const routing = mode === 'route'
+  const routeHighlight = routing ? (pointedPart ?? pinnedPart) : null
   const routeState = useRoute(ROUTER_URL, points, vias, paramsFor(style, custom), routing)
   const route = routing ? visibleRoute(routeState) : null
 
@@ -234,8 +238,8 @@ export function App() {
   }, [])
 
   const styleState = useMemo<StyleState>(
-    () => ({ lang, basemap, layer, placeKinds, selected, route }),
-    [lang, basemap, layer, placeKinds, selected, route],
+    () => ({ lang, basemap, layer, placeKinds, selected, route, routeHighlight }),
+    [lang, basemap, layer, placeKinds, selected, route, routeHighlight],
   )
   const mapRouting = useMemo(
     () =>
@@ -250,14 +254,19 @@ export function App() {
             onRemoveVia: removeVia,
             hover: routeHover,
             onHover: setRouteHover,
+            zoomTo: pinnedPart,
           }
         : null,
-    [routing, points, vias, placePoint, movePoint, addVia, moveVia, removeVia, routeHover],
+    [routing, points, vias, placePoint, movePoint, addVia, moveVia, removeVia, routeHover, pinnedPart],
   )
 
   // A spot pointed at on the old route means nothing on a new one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the route changes
-  useEffect(() => setRouteHover(null), [route])
+  useEffect(() => {
+    setRouteHover(null)
+    setPointedPart(null)
+    setPinnedPart(null)
+  }, [route])
   const hasResult = routing && routeState.status !== 'idle'
 
   return (
@@ -311,7 +320,17 @@ export function App() {
           )}
         </div>
         <div className="card sheet" ref={sheet}>
-          {routing && <RouteResult state={routeState} hover={routeHover} onHover={setRouteHover} />}
+          {routing && (
+            <RouteResult
+              state={routeState}
+              hover={routeHover}
+              onHover={setRouteHover}
+              highlight={routeHighlight}
+              pinned={pinnedPart}
+              onPointPart={setPointedPart}
+              onPinPart={setPinnedPart}
+            />
+          )}
           {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
           <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
             {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}

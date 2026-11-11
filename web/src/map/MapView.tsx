@@ -17,7 +17,7 @@ import { BasemapSwitch } from '../components/BasemapSwitch'
 import { ASSETS_BASE, REGION } from '../config'
 import type { BasemapId } from '../layers'
 import { isPlaceKind, placeImageId } from '../places'
-import type { LngLat } from '../route/brouter'
+import { type ComfortKey, comfortKeyOf, type LngLat } from '../route/brouter'
 import { nearestOnRoute, pointAtDistance, routeProfile } from '../route/profile'
 import type { RoutePoints } from '../route/state'
 import { renderPlaceImage } from './placeImage'
@@ -52,6 +52,8 @@ interface Props {
     /** Metres along the route being pointed at, here or on the elevation chart. */
     hover: number | null
     onHover: (distance: number | null) => void
+    /** Part of the comfort breakdown to bring into view when it changes. */
+    zoomTo: ComfortKey | null
   } | null
 }
 
@@ -232,6 +234,20 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
       }
     }
   }, [points])
+
+  // Clicking a part of the comfort breakdown brings its stretches into view. The
+  // route is read at that moment, so a new route alone does not move the map.
+  const zoomTo = routing?.zoomTo ?? null
+  useEffect(() => {
+    const map = mapRef.current
+    const route = latest.current.state.route
+    if (!map || !route || !zoomTo) return
+    const bounds = new LngLatBounds()
+    for (const segment of route.segments) {
+      if (comfortKeyOf(segment) === zoomTo) for (const point of segment.coords) bounds.extend(point)
+    }
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: panelPadding(), maxZoom: 17, duration: 600 })
+  }, [zoomTo])
 
   // Via points: drag to move, click to remove.
   const vias = routing?.vias

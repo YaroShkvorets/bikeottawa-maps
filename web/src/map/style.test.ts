@@ -11,6 +11,7 @@ const state: StyleState = {
   placeKinds: PLACE_KINDS,
   selected: null,
   route: null,
+  routeHighlight: null,
 }
 const build = (patch: Partial<StyleState> = {}) => buildStyle({ ...state, ...patch }, 'https://example.test')
 const layer = (style: ReturnType<typeof build>, id: string) => {
@@ -69,8 +70,17 @@ describe('buildStyle', () => {
     }
     const source = build({ route }).sources.route as { data: FeatureCollection }
     expect(source.data.features).toHaveLength(1)
-    expect(source.data.features[0].properties).toEqual({ lts: 3 })
+    expect(source.data.features[0].properties).toEqual({ lts: 3, part: 'lts3' })
     expect((build().sources.route as { data: FeatureCollection }).data.features).toHaveLength(0)
+  })
+
+  it('picks out one part of the route and fades the rest', () => {
+    const plain = build()
+    expect(layer(plain, 'route-highlight').filter).toEqual(['==', ['get', 'part'], ''])
+    const picked = build({ routeHighlight: 'sidewalk' })
+    expect(layer(picked, 'route-highlight').filter).toEqual(['==', ['get', 'part'], 'sidewalk'])
+    const line = picked.layers.find((l) => l.id === 'route-line') as { paint: Record<string, unknown> }
+    expect(line.paint['line-opacity']).toEqual(['case', ['==', ['get', 'part'], 'sidewalk'], 1, 0.3])
   })
 
   it('restyles the same tiles for each drawn basemap', () => {

@@ -131,11 +131,14 @@ export async function fetchRoute(
 export const COMFORT_KEYS = ['lts1', 'lts2', 'lts3', 'lts4', 'sidewalk', 'stairs', 'other'] as const
 export type ComfortKey = (typeof COMFORT_KEYS)[number]
 
+/** Which part of the comfort breakdown a segment belongs to. */
+export function comfortKeyOf(segment: Pick<RouteSegment, 'lts' | 'walk'>): ComfortKey {
+  return segment.walk ?? (`lts${segment.lts}` as ComfortKey)
+}
+
 /** Metres of the route in each part of the comfort breakdown. */
 export function distanceByComfort(route: Route): Record<ComfortKey, number> {
   const totals: Record<ComfortKey, number> = { lts1: 0, lts2: 0, lts3: 0, lts4: 0, sidewalk: 0, stairs: 0, other: 0 }
-  for (const segment of route.segments) {
-    totals[segment.walk ?? (`lts${segment.lts}` as ComfortKey)] += segment.distance
-  }
+  for (const segment of route.segments) totals[comfortKeyOf(segment)] += segment.distance
   return totals
 }

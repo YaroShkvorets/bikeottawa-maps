@@ -18,7 +18,18 @@ const COMFORT: Record<ComfortKey, { color: string; label: MessageKey }> = {
   other: { color: NO_BIKES_COLOR, label: 'walk' },
 }
 
-function ComfortBar({ route }: { route: Route }) {
+interface ComfortProps {
+  route: Route
+  /** The part currently picked out on the map, by pointing or by a click. */
+  highlight: ComfortKey | null
+  /** The part kept picked out by a click. */
+  pinned: ComfortKey | null
+  onPoint: (part: ComfortKey | null) => void
+  onPin: (part: ComfortKey | null) => void
+}
+
+/** How the route splits by comfort. Pointing at a part picks it out on the map; a click keeps it and zooms there. */
+function ComfortBar({ route, highlight, pinned, onPoint, onPin }: ComfortProps) {
   const { t } = useI18n()
   const totals = distanceByComfort(route)
   const sum = Object.values(totals).reduce((a, b) => a + b, 0) || 1
@@ -28,15 +39,33 @@ function ComfortBar({ route }: { route: Route }) {
       <p className="footnote">{t('comfortAlong')}</p>
       <div className="comfort-bar" aria-hidden="true">
         {parts.map((key) => (
-          <span key={key} style={{ flexGrow: totals[key], background: COMFORT[key].color }} />
+          <span
+            key={key}
+            className={highlight && highlight !== key ? 'comfort-bar-part faded' : 'comfort-bar-part'}
+            style={{ flexGrow: totals[key], background: COMFORT[key].color }}
+            onPointerEnter={() => onPoint(key)}
+            onPointerLeave={() => onPoint(null)}
+          />
         ))}
       </div>
       <ul>
         {parts.map((key) => (
           <li key={key}>
-            <span className="swatch line" style={{ background: COMFORT[key].color }} />
-            <span>{t(COMFORT[key].label)}</span>
-            <span className="share">{Math.max(1, Math.round((totals[key] / sum) * 100))}%</span>
+            <button
+              type="button"
+              className="comfort-part"
+              aria-pressed={pinned === key}
+              title={t('showOnRoute')}
+              onPointerEnter={() => onPoint(key)}
+              onPointerLeave={() => onPoint(null)}
+              onFocus={() => onPoint(key)}
+              onBlur={() => onPoint(null)}
+              onClick={() => onPin(pinned === key ? null : key)}
+            >
+              <span className="swatch line" style={{ background: COMFORT[key].color }} />
+              <span>{t(COMFORT[key].label)}</span>
+              <span className="share">{Math.max(1, Math.round((totals[key] / sum) * 100))}%</span>
+            </button>
           </li>
         ))}
       </ul>
@@ -49,9 +78,14 @@ interface Props {
   /** Metres along the route being pointed at, on the chart or on the map. */
   hover: number | null
   onHover: (distance: number | null) => void
+  /** Part of the comfort breakdown picked out on the map. */
+  highlight: ComfortKey | null
+  pinned: ComfortKey | null
+  onPointPart: (part: ComfortKey | null) => void
+  onPinPart: (part: ComfortKey | null) => void
 }
 
-export function RouteResult({ state, hover, onHover }: Props) {
+export function RouteResult({ state, hover, onHover, highlight, pinned, onPointPart, onPinPart }: Props) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const route = visibleRoute(state)
@@ -86,7 +120,7 @@ export function RouteResult({ state, hover, onHover }: Props) {
           <dt>{t('climb')}</dt>
         </div>
       </dl>
-      <ComfortBar route={route} />
+      <ComfortBar route={route} highlight={highlight} pinned={pinned} onPoint={onPointPart} onPin={onPinPart} />
       <ElevationChart profile={profile} label={t('elevation')} hover={hover} onHover={onHover} />
       <p className="footnote via-hint">{t('viaHint')}</p>
       <div className="route-actions">

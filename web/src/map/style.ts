@@ -4,7 +4,7 @@ import type { ExpressionSpecification, FilterSpecification, LayerSpecification, 
 import type { Lang } from '../i18n'
 import { type BasemapId, INK, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_COLORS } from '../layers'
 import { type PlaceKind, placeImageId } from '../places'
-import type { Route } from '../route/brouter'
+import { type ComfortKey, comfortKeyOf, type Route } from '../route/brouter'
 
 export type Selected =
   | { kind: 'way'; id: number; props: Record<string, unknown> }
@@ -19,6 +19,8 @@ export interface StyleState {
   selected: Selected | null
   /** Planned route to draw, coloured by comfort. */
   route: Route | null
+  /** Part of the comfort breakdown to pick out on the route, the rest of it stepping back. */
+  routeHighlight: ComfortKey | null
 }
 
 /** Layers a click can hit, per data layer. */
@@ -104,26 +106,40 @@ function routeData(route: Route | null): FeatureCollection {
     type: 'FeatureCollection',
     features: (route?.segments ?? []).map((segment) => ({
       type: 'Feature',
-      properties: { lts: segment.lts },
+      properties: { lts: segment.lts, part: comfortKeyOf(segment) },
       geometry: { type: 'LineString', coordinates: segment.coords },
     })),
   }
 }
 
-function routeLayers(theme: Theme): LayerSpecification[] {
+/** Marks the stretches picked out from the comfort breakdown. */
+const HIGHLIGHT_COLOR = '#FFD60A'
+
+function routeLayers(theme: Theme, highlight: ComfortKey | null): LayerSpecification[] {
+  const round = { 'line-cap': 'round' as const, 'line-join': 'round' as const }
+  // With a part picked out, the rest of the route fades so short stretches are easy to find.
+  const rest: ExpressionSpecification | number = highlight ? ['case', ['==', ['get', 'part'], highlight], 1, 0.3] : 1
   return [
+    {
+      id: 'route-highlight',
+      type: 'line',
+      source: 'route',
+      filter: ['==', ['get', 'part'], highlight ?? ''],
+      layout: round,
+      paint: { 'line-color': HIGHLIGHT_COLOR, 'line-width': lineWidth(16) },
+    },
     {
       id: 'route-casing',
       type: 'line',
       source: 'route',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': theme.contrast, 'line-width': lineWidth(8) },
+      layout: round,
+      paint: { 'line-color': theme.contrast, 'line-width': lineWidth(8), 'line-opacity': rest },
     },
     {
       id: 'route-line',
       type: 'line',
       source: 'route',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      layout: round,
       paint: {
         'line-color': [
           'match',
@@ -139,6 +155,7 @@ function routeLayers(theme: Theme): LayerSpecification[] {
           NO_BIKES_COLOR,
         ],
         'line-width': lineWidth(3.5),
+        'line-opacity': rest,
       },
     },
   ]
@@ -277,6 +294,11 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       overlays: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
       route: { type: 'geojson', data: routeData(state.route) },
     },
-    layers: [...base.slice(0, at), ...overlayLayers(state, theme), ...routeLayers(theme), ...base.slice(at)],
+    layers: [
+      ...base.slice(0, at),
+      ...overlayLayers(state, theme),
+      ...routeLayers(theme, state.routeHighlight),
+      ...base.slice(at),
+    ],
   }
 }
