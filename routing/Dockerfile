@@ -1,10 +1,11 @@
 # BRouter with the ottbike profile and routing data for the region baked in.
 # Run routing/prepare-data.sh first, then: docker build -t bikeottawa-router routing
 ARG BROUTER_IMAGE=ghcr.io/abrensch/brouter:master@sha256:1e73860a13994eb49871bd35e20e955ab3d3b3cde0f26575a9cf2a69a72495ae
-# The server jar comes from our fork: BROUTER_IMAGE's commit plus isochrones
-# (engineMode=5: how far you get in a given time), on its isochrone branch.
+# The server jar comes from the bikeottawa branch of our fork: BROUTER_IMAGE's
+# commit plus isochrones (engineMode=5: how far you get in a given time) and
+# time lost at stop signs and signals (the profile's stopdelay).
 ARG BROUTER_REPO=https://github.com/YaroShkvorets/brouter.git
-ARG BROUTER_COMMIT=586252623e959f9b58563b644b221e2f0bf1ff16
+ARG BROUTER_COMMIT=0ec411870c88693564c6e49b8cf0812e8fee25e0
 
 FROM alpine/git:v2.49.1 AS source
 ARG BROUTER_REPO
