@@ -1,3 +1,5 @@
+import { REGION } from '../config'
+import { describeStatus, hoursStatus, parseHours, weekTimeIn } from '../hours'
 import { isMessageKey, type MessageKey, type Translate, useI18n } from '../i18n'
 import { LTS_COLORS, WINTER_COLORS } from '../layers'
 import type { Selected } from '../map/style'
@@ -48,14 +50,14 @@ interface Props {
 }
 
 export function FeatureCard({ selected, onClose }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { props } = selected
   const kindKey = `${selected.kind === 'way' ? 'kind' : 'place'}.${props.kind}`
   const kindLabel = isMessageKey(kindKey) ? t(kindKey) : ''
   const name = typeof props.name === 'string' ? props.name : null
   const [type, id] = osmPath(selected).split('/')
 
-  const facts: { label: string; value: string; color?: string }[] = []
+  const facts: { label: string; value: string; color?: string; tone?: 'open' | 'closed'; note?: string }[] = []
   if (selected.kind === 'way') {
     const lts = Number(props.lts)
     facts.push({
@@ -69,7 +71,24 @@ export function FeatureCard({ selected, onClose }: Props) {
     }
   }
   for (const key of selected.kind === 'way' ? WAY_FACTS : PLACE_FACTS) {
-    if (props[key] !== undefined) facts.push({ label: t(`fact.${key}`), value: formatValue(key, props[key], t) })
+    if (props[key] === undefined) continue
+    const value = formatValue(key, props[key], t)
+    // Hours lead with whether the place is open now, when they can be understood.
+    const week = key === 'opening_hours' ? parseHours(String(props[key])) : null
+    if (week) {
+      const status = hoursStatus(week, weekTimeIn(REGION.timeZone))
+      const words = describeStatus(status, lang === 'fr' ? 'fr-CA' : 'en-CA', {
+        openUntil: t('hours.openUntil'),
+        open24: t('hours.open24'),
+        opensAt: t('hours.opensAt'),
+        opensTomorrow: t('hours.opensTomorrow'),
+        opensDay: t('hours.opensDay'),
+        closed: t('hours.closed'),
+      })
+      facts.push({ label: t(`fact.${key}`), value: words, tone: status.open ? 'open' : 'closed', note: value })
+    } else {
+      facts.push({ label: t(`fact.${key}`), value })
+    }
   }
   const website = typeof props.website === 'string' && /^https?:\/\//.test(props.website) ? props.website : null
 
@@ -106,7 +125,14 @@ export function FeatureCard({ selected, onClose }: Props) {
               <dt>{fact.label}</dt>
               <dd>
                 {fact.color && <span className="swatch line" style={{ background: fact.color }} />}
-                {fact.value}
+                {fact.note ? (
+                  <span className="fact-lines">
+                    <strong className={fact.tone}>{fact.value}</strong>
+                    <small>{fact.note}</small>
+                  </span>
+                ) : (
+                  fact.value
+                )}
               </dd>
             </div>
           ))}

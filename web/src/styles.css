@@ -387,6 +387,25 @@ a {
   align-self: center;
 }
 
+.fact-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fact-lines strong.open {
+  color: #1e7a3c;
+}
+
+.fact-lines strong.closed {
+  color: #a3341f;
+}
+
+.fact-lines small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .feature-links {
   display: flex;
   gap: 14px;

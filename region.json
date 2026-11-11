@@ -2,6 +2,7 @@
   "name": "Ottawa–Gatineau",
   "bbox": [-76.4, 44.95, -75.2, 45.65],
   "center": [-75.6972, 45.4215],
+  "timeZone": "America/Toronto",
   "routingBbox": [-77.3, 44.1, -74.3, 46.3],
   "extracts": [
     {
