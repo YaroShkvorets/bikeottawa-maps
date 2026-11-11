@@ -1,6 +1,7 @@
 /** The place kinds of the Places layer: their grouping, colours and icons. */
 import alcoholShop from '@mapbox/maki/icons/alcohol-shop.svg?raw'
 import bbq from '@mapbox/maki/icons/bbq.svg?raw'
+import beach from '@mapbox/maki/icons/beach.svg?raw'
 import beer from '@mapbox/maki/icons/beer.svg?raw'
 import bicycle from '@mapbox/maki/icons/bicycle.svg?raw'
 import cafe from '@mapbox/maki/icons/cafe.svg?raw'
@@ -46,6 +47,7 @@ const DEFS = {
   bbq: { group: 'rest', svg: bbq },
   viewpoint: { group: 'rest', svg: viewpoint },
   splash: { group: 'rest', svg: splashPad },
+  beach: { group: 'rest', svg: beach },
   cafe: { group: 'food', svg: cafe },
   restaurant: { group: 'food', svg: restaurant },
   fast_food: { group: 'food', svg: fastFood },

@@ -75,10 +75,17 @@ test('every place kind from the original amenities map is recognised', () => {
   assert.equal(classifyPlace({ amenity: 'restaurant', cuisine: 'thai' }).props.cuisine, 'thai')
 })
 
+test('beaches are places only when they have a name', () => {
+  assert.equal(classifyPlace({ natural: 'beach', name: 'Westboro Beach' }).props.kind, 'beach')
+  assert.equal(classifyPlace({ natural: 'beach' }), null)
+  assert.equal(classifyPlace({ natural: 'beach', name: 'Private Beach', access: 'private' }), null)
+})
+
 test('the osmium filter covers every place kind, grouped by key', () => {
   const filters = placeFilters()
   assert.ok(filters.includes('nw/shop=bicycle'))
   assert.ok(filters.includes('nw/craft=brewery'))
+  assert.ok(filters.includes('nw/natural=beach'))
   assert.ok(filters.some((f) => f.startsWith('nw/amenity=') && f.includes('bench') && f.includes('bicycle_parking')))
   assert.ok(filters.includes('nw/leisure=picnic_table,splash_pad'))
 })

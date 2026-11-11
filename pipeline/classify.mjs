@@ -61,7 +61,10 @@ export function classifyWay(tags) {
   return { props, minzoom }
 }
 
-/** [OSM key, value, our kind, zoom from which it shows]. Dense kinds appear later. */
+/**
+ * [OSM key, value, our kind, zoom from which it shows, needs a name?]. Dense kinds
+ * appear later. Beaches need a name: unnamed ones are strips of sand, not places to stop.
+ */
 const PLACE_KINDS = [
   ['amenity', 'bicycle_parking', 'parking', 13],
   ['shop', 'bicycle', 'shop', 10],
@@ -78,6 +81,7 @@ const PLACE_KINDS = [
   ['tourism', 'viewpoint', 'viewpoint', 11],
   ['playground', 'splash_pad', 'splash', 11],
   ['leisure', 'splash_pad', 'splash', 11],
+  ['natural', 'beach', 'beach', 11, true],
   ['amenity', 'cafe', 'cafe', 12],
   ['amenity', 'restaurant', 'restaurant', 13],
   ['amenity', 'fast_food', 'fast_food', 13],
@@ -119,7 +123,8 @@ export function classifyPlace(tags) {
   const match = PLACE_KINDS.find(([key, value]) => tags[key] === value)
   if (!match) return null
   if (tags.access === 'private' || tags.access === 'no') return null
-  const [, , kind, minzoom] = match
+  const [, , kind, minzoom, needsName] = match
+  if (needsName && !tags.name) return null
   return { props: pick(tags, PLACE_TAGS, { kind }), minzoom }
 }
 
