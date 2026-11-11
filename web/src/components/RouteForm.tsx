@@ -1,33 +1,20 @@
 import { useI18n } from '../i18n'
 import type { RoutePoint, RoutePoints } from '../route/state'
-import type { ParamKey, RouteParams, StyleId } from '../route/styles'
 import { PlaceInput } from './PlaceInput'
-import { StylePicker } from './StylePicker'
+import { StylePicker, type StylePickerProps } from './StylePicker'
 
 interface Props {
   points: RoutePoints
   /** Places the route passes through, in riding order, with their address once known. */
   vias: readonly RoutePoint[]
   onViaChange: (index: number, point: RoutePoint | null) => void
-  style: StyleId
-  params: RouteParams
+  /** Bike or on foot, and the style to go by. */
+  picker: StylePickerProps
   onPointChange: (index: 0 | 1, point: RoutePoint | null) => void
   onReverse: () => void
-  onStyleChange: (style: StyleId) => void
-  onParamChange: (key: ParamKey, value: number) => void
 }
 
-export function RouteForm({
-  points,
-  vias,
-  style,
-  params,
-  onPointChange,
-  onReverse,
-  onViaChange,
-  onStyleChange,
-  onParamChange,
-}: Props) {
+export function RouteForm({ points, vias, picker, onPointChange, onReverse, onViaChange }: Props) {
   const { t } = useI18n()
   return (
     <div className="route-form">
@@ -81,7 +68,7 @@ export function RouteForm({
           </svg>
         </button>
       </div>
-      <StylePicker style={style} params={params} onStyleChange={onStyleChange} onParamChange={onParamChange} />
+      <StylePicker {...picker} />
     </div>
   )
 }

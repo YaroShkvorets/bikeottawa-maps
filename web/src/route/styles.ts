@@ -93,3 +93,31 @@ export function isStyleId(value: unknown): value is StyleId {
 export function paramsFor(style: StyleId, custom: RouteParams): RouteParams {
   return style === 'custom' ? custom : PRESETS[style]
 }
+
+/** How the trip is made: riding, or on foot. */
+export const TRAVEL_MODES = ['bike', 'foot'] as const
+export type Travel = (typeof TRAVEL_MODES)[number]
+
+export function isTravel(value: unknown): value is Travel {
+  return TRAVEL_MODES.includes(value as Travel)
+}
+
+/** Walking styles, for the `ottwalk` profile: winter avoids unplowed paths and walks them slowly. */
+export const WALK_STYLE_IDS = ['normal', 'winter'] as const
+export type WalkStyleId = (typeof WALK_STYLE_IDS)[number]
+
+export function isWalkStyleId(value: unknown): value is WalkStyleId {
+  return WALK_STYLE_IDS.includes(value as WalkStyleId)
+}
+
+/** What the router is asked to use: a profile in routing/profiles and its parameters. */
+export interface Profile {
+  name: 'ottbike' | 'ottwalk'
+  params: Readonly<Record<string, number>>
+}
+
+export function profileFor(travel: Travel, style: StyleId, custom: RouteParams, walkStyle: WalkStyleId): Profile {
+  return travel === 'foot'
+    ? { name: 'ottwalk', params: { winter: walkStyle === 'winter' ? 1 : 0 } }
+    : { name: 'ottbike', params: paramsFor(style, custom) }
+}

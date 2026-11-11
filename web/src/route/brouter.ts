@@ -1,5 +1,5 @@
 import stressmodel from 'stressmodel/stressmodel.js'
-import { PARAM_KEYS, type RouteParams } from './styles'
+import type { Profile } from './styles'
 
 export type LngLat = [lon: number, lat: number]
 
@@ -39,12 +39,15 @@ export interface Route {
 
 export class RouteError extends Error {}
 
-const PROFILE = 'ottbike'
+/** The profile's parameters, as BRouter takes them in a request. */
+export function profileQuery({ name, params }: Profile): string {
+  const tuning = Object.entries(params).map(([key, value]) => `&profile:${key}=${value}`)
+  return `profile=${name}${tuning.join('')}`
+}
 
-export function routeUrl(base: string, points: readonly LngLat[], params: RouteParams): string {
+export function routeUrl(base: string, points: readonly LngLat[], profile: Profile): string {
   const lonlats = points.map(([lon, lat]) => `${lon.toFixed(6)},${lat.toFixed(6)}`).join('|')
-  const tuning = PARAM_KEYS.map((key) => `profile:${key}=${params[key]}`).join('&')
-  return `${base}?lonlats=${lonlats}&profile=${PROFILE}&alternativeidx=0&format=geojson&${tuning}`
+  return `${base}?lonlats=${lonlats}&alternativeidx=0&format=geojson&${profileQuery(profile)}`
 }
 
 function parseTags(text: string): Record<string, string> {
@@ -177,10 +180,10 @@ export function parseRoute(geojson: unknown): Route {
 export async function fetchRoute(
   base: string,
   points: readonly LngLat[],
-  params: RouteParams,
+  profile: Profile,
   signal?: AbortSignal,
 ): Promise<Route> {
-  const res = await fetch(routeUrl(base, points, params), { signal })
+  const res = await fetch(routeUrl(base, points, profile), { signal })
   // BRouter answers failures (no road nearby, outside the covered area) as plain text.
   if (!res.ok) throw new RouteError((await res.text()).trim() || `Routing failed (${res.status})`)
   const text = await res.text()

@@ -1,0 +1,101 @@
+# Walking in Ottawa-Gatineau, for bikeottawa-maps.
+# Sidewalks, footways and pathways first; quiet streets are fine without a
+# sidewalk, busy ones are avoided; motorways never.
+# Travel time: BRouter's walking model (Tobler's hiking function), about
+# 5 km/h on the flat, slower on slopes, capped per way by maxspeed below.
+
+---context:global
+
+# 1 => winter: paths that are not plowed are avoided and walked slowly
+assign  winter = 0
+
+assign  validForFoot = true
+assign  processUnusedTags = true
+assign  considerTurnRestrictions = false   # turn restrictions are for vehicles
+assign  turnInstructionMode = 1
+# Top walking speed, km/h; downhill on a gentle slope. About 5 on the flat.
+assign  maxSpeed = 6
+assign  downhillcost = 0
+assign  downhillcutoff = 0
+assign  uphillcost = 0
+assign  uphillcutoff = 0
+
+---context:way
+
+assign turncost = 0
+assign initialclassifier = 0
+assign initialcost = 0
+
+assign accessfoot =
+       if foot=no|private|use_sidepath then false
+       else if foot=yes|designated|permissive then true
+       else if access=no|private then false
+       else if highway=motorway|motorway_link then false
+       else if motorroad=yes then false
+       else if route=ferry then false
+       else true
+
+assign haspath = highway=footway|path|pedestrian|steps|living_street|track|cycleway|bridleway|corridor
+assign hassidewalk =
+       if sidewalk=both|left|right|yes then true
+       else if sidewalk:both=yes then true
+       else if sidewalk:left=yes then true
+       else sidewalk:right=yes
+
+# On the road itself, how unpleasant it is without a sidewalk. A sidewalk
+# mapped as a way of its own (sidewalk=separate) is there to be used instead.
+assign roadpenalty =
+       if haspath then 0
+       else if hassidewalk then 0.1
+       else if highway=residential|service|unclassified|road then 0.2
+       else if highway=tertiary|tertiary_link then 1.5
+       else if highway=secondary|secondary_link then 3
+       else if highway=primary|primary_link then 5
+       else if highway=trunk|trunk_link then 8
+       else 0.5
+
+assign ispaved = surface=paved|asphalt|concrete|paving_stones|sett|cobblestone|wood|metal
+assign isunpaved = and haspath not ( or surface= ispaved )
+
+# Not plowed: tagged so, or an unpaved path not tagged as plowed. Sidewalks and
+# streets are taken to be cleared.
+assign unplowed =
+       if winter_service=no then true
+       else if winter_service=yes then false
+       else and highway=path|footway|track|bridleway isunpaved
+
+assign winterpenalty = if and equal winter 1 unplowed then 3 else 0
+assign surfacepenalty = if isunpaved then 0.2 else 0
+
+assign costfactor =
+       if not accessfoot then 10000
+       else if highway=proposed|construction|abandoned|platform then 10000
+       else add 1 add roadpenalty add surfacepenalty add winterpenalty
+            if highway=steps then 0.3 else 0
+
+# Speed cap for travel times, km/h (0 = none).
+assign maxspeed =
+       if highway=steps then 2
+       else if and equal winter 1 unplowed then 3
+       else 0
+
+assign priorityclassifier =
+       if highway=primary|primary_link|trunk|trunk_link then 26
+       else if highway=secondary|secondary_link then 24
+       else if highway=tertiary|tertiary_link then 22
+       else if highway=residential|living_street|unclassified|service then 6
+       else if highway=footway|path|pedestrian|cycleway then 4
+       else if highway=steps then 2
+       else 0
+
+assign classifiermask = 0
+
+---context:node
+
+assign initialcost = 0
+
+# Seconds lost waiting at a signalled crossing, for travel times (often mapped
+# once per approach).
+assign stopdelay =
+       if or or highway=traffic_signals crossing=traffic_signals crossing:signals=yes then 10
+       else 0

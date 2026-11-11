@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchRoute, type LngLat, type Route } from './brouter'
 import type { RoutePoints } from './state'
-import type { RouteParams } from './styles'
+import type { Profile } from './styles'
 
 export type RouteState =
   | { status: 'idle' }
@@ -16,12 +16,12 @@ export function useRoute(
   routerUrl: string | null,
   points: RoutePoints,
   vias: readonly LngLat[],
-  params: RouteParams,
+  profile: Profile,
   enabled: boolean,
 ): RouteState {
   const [state, setState] = useState<RouteState>({ status: 'idle' })
   const [from, to] = points
-  const key = enabled && routerUrl && from && to ? JSON.stringify([from.lngLat, vias, to.lngLat, params]) : null
+  const key = enabled && routerUrl && from && to ? JSON.stringify([from.lngLat, vias, to.lngLat, profile]) : null
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: key captures every input that changes the route
   useEffect(() => {
@@ -35,7 +35,7 @@ export function useRoute(
       previous: current.status === 'ready' ? current.route : current.status === 'loading' ? current.previous : null,
     }))
     const timer = setTimeout(() => {
-      fetchRoute(routerUrl, [from.lngLat, ...vias, to.lngLat], params, controller.signal)
+      fetchRoute(routerUrl, [from.lngLat, ...vias, to.lngLat], profile, controller.signal)
         .then((route) => setState({ status: 'ready', route }))
         .catch((error: unknown) => {
           if (!controller.signal.aborted)

@@ -507,6 +507,10 @@ a {
   font-weight: 600;
 }
 
+.travel-switch {
+  margin-bottom: 8px;
+}
+
 .mode-switch button[aria-pressed="true"] {
   background: var(--surface);
   color: var(--ink);

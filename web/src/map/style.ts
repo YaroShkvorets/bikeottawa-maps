@@ -32,6 +32,8 @@ export interface StyleState {
   route: Route | null
   /** Legend item to pick out on the route, the rest of it stepping back. */
   routeHighlight: RouteHighlight | null
+  /** A walking route is one colour; cycling comfort means nothing on foot. */
+  routeOnFoot?: boolean
   /**
    * Showing how far you get in this many minutes. The lines themselves are too
    * many to diff with every style change, so the map view sets them on the
@@ -222,7 +224,10 @@ export function stopImageId(kind: 'stop' | 'light' | ''): string {
 /** Marks the stretches picked out from the comfort breakdown. */
 const HIGHLIGHT_COLOR = '#FFD60A'
 
-function routeLayers(theme: Theme, highlight: RouteHighlight | null): LayerSpecification[] {
+/** Colour of a walking route. */
+const WALK_ROUTE_COLOR = '#0B6E6E'
+
+function routeLayers(theme: Theme, highlight: RouteHighlight | null, onFoot: boolean): LayerSpecification[] {
   const round = { 'line-cap': 'round' as const, 'line-join': 'round' as const }
   // With something picked out, everything else on the route fades so it is easy to find.
   const rest: ExpressionSpecification | number = highlight ? ['case', ['==', ['get', 'part'], highlight], 1, 0.3] : 1
@@ -251,19 +256,21 @@ function routeLayers(theme: Theme, highlight: RouteHighlight | null): LayerSpeci
       source: 'route',
       layout: round,
       paint: {
-        'line-color': [
-          'match',
-          ['get', 'lts'],
-          1,
-          LTS_COLORS[0],
-          2,
-          LTS_COLORS[1],
-          3,
-          LTS_COLORS[2],
-          4,
-          LTS_COLORS[3],
-          NO_BIKES_COLOR,
-        ],
+        'line-color': onFoot
+          ? WALK_ROUTE_COLOR
+          : [
+              'match',
+              ['get', 'lts'],
+              1,
+              LTS_COLORS[0],
+              2,
+              LTS_COLORS[1],
+              3,
+              LTS_COLORS[2],
+              4,
+              LTS_COLORS[3],
+              NO_BIKES_COLOR,
+            ],
         'line-width': lineWidth(3.5),
         'line-opacity': rest,
       },
@@ -580,7 +587,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...overlayLayers(state, theme),
       ...(night && !state.reach ? nightLayers(theme) : []),
       ...reachLayers(state.reach, state.basemap),
-      ...routeLayers(theme, state.routeHighlight),
+      ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
       placesLayer(state, theme),
     ],

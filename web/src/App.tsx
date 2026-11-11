@@ -30,11 +30,16 @@ import {
 import {
   DEFAULT_STYLE,
   isStyleId,
+  isTravel,
+  isWalkStyleId,
   type ParamKey,
   PRESETS,
   paramsFor,
+  profileFor,
   type RouteParams,
   type StyleId,
+  type Travel,
+  type WalkStyleId,
 } from './route/styles'
 import { useReach, visibleReach } from './route/useReach'
 import { useRoute, visibleRoute } from './route/useRoute'
@@ -57,8 +62,11 @@ interface UrlState {
   points: RoutePoints
   /** Places the route must pass through, in riding order. */
   vias: readonly LngLat[]
+  /** Riding or walking, for routes and how far you get. */
+  travel: Travel
   style: StyleId
   custom: RouteParams
+  walkStyle: WalkStyleId
   /** Riding time shown in the How far mode. */
   minutes: ReachMinutes
 }
@@ -71,8 +79,10 @@ function readUrl(): UrlState {
     mode: hash.mode === 'route' || hash.mode === 'reach' ? hash.mode : 'explore',
     points: parsePoints(hash.route),
     vias: parseVias(hash.via),
+    travel: isTravel(hash.travel) ? hash.travel : 'bike',
     style: isStyleId(hash.style) ? hash.style : DEFAULT_STYLE,
     custom: parseParams(hash.custom, PRESETS.balanced),
+    walkStyle: isWalkStyleId(hash.walk) ? hash.walk : 'normal',
     minutes: isReachMinutes(hash.minutes) ? (Number(hash.minutes) as ReachMinutes) : DEFAULT_REACH_MINUTES,
   }
 }
@@ -89,8 +99,10 @@ function writeUrl(state: UrlState): void {
     ['route', routing ? formatPoints(state.points) : reaching ? formatPoints([state.points[0], null]) : null],
     ['via', routing ? formatVias(state.vias) : null],
     ['minutes', reaching && state.minutes !== DEFAULT_REACH_MINUTES ? String(state.minutes) : null],
-    ['style', riding && state.style !== DEFAULT_STYLE ? state.style : null],
-    ['custom', riding && state.style === 'custom' ? formatParams(state.custom) : null],
+    ['travel', riding && state.travel === 'foot' ? 'foot' : null],
+    ['style', riding && state.travel === 'bike' && state.style !== DEFAULT_STYLE ? state.style : null],
+    ['custom', riding && state.travel === 'bike' && state.style === 'custom' ? formatParams(state.custom) : null],
+    ['walk', riding && state.travel === 'foot' && state.walkStyle !== 'normal' ? state.walkStyle : null],
   ]
   // MapLibre keeps its own `map=` entry in the hash; only ours are touched.
   const hash = entries.reduce((h, [key, value]) => withHashParam(h, key, value), window.location.hash)
@@ -223,7 +235,8 @@ export function App() {
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
-  const { layer, placeKinds, mode, points, vias, style, custom, minutes } = url
+  const { layer, placeKinds, mode, points, vias, travel, style, custom, walkStyle, minutes } = url
+  const profile = useMemo(() => profileFor(travel, style, custom, walkStyle), [travel, style, custom, walkStyle])
   const basemap = layer === 'night' ? nightBasemap : dayBasemap
   // Not exploring: planning a route, or seeing how far you get.
   const routing = mode !== 'explore'
@@ -231,9 +244,9 @@ export function App() {
   const planning = mode === 'route' && ROUTER_URL !== null
   const reaching = mode === 'reach' && ROUTER_URL !== null
   const routeHighlight = planning ? (pointedPart ?? pinnedPart) : null
-  const routeState = useRoute(ROUTER_URL, points, vias, paramsFor(style, custom), planning)
+  const routeState = useRoute(ROUTER_URL, points, vias, profile, planning)
   const route = planning ? visibleRoute(routeState) : null
-  const reachState = useReach(ROUTER_URL, points[0]?.lngLat ?? null, minutes, paramsFor(style, custom), reaching)
+  const reachState = useReach(ROUTER_URL, points[0]?.lngLat ?? null, minutes, profile, reaching)
   const reach = reaching ? visibleReach(reachState) : null
 
   useEffect(() => {
@@ -388,10 +401,31 @@ export function App() {
     }))
   }, [])
 
+  const picker = {
+    travel,
+    style,
+    walkStyle,
+    params: paramsFor(style, custom),
+    onTravelChange: (next: Travel) => update({ travel: next }),
+    onStyleChange: changeStyle,
+    onWalkStyleChange: (next: WalkStyleId) => update({ walkStyle: next }),
+    onParamChange: changeParam,
+  }
+
   const reachStyle = useMemo(() => (reaching ? { minutes } : null), [reaching, minutes])
   const styleState = useMemo<StyleState>(
-    () => ({ lang, basemap, layer, placeKinds, selected, route, routeHighlight, reach: reachStyle }),
-    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, reachStyle],
+    () => ({
+      lang,
+      basemap,
+      layer,
+      placeKinds,
+      selected,
+      route,
+      routeHighlight,
+      routeOnFoot: travel === 'foot',
+      reach: reachStyle,
+    }),
+    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle],
   )
   const mapRouting = useMemo(
     () =>
@@ -511,24 +545,18 @@ export function App() {
             <ReachForm
               start={points[0]}
               minutes={minutes}
-              style={style}
-              params={paramsFor(style, custom)}
+              picker={picker}
               onStartChange={setStart}
               onMinutesChange={changeMinutes}
-              onStyleChange={changeStyle}
-              onParamChange={changeParam}
             />
           ) : (
             <RouteForm
               points={points}
-              style={style}
-              params={paramsFor(style, custom)}
+              picker={picker}
               onPointChange={setPoint}
               vias={viaPoints}
               onViaChange={changeVia}
               onReverse={() => update({ points: [points[1], points[0]], vias: [...vias].reverse() })}
-              onStyleChange={changeStyle}
-              onParamChange={changeParam}
             />
           )}
         </div>
@@ -562,6 +590,7 @@ export function App() {
           <div className="sheet-body">
             {planning && (
               <RouteResult
+                travel={travel}
                 state={routeState}
                 hover={routeHover}
                 onHover={setRouteHover}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { distanceByComfort, findStops, parseRoute, RouteError, rateStretch, routeUrl } from './brouter'
 import fixture from './fixture.route.json'
-import { PRESETS } from './styles'
+import { PRESETS, profileFor } from './styles'
 
 describe('routeUrl', () => {
   it('passes the points and every style weight to the ottbike profile', () => {
@@ -11,7 +11,7 @@ describe('routeUrl', () => {
         [-75.7, 45.41],
         [-75.66, 45.43],
       ],
-      PRESETS.winter,
+      { name: 'ottbike', params: PRESETS.winter },
     )
     expect(url).toContain('lonlats=-75.700000,45.410000|-75.660000,45.430000')
     expect(url).toContain('profile=ottbike')
@@ -26,9 +26,18 @@ describe('routeUrl', () => {
           [-75.7, 45.41],
           [-75.66, 45.43],
         ],
-        PRESETS.cargo,
+        { name: 'ottbike', params: PRESETS.cargo },
       ),
     ).toContain('profile:noWalk=1')
+  })
+  it('asks the walking profile for walking', () => {
+    const url = routeUrl(
+      'https://router.test/brouter',
+      [[-75.7, 45.41]],
+      profileFor('foot', 'fast', PRESETS.fast, 'winter'),
+    )
+    expect(url).toContain('profile=ottwalk&profile:winter=1')
+    expect(url).not.toContain('roadsPen')
   })
 })
 

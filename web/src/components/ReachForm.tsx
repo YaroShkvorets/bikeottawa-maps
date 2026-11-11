@@ -1,31 +1,19 @@
 import { useI18n } from '../i18n'
 import { REACH_MINUTES, type ReachMinutes } from '../route/reach'
 import type { RoutePoint } from '../route/state'
-import type { ParamKey, RouteParams, StyleId } from '../route/styles'
 import { PlaceInput } from './PlaceInput'
-import { StylePicker } from './StylePicker'
+import { StylePicker, type StylePickerProps } from './StylePicker'
 
 interface Props {
   start: RoutePoint | null
   minutes: ReachMinutes
-  style: StyleId
-  params: RouteParams
+  /** Bike or on foot, and the style to go by. */
+  picker: StylePickerProps
   onStartChange: (point: RoutePoint | null) => void
   onMinutesChange: (minutes: ReachMinutes) => void
-  onStyleChange: (style: StyleId) => void
-  onParamChange: (key: ParamKey, value: number) => void
 }
 
-export function ReachForm({
-  start,
-  minutes,
-  style,
-  params,
-  onStartChange,
-  onMinutesChange,
-  onStyleChange,
-  onParamChange,
-}: Props) {
+export function ReachForm({ start, minutes, picker, onStartChange, onMinutesChange }: Props) {
   const { t } = useI18n()
   return (
     <div className="route-form">
@@ -40,7 +28,7 @@ export function ReachForm({
           ))}
         </div>
       </fieldset>
-      <StylePicker style={style} params={params} onStyleChange={onStyleChange} onParamChange={onParamChange} />
+      <StylePicker {...picker} />
     </div>
   )
 }

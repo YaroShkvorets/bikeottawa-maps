@@ -4,7 +4,9 @@ import { PRESETS } from './styles'
 
 describe('reachUrl', () => {
   it('asks BRouter for an isochrone with the style weights', () => {
-    const url = new URL(reachUrl('http://router.test/brouter', [-75.6972, 45.4215], 15, PRESETS.cargo))
+    const url = new URL(
+      reachUrl('http://router.test/brouter', [-75.6972, 45.4215], 15, { name: 'ottbike', params: PRESETS.cargo }),
+    )
     expect(url.searchParams.get('lonlats')).toBe('-75.697200,45.421500')
     expect(url.searchParams.get('engineMode')).toBe('5')
     expect(url.searchParams.get('isochroneTime')).toBe('900')

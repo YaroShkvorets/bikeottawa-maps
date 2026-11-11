@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LngLat } from './brouter'
 import { fetchReach, type Reach } from './reach'
-import type { RouteParams } from './styles'
+import type { Profile } from './styles'
 
 export type ReachState =
   | { status: 'idle' }
@@ -15,11 +15,11 @@ export function useReach(
   routerUrl: string | null,
   start: LngLat | null,
   minutes: number,
-  params: RouteParams,
+  profile: Profile,
   enabled: boolean,
 ): ReachState {
   const [state, setState] = useState<ReachState>({ status: 'idle' })
-  const key = enabled && routerUrl && start ? JSON.stringify([start, minutes, params]) : null
+  const key = enabled && routerUrl && start ? JSON.stringify([start, minutes, profile]) : null
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: key captures every input that changes the result
   useEffect(() => {
@@ -33,7 +33,7 @@ export function useReach(
       previous: current.status === 'ready' ? current.reach : current.status === 'loading' ? current.previous : null,
     }))
     const timer = setTimeout(() => {
-      fetchReach(routerUrl, start, minutes, params, controller.signal)
+      fetchReach(routerUrl, start, minutes, profile, controller.signal)
         .then((reach) => setState({ status: 'ready', reach }))
         .catch((error: unknown) => {
           if (!controller.signal.aborted)

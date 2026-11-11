@@ -13,6 +13,7 @@ import {
 import { downloadText, toGpx } from '../route/gpx'
 import { routeProfile, smoothElevation } from '../route/profile'
 import { stressLevel, stressScore } from '../route/stress'
+import type { Travel } from '../route/styles'
 import type { RouteState } from '../route/useRoute'
 import { visibleRoute } from '../route/useRoute'
 import { ElevationChart } from './ElevationChart'
@@ -128,6 +129,8 @@ function ComfortBar({ route, picking }: { route: Route; picking: Picking }) {
 }
 
 interface Props {
+  /** On foot, the cycling-only parts (comfort, stress, stops) are left out. */
+  travel: Travel
   state: RouteState
   /** Metres along the route being pointed at, on the chart or on the map. */
   hover: number | null
@@ -139,7 +142,7 @@ interface Props {
   onPinPart: (item: RouteHighlight | null) => void
 }
 
-export function RouteResult({ state, hover, onHover, highlight, pinned, onPointPart, onPinPart }: Props) {
+export function RouteResult({ travel, state, hover, onHover, highlight, pinned, onPointPart, onPinPart }: Props) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const route = visibleRoute(state)
@@ -176,27 +179,35 @@ export function RouteResult({ state, hover, onHover, highlight, pinned, onPointP
           <dd>{Math.round(route.ascent)} m</dd>
           <dt>{t('climb')}</dt>
         </div>
-        <div className="route-stat" title={t('stressAbout')}>
-          <dd>
-            <span
-              className={`stress-score level-${stressLevel(stress)}`}
-              style={{ background: LTS_COLORS[stressLevel(stress) - 1] }}
-            >
-              {stress}
-              <span className="out-of">/10</span>
-            </span>
-          </dd>
-          <dt>{t('stress')}</dt>
-        </div>
+        {travel === 'bike' && (
+          <div className="route-stat" title={t('stressAbout')}>
+            <dd>
+              <span
+                className={`stress-score level-${stressLevel(stress)}`}
+                style={{ background: LTS_COLORS[stressLevel(stress) - 1] }}
+              >
+                {stress}
+                <span className="out-of">/10</span>
+              </span>
+            </dd>
+            <dt>{t('stress')}</dt>
+          </div>
+        )}
       </dl>
-      <ComfortBar route={route} picking={picking} />
-      <StopCounts route={route} picking={picking} />
+      {travel === 'bike' && <ComfortBar route={route} picking={picking} />}
+      {travel === 'bike' && <StopCounts route={route} picking={picking} />}
       <ElevationChart profile={profile} label={t('elevation')} hover={hover} onHover={onHover} />
       <div className="route-actions">
         <button
           type="button"
           className="primary"
-          onClick={() => downloadText('bike-route.gpx', toGpx(route, t('gpxName')), 'application/gpx+xml')}
+          onClick={() =>
+            downloadText(
+              `${travel === 'bike' ? 'bike' : 'walk'}-route.gpx`,
+              toGpx(route, t('gpxName')),
+              'application/gpx+xml',
+            )
+          }
         >
           {t('exportGpx')}
         </button>
