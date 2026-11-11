@@ -447,10 +447,9 @@ export function App() {
             {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
-              {(!routing || dataDate) && (
+              {dataDate && (
                 <p className="footnote">
-                  {!routing && `${t('hint')} `}
-                  {dataDate && `${t('updated')} ${dataDate}.`}
+                  {t('updated')} {dataDate}.
                 </p>
               )}
             </div>

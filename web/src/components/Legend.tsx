@@ -40,23 +40,19 @@ export function Legend({ layer, placeKinds, onTogglePlaceKind }: Props) {
           ))}
         </ul>
       )}
-      {layer === 'places' && (
-        <>
-          <p className="footnote places-hint">{t('placesHint')}</p>
-          {PLACE_GROUP_IDS.map((group) => (
-            <fieldset key={group} className="place-group">
-              <legend>{t(`group.${group}`)}</legend>
-              {kindsInGroup(group).map((kind) => (
-                <label key={kind} className="check">
-                  <input type="checkbox" checked={placeKinds.includes(kind)} onChange={() => onTogglePlaceKind(kind)} />
-                  <PlaceIcon kind={kind} />
-                  {t(`place.${kind}`)}
-                </label>
-              ))}
-            </fieldset>
-          ))}
-        </>
-      )}
+      {layer === 'places' &&
+        PLACE_GROUP_IDS.map((group) => (
+          <fieldset key={group} className="place-group">
+            <legend>{t(`group.${group}`)}</legend>
+            {kindsInGroup(group).map((kind) => (
+              <label key={kind} className="check">
+                <input type="checkbox" checked={placeKinds.includes(kind)} onChange={() => onTogglePlaceKind(kind)} />
+                <PlaceIcon kind={kind} />
+                {t(`place.${kind}`)}
+              </label>
+            ))}
+          </fieldset>
+        ))}
     </section>
   )
 }
