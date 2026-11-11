@@ -656,24 +656,6 @@ a {
   cursor: grab;
 }
 
-.via-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: 14px;
-}
-
-.via-summary button {
-  margin-left: auto;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 13px;
-}
-
 .route-marker.inline {
   flex: none;
   width: 26px;
@@ -681,6 +663,14 @@ a {
   border-width: 0;
   box-shadow: none;
   cursor: default;
+}
+
+/* A via point's ring, centred in the same space as the A and B badges. */
+.route-marker.inline.via {
+  width: 16px;
+  height: 16px;
+  margin: 0 5px;
+  border-width: 4px;
 }
 
 .style-picker,

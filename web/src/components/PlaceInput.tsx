@@ -6,7 +6,8 @@ import type { RoutePoint } from '../route/state'
 interface Props {
   id: string
   label: string
-  marker: 'A' | 'B'
+  /** A and B are the ends; via is a point in between. */
+  marker: 'A' | 'B' | 'via'
   point: RoutePoint | null
   onChange: (point: RoutePoint | null) => void
 }
@@ -50,8 +51,11 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
   return (
     <div className="place-input">
       <label htmlFor={id}>
-        <span className={`route-marker inline ${marker === 'A' ? 'start' : 'end'}`} aria-hidden="true">
-          {marker}
+        <span
+          className={`route-marker inline ${marker === 'A' ? 'start' : marker === 'B' ? 'end' : 'via'}`}
+          aria-hidden="true"
+        >
+          {marker === 'via' ? '' : marker}
         </span>
         <span className="visually-hidden">{label}</span>
       </label>

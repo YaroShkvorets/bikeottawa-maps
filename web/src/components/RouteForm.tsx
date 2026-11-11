@@ -6,8 +6,9 @@ import { StylePicker } from './StylePicker'
 
 interface Props {
   points: RoutePoints
-  viaCount: number
-  onClearVias: () => void
+  /** Places the route passes through, in riding order, with their address once known. */
+  vias: readonly RoutePoint[]
+  onViaChange: (index: number, point: RoutePoint | null) => void
   style: StyleId
   params: RouteParams
   onPointChange: (index: 0 | 1, point: RoutePoint | null) => void
@@ -18,12 +19,12 @@ interface Props {
 
 export function RouteForm({
   points,
-  viaCount,
+  vias,
   style,
   params,
   onPointChange,
   onReverse,
-  onClearVias,
+  onViaChange,
   onStyleChange,
   onParamChange,
 }: Props) {
@@ -39,6 +40,17 @@ export function RouteForm({
             point={points[0]}
             onChange={(p) => onPointChange(0, p)}
           />
+          {vias.map((via, index) => (
+            <PlaceInput
+              // biome-ignore lint/suspicious/noArrayIndexKey: vias are identified by their place in the route
+              key={index}
+              id={`route-via-${index}`}
+              label={t('via')}
+              marker="via"
+              point={via}
+              onChange={(p) => onViaChange(index, p)}
+            />
+          ))}
           <PlaceInput
             id="route-to"
             label={t('to')}
@@ -69,15 +81,6 @@ export function RouteForm({
           </svg>
         </button>
       </div>
-      {viaCount > 0 && (
-        <p className="via-summary">
-          <span className="route-marker via inline" aria-hidden="true" />
-          {t('viaPoints')}: {viaCount}
-          <button type="button" onClick={onClearVias}>
-            {t('clearVias')}
-          </button>
-        </p>
-      )}
       <StylePicker style={style} params={params} onStyleChange={onStyleChange} onParamChange={onParamChange} />
     </div>
   )

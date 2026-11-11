@@ -166,6 +166,43 @@ function useAddressLabel(
   }, [lon, lat, lang, onLabel])
 }
 
+const viaKey = ([lon, lat]: LngLat) => `${lon},${lat}`
+
+/**
+ * Addresses of the via points, looked up as they are placed or moved, keyed by
+ * position. Empty where none was found, so it is not asked for again.
+ */
+function useViaLabels(
+  vias: readonly LngLat[],
+  lang: Lang,
+  enabled: boolean,
+): [Record<string, string>, (lngLat: LngLat, label: string) => void] {
+  const [labels, setLabels] = useState<Record<string, string>>({})
+  const missing = enabled
+    ? vias
+        .map(viaKey)
+        .filter((key) => !(key in labels))
+        .join(';')
+    : ''
+  useEffect(() => {
+    if (!missing) return
+    const controller = new AbortController()
+    for (const key of missing.split(';')) {
+      const [lon, lat] = key.split(',').map(Number)
+      reverseLabel([lon, lat], lang, controller.signal)
+        .then((label) => setLabels((current) => ({ ...current, [key]: label ?? '' })))
+        // Without an address the field shows the coordinates.
+        .catch(() => {})
+    }
+    return () => controller.abort()
+  }, [missing, lang])
+  const remember = useCallback(
+    (lngLat: LngLat, label: string) => setLabels((current) => ({ ...current, [viaKey(lngLat)]: label })),
+    [],
+  )
+  return [labels, remember]
+}
+
 export function App() {
   const [lang, setLang] = useState<Lang>(initialLang)
   const [url, setUrl] = useState<UrlState>(readUrl)
@@ -291,6 +328,20 @@ export function App() {
     [editVias],
   )
   const removeVia = useCallback((index: number) => editVias((v) => v.splice(index, 1)), [editVias])
+  const [viaLabels, rememberViaLabel] = useViaLabels(vias, lang, planning)
+  const viaPoints = useMemo(
+    () => vias.map((lngLat): RoutePoint => ({ lngLat, label: viaLabels[viaKey(lngLat)] || undefined })),
+    [vias, viaLabels],
+  )
+  // A via field cleared removes that point; a place picked from search moves it there.
+  const changeVia = useCallback(
+    (index: number, point: RoutePoint | null) => {
+      if (!point) return removeVia(index)
+      if (point.label) rememberViaLabel(point.lngLat, point.label)
+      moveVia(index, point.lngLat)
+    },
+    [removeVia, moveVia, rememberViaLabel],
+  )
 
   // A click on the map fills the first point that is still missing.
   const placePoint = useCallback((lngLat: LngLat) => {
@@ -473,9 +524,9 @@ export function App() {
               style={style}
               params={paramsFor(style, custom)}
               onPointChange={setPoint}
-              viaCount={vias.length}
+              vias={viaPoints}
+              onViaChange={changeVia}
               onReverse={() => update({ points: [points[1], points[0]], vias: [...vias].reverse() })}
-              onClearVias={() => update({ vias: [] })}
               onStyleChange={changeStyle}
               onParamChange={changeParam}
             />

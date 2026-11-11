@@ -59,7 +59,31 @@ export async function searchPlaces(query: string, lang: Lang, signal?: AbortSign
 }
 
 /** The address nearest to a point, or null when there is none close by. */
-export async function reverseLabel(lngLat: LngLat, lang: Lang, signal?: AbortSignal): Promise<string | null> {
+/**
+ * The public Photon server refuses more than about four requests at a time, and
+ * a route with via points asks for several addresses at once, so lookups wait
+ * their turn.
+ */
+const MAX_PARALLEL_LOOKUPS = 2
+let lookupsRunning = 0
+const lookupsWaiting: (() => void)[] = []
+
+async function inTurn<T>(task: () => Promise<T>): Promise<T> {
+  while (lookupsRunning >= MAX_PARALLEL_LOOKUPS) await new Promise<void>((resolve) => lookupsWaiting.push(resolve))
+  lookupsRunning++
+  try {
+    return await task()
+  } finally {
+    lookupsRunning--
+    lookupsWaiting.shift()?.()
+  }
+}
+
+export function reverseLabel(lngLat: LngLat, lang: Lang, signal?: AbortSignal): Promise<string | null> {
+  return inTurn(() => lookUpAddress(lngLat, lang, signal))
+}
+
+async function lookUpAddress(lngLat: LngLat, lang: Lang, signal?: AbortSignal): Promise<string | null> {
   const params = new URLSearchParams({
     lon: String(lngLat[0]),
     lat: String(lngLat[1]),
