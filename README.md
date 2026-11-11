@@ -45,13 +45,13 @@ npm run dev            # .env.development points the app at it
 
 `npm run router` mounts `routing/profiles/ottbike.brf` into the container, so profile edits take effect on the next route request; rebuild the image only for fresh OSM data or new lookup tags.
 
-Without `VITE_ROUTER_URL` the app hides the planner. Place search and the addresses shown for points picked on the map come from [Photon](https://photon.komoot.io); set `VITE_GEOCODER_URL` to use another Photon server.
+Without `VITE_ROUTER_URL` the "Plan a route" page says that no routing server is connected. Place search and the addresses shown for points picked on the map come from [Photon](https://photon.komoot.io); set `VITE_GEOCODER_URL` to use another Photon server.
 
 ## Deployment
 
 The `Deploy` workflow runs on every push to `main`, on `v*` tags and once a night. It rebuilds the tiles, the routing data and the app, then:
 
-- publishes the site to GitHub Pages (the planner appears there once the `ROUTER_URL` repository variable points at a running router);
+- publishes the site to GitHub Pages (the planner works there once the `ROUTER_URL` repository variable points at a running router);
 - pushes two Docker images with the data baked in, `ghcr.io/yaroshkvorets/bikeottawa-maps` (site) and `ghcr.io/yaroshkvorets/bikeottawa-maps-router` (router), tagged `main`, or the version and `latest` for a `v*` tag.
 
 `compose.yml` runs both on one machine, with the site proxying `/brouter` to the router:

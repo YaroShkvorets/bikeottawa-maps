@@ -4,7 +4,9 @@ on:
     branches: [main]
     tags: ["v*"]
   schedule:
-    - cron: "0 8 * * *" # nightly, 3 am in Ottawa, after Geofabrik publishes its daily extracts
+    # Nightly, a little after 3 am in Ottawa and after Geofabrik publishes its daily extracts.
+    # Off the hour on purpose: GitHub delays or drops schedules set for :00.
+    - cron: "17 8 * * *"
   workflow_dispatch:
 
 permissions:

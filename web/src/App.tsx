@@ -36,6 +36,8 @@ import {
 import { useRoute, visibleRoute } from './route/useRoute'
 
 const DEFAULT_LAYER: LayerId = 'comfort'
+const PHONE_LAYOUT = '(max-width: 720px)'
+const ignoreSelection = () => {}
 
 /** Everything the URL hash carries besides the map position. */
 interface UrlState {
@@ -55,7 +57,7 @@ function readUrl(): UrlState {
   return {
     layer: isLayerId(hash.layer) ? hash.layer : DEFAULT_LAYER,
     placeKinds: (hash.places ?? '').split(',').filter(isPlaceKind),
-    mode: ROUTER_URL && hash.mode === 'route' ? 'route' : 'explore',
+    mode: hash.mode === 'route' ? 'route' : 'explore',
     points: parsePoints(hash.route),
     vias: parseVias(hash.via),
     style: isStyleId(hash.style) ? hash.style : DEFAULT_STYLE,
@@ -138,14 +140,19 @@ export function App() {
   const [pointedPart, setPointedPart] = useState<RouteHighlight | null>(null)
   const [pinnedPart, setPinnedPart] = useState<RouteHighlight | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
+  const topbar = useRef<HTMLDivElement>(null)
+  // On phones the bottom sheet starts folded away so the map gets the screen.
+  const [sheetOpen, setSheetOpen] = useState(() => !window.matchMedia(PHONE_LAYOUT).matches)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
   const { layer, placeKinds, mode, points, vias, style, custom } = url
   const routing = mode === 'route'
-  const routeHighlight = routing ? (pointedPart ?? pinnedPart) : null
-  const routeState = useRoute(ROUTER_URL, points, vias, paramsFor(style, custom), routing)
-  const route = routing ? visibleRoute(routeState) : null
+  // Planning needs a router; without one the route page only says so.
+  const planning = routing && ROUTER_URL !== null
+  const routeHighlight = planning ? (pointedPart ?? pinnedPart) : null
+  const routeState = useRoute(ROUTER_URL, points, vias, paramsFor(style, custom), planning)
+  const route = planning ? visibleRoute(routeState) : null
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -173,15 +180,28 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  // Lets the map's bottom controls sit above the sheet on phones.
+  // Lets the map's own controls sit clear of the top bar and the bottom sheet on phones.
   useEffect(() => {
-    if (!sheet.current) return
-    const observer = new ResizeObserver(([entry]) => {
-      document.documentElement.style.setProperty('--sheet-height', `${entry.target.getBoundingClientRect().height}px`)
-    })
-    observer.observe(sheet.current)
-    return () => observer.disconnect()
+    const track = (element: HTMLElement | null, name: string) => {
+      if (!element) return () => {}
+      const observer = new ResizeObserver(([entry]) => {
+        document.documentElement.style.setProperty(name, `${entry.target.getBoundingClientRect().height}px`)
+      })
+      observer.observe(element)
+      return () => observer.disconnect()
+    }
+    const stopSheet = track(sheet.current, '--sheet-height')
+    const stopTopbar = track(topbar.current, '--topbar-height')
+    return () => {
+      stopSheet()
+      stopTopbar()
+    }
   }, [])
+
+  // Details of something just tapped should not stay folded away.
+  useEffect(() => {
+    if (selected) setSheetOpen(true)
+  }, [selected])
 
   const update = useCallback((patch: Partial<UrlState>) => setUrl((current) => ({ ...current, ...patch })), [])
 
@@ -255,8 +275,8 @@ export function App() {
   }, [])
   const labelStart = useCallback((lngLat: LngLat, label: string) => labelPoint(0, lngLat, label), [labelPoint])
   const labelEnd = useCallback((lngLat: LngLat, label: string) => labelPoint(1, lngLat, label), [labelPoint])
-  useAddressLabel(points[0], lang, routing, labelStart)
-  useAddressLabel(points[1], lang, routing, labelEnd)
+  useAddressLabel(points[0], lang, planning, labelStart)
+  useAddressLabel(points[1], lang, planning, labelEnd)
 
   const movePoint = useCallback((index: 0 | 1, lngLat: LngLat) => setPoint(index, { lngLat }), [setPoint])
 
@@ -279,7 +299,7 @@ export function App() {
   )
   const mapRouting = useMemo(
     () =>
-      routing
+      planning
         ? {
             points,
             vias,
@@ -293,7 +313,7 @@ export function App() {
             zoomTo: pinnedPart,
           }
         : null,
-    [routing, points, vias, placePoint, movePoint, addVia, moveVia, removeVia, routeHover, pinnedPart],
+    [planning, points, vias, placePoint, movePoint, addVia, moveVia, removeVia, routeHover, pinnedPart],
   )
 
   // A spot pointed at on the old route means nothing on a new one.
@@ -303,13 +323,24 @@ export function App() {
     setPointedPart(null)
     setPinnedPart(null)
   }, [route])
-  const hasResult = routing && routeState.status !== 'idle'
+  const hasResult = planning && routeState.status !== 'idle'
+  // What the folded sheet says it holds.
+  const sheetSummary = route
+    ? `${(route.distance / 1000).toFixed(1)} km · ${Math.max(1, Math.round(route.time / 60))} min`
+    : routing
+      ? t('mode.route')
+      : t('legend')
 
   return (
     <LangContext.Provider value={i18n}>
-      <MapView state={styleState} onSelect={setSelected} onBasemapChange={setBasemap} routing={mapRouting} />
+      <MapView
+        state={styleState}
+        onSelect={routing ? ignoreSelection : setSelected}
+        onBasemapChange={setBasemap}
+        routing={mapRouting}
+      />
       <div className="sidebar">
-        <div className={`card topbar ${ROUTER_URL ? '' : 'no-router'}`}>
+        <div className="card topbar" ref={topbar}>
           <header className="brand">
             <svg
               aria-hidden="true"
@@ -329,7 +360,7 @@ export function App() {
             <h1>{t('title')}</h1>
           </header>
           <div className="topbar-row">
-            {ROUTER_URL && <ModeSwitch mode={mode} onChange={changeMode} />}
+            <ModeSwitch mode={mode} onChange={changeMode} />
             <button
               type="button"
               className="lang-button"
@@ -339,7 +370,11 @@ export function App() {
               {t('switchLangShort')}
             </button>
           </div>
-          {routing ? (
+          {!routing ? (
+            <LayerPicker active={layer} onChange={changeLayer} />
+          ) : !planning ? (
+            <p className="route-message">{t('noRouter')}</p>
+          ) : (
             <RouteForm
               points={points}
               style={style}
@@ -351,31 +386,57 @@ export function App() {
               onStyleChange={changeStyle}
               onParamChange={changeParam}
             />
-          ) : (
-            <LayerPicker active={layer} onChange={changeLayer} />
           )}
         </div>
-        <div className="card sheet" ref={sheet}>
-          {routing && (
-            <RouteResult
-              state={routeState}
-              hover={routeHover}
-              onHover={setRouteHover}
-              highlight={routeHighlight}
-              pinned={pinnedPart}
-              onPointPart={setPointedPart}
-              onPinPart={setPinnedPart}
-            />
-          )}
-          {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
-          <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
-            {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
-            {(!routing || dataDate) && (
-              <p className="footnote">
-                {!routing && `${t('hint')} `}
-                {dataDate && `${t('updated')} ${dataDate}.`}
-              </p>
+        <div
+          className={`card sheet ${sheetOpen ? '' : 'collapsed'} ${routing && !planning ? 'empty' : ''}`}
+          ref={sheet}
+        >
+          <button
+            type="button"
+            className="sheet-toggle"
+            aria-expanded={sheetOpen}
+            aria-label={t('toggleSheet')}
+            onClick={() => setSheetOpen(!sheetOpen)}
+          >
+            <span className="sheet-handle" aria-hidden="true" />
+            <span className="sheet-summary">{sheetSummary}</span>
+            <svg
+              aria-hidden="true"
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d={sheetOpen ? 'M4 7l5 5 5-5' : 'M4 11l5-5 5 5'} />
+            </svg>
+          </button>
+          <div className="sheet-body">
+            {planning && (
+              <RouteResult
+                state={routeState}
+                hover={routeHover}
+                onHover={setRouteHover}
+                highlight={routeHighlight}
+                pinned={pinnedPart}
+                onPointPart={setPointedPart}
+                onPinPart={setPinnedPart}
+              />
             )}
+            {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
+            <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
+              {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
+              {(!routing || dataDate) && (
+                <p className="footnote">
+                  {!routing && `${t('hint')} `}
+                  {dataDate && `${t('updated')} ${dataDate}.`}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

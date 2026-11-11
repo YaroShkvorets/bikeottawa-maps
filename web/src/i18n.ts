@@ -115,6 +115,8 @@ const en = {
   'param.stopSignPen': 'Stops and signals',
   'param.noWalk': 'Never walk the bike (no stairs or sidewalks)',
   avoid: 'Avoid',
+  noRouter: 'Route planning is not available on this site yet: no routing server is connected.',
+  toggleSheet: 'Show or hide details',
   routeHint: 'Click the map or search to set your start and destination. Drag a marker to adjust.',
   routeLoading: 'Finding a route…',
   routeError: 'No route found. Try moving a point closer to a street or path.',
@@ -255,6 +257,9 @@ const fr: Record<keyof typeof en, string> = {
   'param.stopSignPen': 'Arrêts et feux',
   'param.noWalk': 'Ne jamais descendre du vélo (ni escaliers ni trottoirs)',
   avoid: 'Éviter',
+  noRouter:
+    'La planification de trajets n’est pas encore offerte sur ce site : aucun serveur de routage n’est connecté.',
+  toggleSheet: 'Afficher ou masquer les détails',
   routeHint: 'Cliquez sur la carte ou cherchez pour choisir le départ et l’arrivée. Glissez un marqueur pour ajuster.',
   routeLoading: 'Recherche d’un trajet…',
   routeError: 'Aucun trajet trouvé. Rapprochez un point d’une rue ou d’un sentier.',
