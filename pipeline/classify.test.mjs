@@ -34,6 +34,13 @@ test('ways closed to bikes are dropped unless they are off-street paths', () => 
   assert.equal(closedPath.props.kind, 'path')
 })
 
+test('pedestrian crossings are dropped unless bikes are explicitly allowed', () => {
+  assert.equal(classifyWay({ highway: 'footway', footway: 'crossing' }), null)
+  assert.equal(classifyWay({ highway: 'footway', footway: 'crossing', crossing: 'traffic_signals' }), null)
+  assert.equal(classifyWay({ highway: 'footway', footway: 'crossing', bicycle: 'yes' }).props.kind, 'path')
+  assert.equal(classifyWay({ highway: 'cycleway', cycleway: 'crossing' }).props.lts, 1)
+})
+
 test('places are recognised by kind and private ones skipped', () => {
   assert.deepEqual(classifyPlace({ amenity: 'bicycle_parking', capacity: '10', bicycle_parking: 'stands' }).props, {
     kind: 'parking',

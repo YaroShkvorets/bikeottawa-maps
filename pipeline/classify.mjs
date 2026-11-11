@@ -35,6 +35,12 @@ export function classifyWay(tags) {
   const highway = tags.highway
   if (!highway || SKIPPED_HIGHWAYS.has(highway)) return null
 
+  // Pedestrian crossings belong to the sidewalk network. The stress model rates
+  // them like the street they cross, so they are dropped here unless bikes are
+  // explicitly allowed (a shared crossing on a pathway).
+  const bikesAllowed = tags.bicycle === 'yes' || tags.bicycle === 'designated'
+  if (highway === 'footway' && tags.footway === 'crossing' && !bikesAllowed) return null
+
   const lts = stressmodel.evaluateLTS({ tags }).lts
   const isPath = PATH_HIGHWAYS.has(highway)
   const isSidewalk = tags.footway === 'sidewalk' || tags.footway === 'crossing'
