@@ -2,9 +2,8 @@ import { useMemo } from 'react'
 import {
   COLLISION_PARTIES,
   COLLISION_YEARS,
-  type Collision,
   type CollisionFilters,
-  countBySeverity,
+  type CollisionSpot,
   SEVERITIES,
   type Severity,
 } from '../collisions'
@@ -12,19 +11,14 @@ import { useI18n } from '../i18n'
 import { type BasemapId, collisionColors } from '../layers'
 
 interface Props {
-  /** All collisions, for the counts; null while they load. */
-  data: readonly Collision[] | null
+  /** The spots shown, for the counts; null while they load. */
+  spots: readonly CollisionSpot[] | null
+  /** The most collisions at any one spot, for the slider's top. */
+  busiestSpot: number
   filters: CollisionFilters
   onChange: (filters: CollisionFilters) => void
   basemap: BasemapId
 }
-
-/** Circles for 1, 5 and 15 collisions, about as big as on the map in the middle of its zoom range. */
-const SIZE_SAMPLES = [
-  { count: 1, r: 5, x: 8 },
-  { count: 5, r: 9, x: 32 },
-  { count: 15, r: 13.5, x: 70 },
-]
 
 const YEARS = Array.from(
   { length: COLLISION_YEARS.last - COLLISION_YEARS.first + 1 },
@@ -32,18 +26,15 @@ const YEARS = Array.from(
 ).filter((y) => !(COLLISION_YEARS.missing as readonly number[]).includes(y))
 
 /** Who, which years and which injuries the collisions layer shows, with how many of each. */
-export function CollisionLegend({ data, filters, onChange, basemap }: Props) {
+export function CollisionLegend({ spots, busiestSpot, filters, onChange, basemap }: Props) {
   const { t, lang } = useI18n()
-  const counts = useMemo(
-    () =>
-      data
-        ? countBySeverity(
-            data.map((c) => c.props),
-            filters,
-          )
-        : null,
-    [data, filters],
-  )
+  // Collisions shown, by worst injury: those in the spots left on the map.
+  const counts = useMemo(() => {
+    if (!spots) return null
+    const byInjury = { none: 0, minimal: 0, minor: 0, major: 0, fatal: 0 }
+    for (const spot of spots) for (const p of spot.items) byInjury[p.severity]++
+    return byInjury
+  }, [spots])
   const colors = collisionColors(basemap)
   const number = (n: number) => n.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')
   const shown = counts ? filters.severities.reduce((sum, s) => sum + counts[s], 0) : null
@@ -104,25 +95,35 @@ export function CollisionLegend({ data, filters, onChange, basemap }: Props) {
               />
               <span className={`swatch dot severity-${severity}`} style={{ background: colors[severity] }} />
               <span>{t(`severity.${severity}`)}</span>
-              {counts && <span className="share">{number(counts[severity])}</span>}
+              {counts && filters.severities.includes(severity) && (
+                <span className="share">{number(counts[severity])}</span>
+              )}
             </label>
           </li>
         ))}
       </ul>
-      <div className="collision-sizes">
-        <svg aria-hidden="true" width="96" height="30" viewBox="0 0 96 30">
-          {SIZE_SAMPLES.map(({ count, r, x }) => (
-            <g key={count}>
-              <circle cx={x} cy={15} r={r} fill="none" stroke="currentColor" strokeWidth="1.4" />
-              <text x={x} y={15} dy="0.35em" textAnchor="middle" fontSize="9" fill="currentColor">
-                {count}
-              </text>
-            </g>
-          ))}
-        </svg>
-        <span>{t('crash.sizes')}</span>
-      </div>
-      {shown !== null && <p className="collision-total">{t('crash.shown').replace('{count}', number(shown))}</p>}
+      <label className="collision-min">
+        <span>
+          {filters.minCount <= 1
+            ? t('crash.everySpot')
+            : t('crash.minCount').replace('{count}', number(filters.minCount))}
+        </span>
+        {/* Dragged right, only the places where collisions keep happening stay on the map. */}
+        <input
+          className="collision-min-range"
+          type="range"
+          min={1}
+          max={Math.max(2, busiestSpot)}
+          step={1}
+          value={Math.min(filters.minCount, Math.max(2, busiestSpot))}
+          onChange={(e) => onChange({ ...filters, minCount: Number(e.target.value) })}
+        />
+      </label>
+      {shown !== null && spots && (
+        <p className="collision-total">
+          {t('crash.shown').replace('{count}', number(shown)).replace('{spots}', number(spots.length))}
+        </p>
+      )}
       <p className="footnote">
         {t('crash.source')
           .replace('{first}', String(COLLISION_YEARS.first))

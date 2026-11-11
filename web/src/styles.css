@@ -1389,15 +1389,15 @@ a {
   text-align: center;
 }
 
-.collision-sizes {
+.collision-min {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
   font-size: 13px;
-  line-height: 1.35;
   color: var(--muted);
 }
 
-.collision-sizes svg {
-  flex: none;
+.collision-min-range {
+  width: 100%;
+  accent-color: var(--accent);
 }

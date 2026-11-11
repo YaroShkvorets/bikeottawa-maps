@@ -436,9 +436,15 @@ export function App() {
   const reachStyle = useMemo(() => (reaching ? { minutes } : null), [reaching, minutes])
   // Collisions: loaded once the layer is first shown, grouped into spots by the filters.
   const collisionData = useCollisionData(layer === 'collisions')
-  const spots = useMemo(
+  const allSpots = useMemo(
     () => (collisionData ? collisionSpots(collisionData, collisions) : null),
     [collisionData, collisions],
+  )
+  // The slider's top: the busiest spot under the other filters.
+  const busiestSpot = useMemo(() => Math.max(1, ...(allSpots ?? []).map((s) => s.items.length)), [allSpots])
+  const spots = useMemo(
+    () => allSpots?.filter((s) => s.items.length >= collisions.minCount) ?? null,
+    [allSpots, collisions.minCount],
   )
   const collisionGeo = useMemo(() => (spots ? spotsGeoJSON(spots) : null), [spots])
   const spotByKey = useMemo(() => new Map((spots ?? []).map((spot) => [spot.key, spot])), [spots])
@@ -650,7 +656,8 @@ export function App() {
                   basemap={basemap}
                   placeKinds={placeKinds}
                   onTogglePlaceKind={togglePlaceKind}
-                  collisionData={collisionData}
+                  collisionSpots={spots}
+                  busiestSpot={busiestSpot}
                   collisionFilters={collisions}
                   onCollisionFiltersChange={changeCollisions}
                 />

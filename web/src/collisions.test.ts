@@ -52,13 +52,15 @@ describe('collision filters in the URL', () => {
       from: 2019,
       to: 2024,
       severities: ['major', 'fatal'] as const,
+      minCount: 5,
     }
     const text = formatCollisionFilters(f)
-    expect(text).toBe('bike,foot;2019-2024;major,fatal')
+    expect(text).toBe('bike,foot;2019-2024;major,fatal;5')
     expect(parseCollisionFilters(text ?? undefined)).toEqual(f)
   })
   it('ignores junk', () => {
-    expect(parseCollisionFilters('cars;1990-3000;bad')).toEqual(DEFAULT_COLLISION_FILTERS)
+    expect(parseCollisionFilters('cars;1990-3000;bad;-2')).toEqual(DEFAULT_COLLISION_FILTERS)
+    expect(parseCollisionFilters(';;;3').minCount).toBe(3)
   })
 })
 

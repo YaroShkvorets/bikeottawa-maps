@@ -1,4 +1,4 @@
-import type { Collision, CollisionFilters } from '../collisions'
+import type { CollisionFilters, CollisionSpot } from '../collisions'
 import { useI18n } from '../i18n'
 import { type BasemapId, type LayerId, LTS_COLORS, lampColor, WINTER_COLORS } from '../layers'
 import { kindsInGroup, PLACE_GROUP_IDS, type PlaceKind } from '../places'
@@ -7,7 +7,9 @@ import { PlaceIcon } from './PlaceIcon'
 
 interface Props {
   layer: LayerId
-  collisionData: readonly Collision[] | null
+  /** The collision spots shown, null while they load; and the most collisions at any one. */
+  collisionSpots: readonly CollisionSpot[] | null
+  busiestSpot: number
   collisionFilters: CollisionFilters
   onCollisionFiltersChange: (filters: CollisionFilters) => void
   /** The night layer's colours depend on the ground they are drawn on. */
@@ -21,7 +23,8 @@ export function Legend({
   basemap,
   placeKinds,
   onTogglePlaceKind,
-  collisionData,
+  collisionSpots,
+  busiestSpot,
   collisionFilters,
   onCollisionFiltersChange,
 }: Props) {
@@ -70,7 +73,8 @@ export function Legend({
       )}
       {layer === 'collisions' && (
         <CollisionLegend
-          data={collisionData}
+          spots={collisionSpots}
+          busiestSpot={busiestSpot}
           filters={collisionFilters}
           onChange={onCollisionFiltersChange}
           basemap={basemap}

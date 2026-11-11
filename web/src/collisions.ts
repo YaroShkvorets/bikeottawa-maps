@@ -22,6 +22,8 @@ export interface CollisionFilters {
   from: number
   to: number
   severities: readonly Severity[]
+  /** Only spots with at least this many collisions: the most dangerous places. */
+  minCount: number
 }
 
 /** Cyclists only, every year, every injury level. */
@@ -30,6 +32,7 @@ export const DEFAULT_COLLISION_FILTERS: CollisionFilters = {
   from: COLLISION_YEARS.first,
   to: COLLISION_YEARS.last,
   severities: SEVERITIES,
+  minCount: 1,
 }
 
 export interface CollisionProps {
@@ -77,8 +80,9 @@ export function countBySeverity(all: readonly CollisionProps[], f: CollisionFilt
 }
 
 /**
- * In the URL as `collisions=bike,foot;2019-2024;major,fatal`, each part left
- * out when it is the default.
+ * In the URL as `collisions=bike,foot;2019-2024;major,fatal;5` (the last part
+ * is the fewest collisions a spot needs), each part left out when it is the
+ * default.
  */
 export function formatCollisionFilters(f: CollisionFilters): string | null {
   const d = DEFAULT_COLLISION_FILTERS
@@ -87,13 +91,14 @@ export function formatCollisionFilters(f: CollisionFilters): string | null {
     same(f.parties, d.parties) ? '' : f.parties.join(','),
     f.from === d.from && f.to === d.to ? '' : `${f.from}-${f.to}`,
     same(f.severities, d.severities) ? '' : f.severities.join(','),
+    f.minCount === d.minCount ? '' : String(f.minCount),
   ]
   return parts.some(Boolean) ? parts.join(';').replace(/;+$/, '') : null
 }
 
 export function parseCollisionFilters(text: string | undefined): CollisionFilters {
   const d = DEFAULT_COLLISION_FILTERS
-  const [partyText, yearText, severityText] = (text ?? '').split(';')
+  const [partyText, yearText, severityText, minText] = (text ?? '').split(';')
   const parties = (partyText ?? '')
     .split(',')
     .filter((v): v is CollisionParty => COLLISION_PARTIES.includes(v as never))
@@ -105,6 +110,7 @@ export function parseCollisionFilters(text: string | undefined): CollisionFilter
     parties: parties.length ? parties : d.parties,
     ...years,
     severities: severities.length ? severities : d.severities,
+    minCount: Number.isInteger(Number(minText)) && Number(minText) >= 1 ? Number(minText) : d.minCount,
   }
 }
 
