@@ -18,6 +18,12 @@ export interface RouteSegment {
   tags: Record<string, string>
 }
 
+/** A stop sign or a set of traffic lights the route has to obey. */
+export interface RouteStop {
+  kind: 'stop' | 'light'
+  lngLat: LngLat
+}
+
 export interface Route {
   /** [lon, lat, elevation in metres], elevation missing where unknown. */
   coords: [number, number, number?][]
@@ -28,6 +34,7 @@ export interface Route {
   /** Metres climbed. */
   ascent: number
   segments: RouteSegment[]
+  stops: RouteStop[]
 }
 
 export class RouteError extends Error {}
@@ -61,6 +68,55 @@ export function rateStretch(tags: Record<string, string>): { lts: number; walk: 
   const lts = stressmodel.evaluateLTS({ tags }).lts
   if (lts > 0) return { lts, walk: null }
   return { lts, walk: tags.footway === 'sidewalk' ? 'sidewalk' : 'other' }
+}
+
+/** Closer together than this, in metres, signs or signals belong to the same junction. */
+const SAME_STOP_M = 30
+const SAME_LIGHTS_M = 60
+
+/**
+ * Stop signs and traffic lights along the route, from the node tags in BRouter's
+ * messages. A stop sign counts only when it faces the direction of travel, and
+ * the several signal heads of one junction count once.
+ */
+export function findStops(header: string[], rows: string[][]): RouteStop[] {
+  const col = (name: string) => header.indexOf(name)
+  const [iLon, iLat, iDist, iWay, iNode] = [
+    col('Longitude'),
+    col('Latitude'),
+    col('Distance'),
+    col('WayTags'),
+    col('NodeTags'),
+  ]
+  if (iNode < 0) return []
+  const stops: RouteStop[] = []
+  let sinceStop = Number.POSITIVE_INFINITY
+  let sinceLights = Number.POSITIVE_INFINITY
+  for (const row of rows) {
+    const distance = Number(row[iDist]) || 0
+    sinceStop += distance
+    sinceLights += distance
+    const node = ` ${row[iNode] ?? ''} `
+    const lngLat: LngLat = [Number(row[iLon]) / 1e6, Number(row[iLat]) / 1e6]
+
+    if (node.includes(' highway=stop ')) {
+      const reversed = (row[iWay] ?? '').includes('reversedirection=yes')
+      const facesUs =
+        !node.includes(' direction=') || node.includes(reversed ? ' direction=backward ' : ' direction=forward ')
+      if (facesUs && sinceStop > SAME_STOP_M) {
+        stops.push({ kind: 'stop', lngLat })
+        sinceStop = 0
+      }
+    }
+    if (
+      (node.includes(' highway=traffic_signals ') || node.includes(' crossing=traffic_signals ')) &&
+      sinceLights > SAME_LIGHTS_M
+    ) {
+      stops.push({ kind: 'light', lngLat })
+      sinceLights = 0
+    }
+  }
+  return stops
 }
 
 /** Turns BRouter's GeoJSON answer into a route split into segments by way. */
@@ -107,6 +163,7 @@ export function parseRoute(geojson: unknown): Route {
     time: Number(props['total-time']),
     ascent: Math.max(0, Number(props['filtered ascend'])),
     segments,
+    stops: findStops(header, rows),
   }
 }
 

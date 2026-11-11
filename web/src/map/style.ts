@@ -112,6 +112,22 @@ function routeData(route: Route | null): FeatureCollection {
   }
 }
 
+function stopsData(route: Route | null): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: (route?.stops ?? []).map((stop) => ({
+      type: 'Feature',
+      properties: { kind: stop.kind },
+      geometry: { type: 'Point', coordinates: stop.lngLat },
+    })),
+  }
+}
+
+/** Name of the map image for a stop sign or traffic light on the route. */
+export function stopImageId(kind: 'stop' | 'light' | ''): string {
+  return `route-${kind}`
+}
+
 /** Marks the stretches picked out from the comfort breakdown. */
 const HIGHLIGHT_COLOR = '#FFD60A'
 
@@ -156,6 +172,19 @@ function routeLayers(theme: Theme, highlight: ComfortKey | null): LayerSpecifica
         ],
         'line-width': lineWidth(3.5),
         'line-opacity': rest,
+      },
+    },
+    {
+      id: 'route-stops',
+      type: 'symbol',
+      source: 'route-stops',
+      minzoom: 12,
+      layout: {
+        // Drawn on demand by the map view.
+        'icon-image': ['concat', stopImageId(''), ['get', 'kind']],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 15, 0.9, 18, 1.2],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
       },
     },
   ]
@@ -293,6 +322,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       }),
       overlays: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
       route: { type: 'geojson', data: routeData(state.route) },
+      'route-stops': { type: 'geojson', data: stopsData(state.route) },
     },
     layers: [
       ...base.slice(0, at),

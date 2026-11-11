@@ -67,11 +67,14 @@ describe('buildStyle', () => {
           tags: {},
         },
       ],
+      stops: [{ kind: 'light' as const, lngLat: [-75.69, 45.41] as [number, number] }],
     }
     const source = build({ route }).sources.route as { data: FeatureCollection }
     expect(source.data.features).toHaveLength(1)
     expect(source.data.features[0].properties).toEqual({ lts: 3, part: 'lts3' })
     expect((build().sources.route as { data: FeatureCollection }).data.features).toHaveLength(0)
+    const stops = build({ route }).sources['route-stops'] as { data: FeatureCollection }
+    expect(stops.data.features.map((f) => f.properties)).toEqual([{ kind: 'light' }])
   })
 
   it('picks out one part of the route and fades the rest', () => {

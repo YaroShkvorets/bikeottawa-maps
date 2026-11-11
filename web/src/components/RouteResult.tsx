@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { type MessageKey, useI18n } from '../i18n'
 import { LTS_COLORS, NO_BIKES_COLOR } from '../layers'
+import { LIGHT_BODY, LIGHT_COLORS, STOP_RED } from '../map/stopImage'
 import { COMFORT_KEYS, type ComfortKey, distanceByComfort, type Route } from '../route/brouter'
 import { downloadText, toGpx } from '../route/gpx'
 import { routeProfile, smoothElevation } from '../route/profile'
@@ -16,6 +17,32 @@ const COMFORT: Record<ComfortKey, { color: string; label: MessageKey }> = {
   sidewalk: { color: NO_BIKES_COLOR, label: 'sidewalk' },
   stairs: { color: NO_BIKES_COLOR, label: 'stairs' },
   other: { color: NO_BIKES_COLOR, label: 'walk' },
+}
+
+/** Stop signs and traffic lights on the route, counted on one line. */
+function StopCounts({ route }: { route: Route }) {
+  const { t } = useI18n()
+  const count = (kind: 'stop' | 'light') => route.stops.filter((stop) => stop.kind === kind).length
+  return (
+    <p className="stop-counts">
+      <span>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20">
+          <path d="M6.5 1.5h7l5 5v7l-5 5h-7l-5-5v-7z" fill={STOP_RED} />
+          <rect x="5.5" y="8.75" width="9" height="2.5" fill="#fff" />
+        </svg>
+        {t('stopSigns')} <b>{count('stop')}</b>
+      </span>
+      <span>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20">
+          <rect x="5.5" y="1" width="9" height="18" rx="3" fill={LIGHT_BODY} />
+          {LIGHT_COLORS.map((color, i) => (
+            <circle key={color} cx="10" cy={4.8 + i * 5.2} r="2" fill={color} />
+          ))}
+        </svg>
+        {t('trafficLights')} <b>{count('light')}</b>
+      </span>
+    </p>
+  )
 }
 
 interface ComfortProps {
@@ -121,8 +148,8 @@ export function RouteResult({ state, hover, onHover, highlight, pinned, onPointP
         </div>
       </dl>
       <ComfortBar route={route} highlight={highlight} pinned={pinned} onPoint={onPointPart} onPin={onPinPart} />
+      <StopCounts route={route} />
       <ElevationChart profile={profile} label={t('elevation')} hover={hover} onHover={onHover} />
-      <p className="footnote via-hint">{t('viaHint')}</p>
       <div className="route-actions">
         <button
           type="button"

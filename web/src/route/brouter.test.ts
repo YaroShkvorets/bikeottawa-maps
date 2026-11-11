@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { distanceByComfort, parseRoute, RouteError, rateStretch, routeUrl } from './brouter'
+import { distanceByComfort, findStops, parseRoute, RouteError, rateStretch, routeUrl } from './brouter'
 import fixture from './fixture.route.json'
 import { PRESETS } from './styles'
 
@@ -46,6 +46,75 @@ describe('rateStretch', () => {
   })
 })
 
+describe('findStops', () => {
+  const header = [
+    'Longitude',
+    'Latitude',
+    'Elevation',
+    'Distance',
+    'CostPerKm',
+    'ElevCost',
+    'TurnCost',
+    'NodeCost',
+    'InitialCost',
+    'WayTags',
+    'NodeTags',
+  ]
+  const row = (distance: number, node: string, way = 'highway=residential') => [
+    '-75700000',
+    '45400000',
+    '70',
+    String(distance),
+    '0',
+    '0',
+    '0',
+    '0',
+    '0',
+    way,
+    node,
+  ]
+  const kinds = (rows: string[][]) => findStops(header, rows).map((stop) => stop.kind)
+
+  it('finds stop signs and traffic lights and where they are', () => {
+    const stops = findStops(header, [
+      row(100, 'highway=stop'),
+      row(200, ''),
+      row(150, 'highway=traffic_signals'),
+      row(90, 'crossing=traffic_signals'),
+    ])
+    expect(stops.map((stop) => stop.kind)).toEqual(['stop', 'light', 'light'])
+    expect(stops[0].lngLat).toEqual([-75.7, 45.4])
+  })
+
+  it('counts the signal heads of one junction once', () => {
+    expect(
+      kinds([
+        row(100, 'highway=traffic_signals'),
+        row(15, 'crossing=traffic_signals'),
+        row(20, 'highway=traffic_signals'),
+      ]),
+    ).toEqual(['light'])
+    expect(kinds([row(100, 'highway=stop'), row(10, 'highway=stop'), row(40, 'highway=stop')])).toEqual([
+      'stop',
+      'stop',
+    ])
+  })
+
+  it('ignores stop signs that face the other way', () => {
+    expect(kinds([row(100, 'highway=stop direction=forward')])).toEqual(['stop'])
+    expect(kinds([row(100, 'highway=stop direction=backward')])).toEqual([])
+    expect(kinds([row(100, 'highway=stop direction=backward', 'reversedirection=yes highway=residential')])).toEqual([
+      'stop',
+    ])
+    expect(kinds([row(100, 'highway=stop direction=forward', 'reversedirection=yes highway=residential')])).toEqual([])
+  })
+
+  it('copes with other node tags and with answers that have none', () => {
+    expect(kinds([row(100, 'entrance=yes'), row(100, 'barrier=bollard highway=stop')])).toEqual(['stop'])
+    expect(findStops(['Longitude', 'Latitude', 'Distance', 'WayTags'], [['1', '2', '3', 'highway=path']])).toEqual([])
+  })
+})
+
 describe('parseRoute', () => {
   const route = parseRoute(fixture)
 
@@ -74,6 +143,11 @@ describe('parseRoute', () => {
     }
     const total = Object.values(distanceByComfort(route)).reduce((a, b) => a + b, 0)
     expect(Math.abs(total - route.distance)).toBeLessThan(route.distance * 0.05)
+  })
+
+  it('lists the stops along the way', () => {
+    expect(Array.isArray(route.stops)).toBe(true)
+    for (const stop of route.stops) expect(['stop', 'light']).toContain(stop.kind)
   })
 
   it('rejects a response without a route', () => {

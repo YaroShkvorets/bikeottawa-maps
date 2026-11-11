@@ -523,13 +523,6 @@ a {
   font-size: 13px;
 }
 
-/* Via points are added by hovering the route, which touch screens cannot do. */
-@media (hover: none) {
-  .via-hint {
-    display: none;
-  }
-}
-
 .route-marker.inline {
   flex: none;
   width: 26px;
@@ -704,6 +697,24 @@ a {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+}
+
+.stop-counts {
+  display: flex;
+  gap: 18px;
+  margin: -6px 0 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.stop-counts span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stop-counts b {
+  font-variant-numeric: tabular-nums;
 }
 
 .elevation {

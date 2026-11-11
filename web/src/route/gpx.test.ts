@@ -13,6 +13,7 @@ describe('toGpx', () => {
         time: 1,
         ascent: 0,
         segments: [],
+        stops: [],
       },
       'Home & <work>',
     )

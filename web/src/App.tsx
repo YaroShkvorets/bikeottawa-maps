@@ -370,11 +370,12 @@ export function App() {
           {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
           <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
             {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
-            <p className="footnote">
-              {!routing && `${t('hint')} `}
-              {t('dataFrom')}
-              {dataDate && `, ${t('updated')} ${dataDate}`}.
-            </p>
+            {(!routing || dataDate) && (
+              <p className="footnote">
+                {!routing && `${t('hint')} `}
+                {dataDate && `${t('updated')} ${dataDate}.`}
+              </p>
+            )}
           </div>
         </div>
       </div>

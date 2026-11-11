@@ -21,7 +21,8 @@ import { type ComfortKey, comfortKeyOf, type LngLat } from '../route/brouter'
 import { nearestOnRoute, pointAtDistance, routeProfile } from '../route/profile'
 import type { RoutePoints } from '../route/state'
 import { renderPlaceImage } from './placeImage'
-import { buildStyle, INTERACTIVE_LAYERS, type Selected, type StyleState } from './style'
+import { renderStopImage } from './stopImage'
+import { buildStyle, INTERACTIVE_LAYERS, type Selected, type StyleState, stopImageId } from './style'
 
 // MapLibre finds its worker relative to its own file, which bundling breaks, so point it at the bundled copy.
 setWorkerUrl(workerUrl)
@@ -119,12 +120,17 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
     setStyleControl(switcher)
     map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right')
 
-    // Place markers are drawn the first time a style asks for them; a style
-    // rebuilt from scratch (new basemap) simply asks again.
+    // Markers are drawn the first time a style asks for them; a style rebuilt
+    // from scratch (new basemap) simply asks again.
     map.setMissingStyleImageResolver((id) => {
-      const kind = id.slice(placeImageId('').length)
-      if (!id.startsWith(placeImageId('')) || !isPlaceKind(kind) || map.hasImage(id)) return
-      const marker = renderPlaceImage(kind)
+      if (map.hasImage(id)) return
+      const place = id.slice(placeImageId('').length)
+      const marker =
+        id === stopImageId('stop') || id === stopImageId('light')
+          ? renderStopImage(id === stopImageId('stop') ? 'stop' : 'light')
+          : id.startsWith(placeImageId('')) && isPlaceKind(place)
+            ? renderPlaceImage(place)
+            : null
       if (marker) map.addImage(id, marker.image, { pixelRatio: marker.pixelRatio })
     })
 
