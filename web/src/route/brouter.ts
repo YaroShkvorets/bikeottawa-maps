@@ -45,6 +45,15 @@ function parseTags(text: string): Record<string, string> {
   return tags
 }
 
+/**
+ * Stress level of a stretch of route, 0 meaning the bike is walked. The stress
+ * model rates stairs and dismount sections as paths, so those are caught here.
+ */
+export function comfortLevel(tags: Record<string, string>): number {
+  if (tags.highway === 'steps' || tags.bicycle === 'dismount') return 0
+  return stressmodel.evaluateLTS({ tags }).lts
+}
+
 /** Turns BRouter's GeoJSON answer into a route split into segments by way. */
 export function parseRoute(geojson: unknown): Route {
   const feature = (
@@ -77,7 +86,7 @@ export function parseRoute(geojson: unknown): Route {
     segments.push({
       coords: coords.slice(start, end + 1).map(([x, y]) => [x, y]),
       distance: Number(row[iDist]),
-      lts: stressmodel.evaluateLTS({ tags }).lts,
+      lts: comfortLevel(tags),
       tags,
     })
     start = end

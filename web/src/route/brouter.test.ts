@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { distanceByLts, parseRoute, RouteError, routeUrl } from './brouter'
+import { comfortLevel, distanceByLts, parseRoute, RouteError, routeUrl } from './brouter'
 import fixture from './fixture.route.json'
 import { PRESETS } from './styles'
 
@@ -29,6 +29,20 @@ describe('routeUrl', () => {
         PRESETS.cargo,
       ),
     ).toContain('profile:noWalk=1')
+  })
+})
+
+describe('comfortLevel', () => {
+  it('counts sidewalks, stairs, dismount sections and no-bike ways as walking', () => {
+    expect(comfortLevel({ highway: 'footway', footway: 'sidewalk' })).toBe(0)
+    expect(comfortLevel({ highway: 'steps' })).toBe(0)
+    expect(comfortLevel({ highway: 'footway', bicycle: 'dismount' })).toBe(0)
+    expect(comfortLevel({ highway: 'path', bicycle: 'no' })).toBe(0)
+  })
+  it('rates rideable ways with the stress model', () => {
+    expect(comfortLevel({ highway: 'cycleway' })).toBe(1)
+    expect(comfortLevel({ highway: 'footway', footway: 'sidewalk', bicycle: 'yes' })).toBe(1)
+    expect(comfortLevel({ highway: 'primary', maxspeed: '60', lanes: '4' })).toBe(4)
   })
 })
 
