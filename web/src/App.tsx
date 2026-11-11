@@ -8,7 +8,7 @@ import { RouteResult } from './components/RouteResult'
 import { ASSETS_BASE, ROUTER_URL } from './config'
 import { parseHash, withHashParam } from './hash'
 import { initialLang, type Lang, LangContext, rememberLang, translator } from './i18n'
-import { isLayerId, type LayerId, PLACE_KINDS, type PlaceKind } from './layers'
+import { type BasemapId, isBasemapId, isLayerId, type LayerId, PLACE_KINDS, type PlaceKind } from './layers'
 import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
 import type { LngLat } from './route/brouter'
@@ -62,6 +62,19 @@ function writeUrl(state: UrlState): void {
   }
 }
 
+const BASEMAP_KEY = 'basemap'
+
+/** The map style is a personal preference, so it is remembered per browser rather than put in links. */
+function initialBasemap(): BasemapId {
+  try {
+    const stored = localStorage.getItem(BASEMAP_KEY)
+    if (isBasemapId(stored)) return stored
+  } catch {
+    // Storage can be blocked; use the default.
+  }
+  return 'light'
+}
+
 /** Date of the OpenStreetMap data in the tiles, written by the pipeline. */
 function useDataDate(lang: Lang): string | null {
   const [timestamp, setTimestamp] = useState<string | null>(null)
@@ -78,6 +91,7 @@ function useDataDate(lang: Lang): string | null {
 export function App() {
   const [lang, setLang] = useState<Lang>(initialLang)
   const [url, setUrl] = useState<UrlState>(readUrl)
+  const [basemap, setBasemap] = useState<BasemapId>(initialBasemap)
   const [placeKinds, setPlaceKinds] = useState<readonly PlaceKind[]>(PLACE_KINDS)
   const [selected, setSelected] = useState<Selected | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
@@ -96,6 +110,14 @@ export function App() {
   }, [lang, t])
 
   useEffect(() => writeUrl(url), [url])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BASEMAP_KEY, basemap)
+    } catch {
+      // Not remembered when storage is blocked.
+    }
+  }, [basemap])
 
   // Back/forward and pasted links change the hash without going through React.
   useEffect(() => {
@@ -175,8 +197,8 @@ export function App() {
   }, [])
 
   const styleState = useMemo<StyleState>(
-    () => ({ lang, layer, placeKinds, selected, route }),
-    [lang, layer, placeKinds, selected, route],
+    () => ({ lang, basemap, layer, placeKinds, selected, route }),
+    [lang, basemap, layer, placeKinds, selected, route],
   )
   const mapRouting = useMemo(
     () => (routing ? { points, onMapClick: placePoint, onMovePoint: movePoint } : null),
@@ -186,7 +208,7 @@ export function App() {
 
   return (
     <LangContext.Provider value={i18n}>
-      <MapView state={styleState} onSelect={setSelected} routing={mapRouting} />
+      <MapView state={styleState} onSelect={setSelected} onBasemapChange={setBasemap} routing={mapRouting} />
       <div className="sidebar">
         <div className={`card topbar ${ROUTER_URL ? '' : 'no-router'}`}>
           <header className="brand">

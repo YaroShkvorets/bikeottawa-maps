@@ -637,6 +637,53 @@ a {
   flex: 1;
 }
 
+.basemap-ctrl {
+  position: relative;
+  color: var(--ink);
+}
+
+.basemap-ctrl > button {
+  display: grid;
+  place-items: center;
+}
+
+.basemap-menu {
+  position: absolute;
+  top: 0;
+  right: 37px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.basemap-menu button {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.basemap-menu button:hover {
+  background: #eef1f0;
+}
+
+.basemap-menu button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
 /* Phones: layer chips across the top, legend and details in a bottom sheet. */
 @media (max-width: 720px) {
   .sidebar {

@@ -18,12 +18,14 @@ pmtiles extract "https://build.protomaps.com/$BUILD" "$OUT/basemap.pmtiles" --bb
 
 if [ ! -d "$WORK/basemaps-assets" ]; then
   git clone --quiet --depth 1 --filter=blob:none --sparse https://github.com/protomaps/basemaps-assets "$WORK/basemaps-assets"
-  git -C "$WORK/basemaps-assets" sparse-checkout set --no-cone \
-    "/fonts/Noto Sans Regular/" "/fonts/Noto Sans Medium/" "/fonts/Noto Sans Italic/" "/sprites/v4/light*"
 fi
+# Fonts for the labels, and one icon sheet per map style (light, grey, dark).
+git -C "$WORK/basemaps-assets" sparse-checkout set --no-cone \
+  "/fonts/Noto Sans Regular/" "/fonts/Noto Sans Medium/" "/fonts/Noto Sans Italic/" \
+  "/sprites/v4/light*" "/sprites/v4/grayscale*" "/sprites/v4/dark*"
 rm -rf "$ASSETS"
 mkdir -p "$ASSETS/sprites/v4"
 cp -R "$WORK/basemaps-assets/fonts" "$ASSETS/fonts"
-cp "$WORK/basemaps-assets"/sprites/v4/light* "$ASSETS/sprites/v4/"
+cp "$WORK/basemaps-assets"/sprites/v4/* "$ASSETS/sprites/v4/"
 ls -lh "$OUT/basemap.pmtiles"
 du -sh "$ASSETS"

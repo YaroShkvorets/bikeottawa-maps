@@ -10,9 +10,12 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { Protocol } from 'pmtiles'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { BasemapSwitch } from '../components/BasemapSwitch'
 import { ASSETS_BASE, REGION } from '../config'
+import type { BasemapId } from '../layers'
 import type { LngLat } from '../route/brouter'
 import type { RoutePoints } from '../route/state'
 import { buildStyle, INTERACTIVE_LAYERS, type Selected, type StyleState } from './style'
@@ -30,6 +33,7 @@ const PHONE_LAYOUT = '(max-width: 720px)'
 interface Props {
   state: StyleState
   onSelect: (selected: Selected | null) => void
+  onBasemapChange: (basemap: BasemapId) => void
   /** When set, clicks place route points instead of selecting features. */
   routing: {
     points: RoutePoints
@@ -54,10 +58,12 @@ function panelPadding() {
   return { top: 50, bottom: 50, left: 420, right: 70 }
 }
 
-export function MapView({ state, onSelect, routing }: Props) {
+export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
+  // Home of the map-style switcher, placed by MapLibre among its own controls.
+  const [styleControl, setStyleControl] = useState<HTMLElement | null>(null)
   const latest = useRef({ state, onSelect, routing })
   const applied = useRef(state)
   latest.current = { state, onSelect, routing }
@@ -87,6 +93,10 @@ export function MapView({ state, onSelect, routing }: Props) {
       new GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }),
       'top-right',
     )
+    const switcher = document.createElement('div')
+    switcher.className = 'maplibregl-ctrl maplibregl-ctrl-group basemap-ctrl'
+    map.addControl({ onAdd: () => switcher, onRemove: () => switcher.remove() }, 'top-right')
+    setStyleControl(switcher)
     map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right')
 
     const featureAt = (point: { x: number; y: number }): Selected | null => {
@@ -179,5 +189,10 @@ export function MapView({ state, onSelect, routing }: Props) {
     }
   }, [points])
 
-  return <div ref={container} className="map" />
+  return (
+    <>
+      <div ref={container} className="map" />
+      {styleControl && createPortal(<BasemapSwitch basemap={state.basemap} onChange={onBasemapChange} />, styleControl)}
+    </>
+  )
 }

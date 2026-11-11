@@ -1,9 +1,16 @@
 import type { FeatureCollection } from 'geojson'
 import { describe, expect, it } from 'vitest'
-import { LAYER_IDS, PLACE_KINDS } from '../layers'
+import { BASEMAP_IDS, LAYER_IDS, PLACE_KINDS } from '../layers'
 import { buildStyle, INTERACTIVE_LAYERS, type StyleState } from './style'
 
-const state: StyleState = { lang: 'en', layer: 'comfort', placeKinds: PLACE_KINDS, selected: null, route: null }
+const state: StyleState = {
+  lang: 'en',
+  basemap: 'light',
+  layer: 'comfort',
+  placeKinds: PLACE_KINDS,
+  selected: null,
+  route: null,
+}
 const build = (patch: Partial<StyleState> = {}) => buildStyle({ ...state, ...patch }, 'https://example.test')
 const layer = (style: ReturnType<typeof build>, id: string) => {
   const found = style.layers.find((l) => l.id === id)
@@ -64,8 +71,32 @@ describe('buildStyle', () => {
     expect((build().sources.route as { data: FeatureCollection }).data.features).toHaveLength(0)
   })
 
+  it('restyles the same tiles for each drawn basemap', () => {
+    for (const basemap of ['light', 'grey', 'dark'] as const) {
+      const style = build({ basemap })
+      expect(style.sources.imagery, basemap).toBeUndefined()
+      expect(
+        style.layers.some((l) => l.type === 'fill'),
+        basemap,
+      ).toBe(true)
+    }
+    expect(build({ basemap: 'dark' }).sprite).toMatch(/dark$/)
+    expect(build({ basemap: 'grey' }).sprite).toMatch(/grayscale$/)
+  })
+
+  it('puts imagery under the data and keeps only labels from the basemap for satellite', () => {
+    const { layers, sources } = build({ basemap: 'satellite' })
+    expect(sources.imagery).toMatchObject({ type: 'raster' })
+    expect(layers[0]).toMatchObject({ id: 'imagery', type: 'raster' })
+    expect(layers.filter((l) => 'source' in l && l.source === 'basemap').every((l) => l.type === 'symbol')).toBe(true)
+    const firstData = layers.findIndex((l) => 'source' in l && l.source === 'overlays')
+    expect(firstData).toBe(1)
+  })
+
   it('keeps layer ids unique', () => {
-    const ids = build().layers.map((l) => l.id)
-    expect(new Set(ids).size).toBe(ids.length)
+    for (const basemap of BASEMAP_IDS) {
+      const ids = build({ basemap }).layers.map((l) => l.id)
+      expect(new Set(ids).size, basemap).toBe(ids.length)
+    }
   })
 })

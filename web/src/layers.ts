@@ -6,6 +6,9 @@ export type LayerId = (typeof LAYER_IDS)[number]
 export const PLACE_KINDS = ['parking', 'repair', 'shop', 'water', 'toilets'] as const
 export type PlaceKind = (typeof PLACE_KINDS)[number]
 
+export const BASEMAP_IDS = ['light', 'grey', 'dark', 'satellite'] as const
+export type BasemapId = (typeof BASEMAP_IDS)[number]
+
 export const INK = '#16242B'
 
 /** Level of traffic stress 1 to 4. */
@@ -22,6 +25,10 @@ export const PLACE_COLORS: Record<PlaceKind, string> = {
   shop: '#8E3B8E',
   water: '#1B5FAE',
   toilets: '#4F7A32',
+}
+
+export function isBasemapId(value: unknown): value is BasemapId {
+  return BASEMAP_IDS.includes(value as BasemapId)
 }
 
 export function isLayerId(value: unknown): value is LayerId {
