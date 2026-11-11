@@ -4,15 +4,16 @@
  */
 
 /** Weights shown as sliders in the Custom style. */
-export const WEIGHT_KEYS = ['roadsPen', 'sidewalkPen', 'surfacePen', 'plowPen', 'litPen', 'stopSignPen'] as const
+export const WEIGHT_KEYS = ['roadsPen', 'sidewalkPen', 'surfacePen', 'plowPen', 'litPen'] as const
 /**
  * Every profile parameter. `noWalk` is a switch (0 or 1): the bike is never
  * pushed or carried, so no stairs, no dismount sections and no sidewalks that
  * are closed to bikes. Start and end points do not snap to those either.
- * `cruiseSpeed` is the riding speed on the flat in km/h; it changes travel
- * times and how far you get, not which way is taken.
+ * `stopSignPen` (how hard to avoid stops and signals) is set by each style and
+ * has no slider. `cruiseSpeed` is the riding speed on the flat in km/h; it
+ * changes travel times and how far you get, not which way is taken.
  */
-export const PARAM_KEYS = [...WEIGHT_KEYS, 'noWalk', 'cruiseSpeed'] as const
+export const PARAM_KEYS = [...WEIGHT_KEYS, 'stopSignPen', 'noWalk', 'cruiseSpeed'] as const
 export type ParamKey = (typeof PARAM_KEYS)[number]
 export type RouteParams = Record<ParamKey, number>
 
