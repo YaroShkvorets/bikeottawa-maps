@@ -39,6 +39,14 @@ const SKIPPED_HIGHWAYS = new Set([
   'steps',
 ])
 
+const CLOSED_ACCESS = new Set(['private', 'no'])
+const LET_IN = new Set(['yes', 'designated', 'permissive'])
+
+/** Private or closed to everyone, unless bikes or people on foot are explicitly let in. */
+function isClosed(tags) {
+  return CLOSED_ACCESS.has(tags.access) && !LET_IN.has(tags.bicycle) && !LET_IN.has(tags.foot)
+}
+
 /** Copies `keys` from tags into `out`, skipping missing values. */
 function pick(tags, keys, out) {
   for (const key of keys) {
@@ -54,6 +62,7 @@ function pick(tags, keys, out) {
 export function classifyWay(tags) {
   const highway = tags.highway
   if (!highway || SKIPPED_HIGHWAYS.has(highway)) return null
+  if (isClosed(tags)) return null
 
   // Pedestrian crossings belong to the sidewalk network. The stress model rates
   // them like the street they cross, so they are dropped here unless bikes are
