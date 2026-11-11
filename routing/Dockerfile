@@ -1,17 +1,17 @@
 # BRouter with the ottbike profile and routing data for the region baked in.
 # Run routing/prepare-data.sh first, then: docker build -t bikeottawa-router routing
 ARG BROUTER_IMAGE=ghcr.io/abrensch/brouter:master@sha256:1e73860a13994eb49871bd35e20e955ab3d3b3cde0f26575a9cf2a69a72495ae
-# The commit BROUTER_IMAGE was built from; the server jar is rebuilt from it
-# with brouter/isochrone.patch (engineMode=5: how far you get in a given time).
-ARG BROUTER_COMMIT=fed8f185ecdba4c01f4d6913bff7c0fae4576a32
+# The server jar comes from our fork: BROUTER_IMAGE's commit plus isochrones
+# (engineMode=5: how far you get in a given time), on its isochrone branch.
+ARG BROUTER_REPO=https://github.com/YaroShkvorets/brouter.git
+ARG BROUTER_COMMIT=586252623e959f9b58563b644b221e2f0bf1ff16
 
 FROM alpine/git:v2.49.1 AS source
+ARG BROUTER_REPO
 ARG BROUTER_COMMIT
 WORKDIR /brouter
-RUN git init -q && git remote add origin https://github.com/abrensch/brouter.git \
+RUN git init -q && git remote add origin "$BROUTER_REPO" \
     && git fetch -q --depth 1 origin "$BROUTER_COMMIT" && git checkout -q FETCH_HEAD
-COPY brouter/isochrone.patch /tmp/
-RUN git apply /tmp/isochrone.patch
 
 FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-jammy AS jar
 COPY --from=source /brouter /brouter

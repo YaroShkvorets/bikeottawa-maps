@@ -38,7 +38,7 @@ The first run downloads the Ontario and Quebec extracts from Geofabrik (2.2 GB) 
 
 The planner asks a BRouter server for routes. Riding styles are sets of weights for the `ottbike` profile in `routing/profiles` (how hard to avoid busy roads, sidewalks, rough surfaces, unplowed paths, unlit sections and stops); they live in `web/src/route/styles.ts`.
 
-"How far" uses the same router and riding styles: BRouter has no isochrones of its own, so the image rebuilds its server from the pinned upstream commit with `routing/brouter/isochrone.patch`. That adds `engineMode=5` with `isochroneTime=<seconds>` (up to 1800): it spreads out from one point along the cheapest paths of the profile and returns every way reached as GeoJSON, one MultiLineString per minute of riding. When moving `BROUTER_IMAGE` in `routing/Dockerfile`, move `BROUTER_COMMIT` with it.
+"How far" uses the same router and riding styles: BRouter has no isochrones of its own, so the image builds its server from the `isochrone` branch of [our fork](https://github.com/YaroShkvorets/brouter/tree/isochrone): the pinned upstream commit plus one commit that adds `engineMode=5` with `isochroneTime=<seconds>` (up to 1800): it spreads out from one point along the cheapest paths of the profile and returns every way reached as GeoJSON, one MultiLineString per minute of riding. To move to a newer BRouter, rebase that branch onto the new upstream commit and update both `BROUTER_IMAGE` and `BROUTER_COMMIT` in `routing/Dockerfile`.
 
 The router image builds its own routing data from the same OSM file, because it needs tags that stock BRouter data leaves out (`winter_service`, `width`, lane counts, `crossing:signals`). To run it locally:
 
