@@ -126,9 +126,6 @@ export function FeatureCard({ selected, onClose }: Props) {
         <a href={`https://www.openstreetmap.org/${type}/${id}`} target="_blank" rel="noopener noreferrer">
           {t('viewOnOsm')}
         </a>
-        <a href={`https://www.openstreetmap.org/edit?${type}=${id}`} target="_blank" rel="noopener noreferrer">
-          {t('fixOnOsm')}
-        </a>
       </p>
     </section>
   )
