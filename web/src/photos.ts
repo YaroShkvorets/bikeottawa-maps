@@ -49,16 +49,22 @@ export interface Photo {
   credit: string
   /** Where to see it at its source. */
   link: string
+  /** When it was taken, ms since 1970, if known. */
+  takenAt?: number
 }
 
 export async function fetchMapillaryPhoto(id: string, token: string, signal?: AbortSignal): Promise<Photo | null> {
-  const params = new URLSearchParams({ fields: 'thumb_1024_url,thumb_2048_url,creator', access_token: token })
+  const params = new URLSearchParams({
+    fields: 'thumb_1024_url,thumb_2048_url,creator,captured_at',
+    access_token: token,
+  })
   const res = await fetch(`https://graph.mapillary.com/${id}?${params}`, { signal })
   if (!res.ok) return null
   const data = (await res.json()) as {
     thumb_1024_url?: string
     thumb_2048_url?: string
     creator?: { username?: string }
+    captured_at?: number
   }
   if (!data.thumb_1024_url) return null
   const by = data.creator?.username
@@ -67,6 +73,7 @@ export async function fetchMapillaryPhoto(id: string, token: string, signal?: Ab
     largeUrl: data.thumb_2048_url ?? data.thumb_1024_url,
     credit: by ? `© ${by} · Mapillary` : '© Mapillary',
     link: mapillaryViewerUrl(id),
+    takenAt: data.captured_at,
   }
 }
 
@@ -80,6 +87,14 @@ interface MapillaryImage {
   id: string
   computed_geometry?: { coordinates: [number, number] }
   is_pano?: boolean
+  /** The capture run it belongs to; one run's photos are often a metre apart. */
+  sequence?: string
+}
+
+/** A photo near a point, and how far from it it was taken. */
+export interface NearbyImage {
+  id: string
+  distance: number
 }
 
 /** Metres between two nearby points. */
@@ -89,22 +104,22 @@ function metres([lon1, lat1]: readonly [number, number], [lon2, lat2]: readonly 
 }
 
 /**
- * Which of the photos found to show: the closest, with panoramas counted a
- * little farther away because they look stretched in a card.
+ * The photos worth stepping through, best first: the closest from each
+ * capture run (the rest of a run are near-copies), panoramas counted a little
+ * farther away because they look stretched in a card.
  */
-export function closestImage(
-  images: readonly MapillaryImage[],
-  at: readonly [number, number],
-): { id: string; distance: number } | null {
-  let best: { id: string; distance: number; score: number } | null = null
+export function nearbyImages(images: readonly MapillaryImage[], at: readonly [number, number]): NearbyImage[] {
+  const bestPerRun = new Map<string, NearbyImage & { score: number }>()
   for (const image of images) {
     const where = image.computed_geometry?.coordinates
     if (!where) continue
     const distance = metres(at, where)
     const score = distance + (image.is_pano ? 15 : 0)
-    if (!best || score < best.score) best = { id: image.id, distance, score }
+    const run = image.sequence ?? image.id
+    const best = bestPerRun.get(run)
+    if (!best || score < best.score) bestPerRun.set(run, { id: image.id, distance, score })
   }
-  return best && { id: best.id, distance: best.distance }
+  return [...bestPerRun.values()].sort((a, b) => a.score - b.score).map(({ id, distance }) => ({ id, distance }))
 }
 
 /**
@@ -117,30 +132,27 @@ const SEARCH_BOXES = [
   { degrees: 0.0006, limit: 500 },
 ]
 
-/** The street-level photo taken closest to a point, and how far from it. */
-export async function nearestMapillaryPhoto(
+/** Street-level photos taken near a point, best first (see nearbyImages). */
+export async function findNearbyMapillary(
   at: readonly [number, number],
   token: string,
   signal?: AbortSignal,
-): Promise<(Photo & { distance: number }) | null> {
+): Promise<NearbyImage[]> {
   const [lon, lat] = at
   for (const { degrees, limit } of SEARCH_BOXES) {
     const dLon = degrees / Math.cos((lat * Math.PI) / 180)
     const bbox = [lon - dLon, lat - degrees, lon + dLon, lat + degrees].map((v) => v.toFixed(6)).join(',')
     const params = new URLSearchParams({
-      fields: 'id,computed_geometry,is_pano',
+      fields: 'id,computed_geometry,is_pano,sequence',
       bbox,
       limit: String(limit),
       access_token: token,
     })
     const res = await fetch(`https://graph.mapillary.com/images?${params}`, { signal })
-    if (!res.ok) return null
+    if (!res.ok) return []
     const { data } = (await res.json()) as { data?: MapillaryImage[] }
-    const closest = closestImage(data ?? [], at)
-    if (closest) {
-      const photo = await fetchMapillaryPhoto(closest.id, token, signal)
-      return photo && { ...photo, distance: closest.distance }
-    }
+    const found = nearbyImages(data ?? [], at)
+    if (found.length) return found
   }
-  return null
+  return []
 }

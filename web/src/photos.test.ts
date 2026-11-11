@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  closestImage,
   commonsLink,
   directImage,
   imageLink,
   mapillaryId,
   mapillaryViewerUrl,
+  nearbyImages,
   streetViewUrl,
 } from './photos'
 
@@ -59,17 +59,22 @@ describe('streetViewUrl', () => {
   })
 })
 
-describe('closestImage', () => {
+describe('nearbyImages', () => {
   const at: [number, number] = [-75.69485, 45.42021]
-  const image = (id: string, dLat: number, pano = false) => ({
+  const image = (id: string, dLat: number, sequence: string, pano = false) => ({
     id,
     computed_geometry: { coordinates: [at[0], at[1] + dLat] as [number, number] },
     is_pano: pano,
+    sequence,
   })
-  it('picks the photo taken closest, preferring flat photos over panoramas', () => {
-    expect(closestImage([image('far', 0.0003), image('near', 0.0001)], at)?.id).toBe('near')
-    // A panorama 5 m away loses to a flat photo 11 m away.
-    expect(closestImage([image('pano', 0.000045, true), image('flat', 0.0001)], at)?.id).toBe('flat')
-    expect(closestImage([], at)).toBeNull()
+  it('lists the closest photo of each capture run, nearest first', () => {
+    const found = nearbyImages([image('a2', 0.0002, 'a'), image('a1', 0.0001, 'a'), image('b1', 0.00015, 'b')], at)
+    expect(found.map((f) => f.id)).toEqual(['a1', 'b1'])
+    expect(Math.round(found[0].distance)).toBe(11)
+  })
+  it('puts flat photos ahead of panoramas about as close', () => {
+    // A panorama 5 m away comes after a flat photo 11 m away.
+    expect(nearbyImages([image('pano', 0.000045, 'p', true), image('flat', 0.0001, 'f')], at)[0].id).toBe('flat')
+    expect(nearbyImages([], at)).toEqual([])
   })
 })
