@@ -6,6 +6,7 @@ import type { Selected } from '../map/style'
 import { isPlaceKind } from '../places'
 import { wayType } from '../wayType'
 import { PlaceIcon } from './PlaceIcon'
+import { PlacePhoto } from './PlacePhoto'
 
 const WAY_FACTS = ['surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'] as const
 const PLACE_FACTS = [
@@ -119,6 +120,7 @@ export function FeatureCard({ selected, onClose }: Props) {
           </svg>
         </button>
       </header>
+      {selected.kind === 'place' && <PlacePhoto props={props} />}
       {hasFacts && (
         <dl>
           {facts.map((fact) => (

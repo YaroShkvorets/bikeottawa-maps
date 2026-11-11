@@ -76,6 +76,8 @@ jobs:
         run: npm run build -w web -- --base "${{ steps.pages.outputs.base_path }}/"
         env:
           VITE_ROUTER_URL: ${{ vars.ROUTER_URL }}
+          # Mapillary client token (public by design) for photos in place cards; links only without it.
+          VITE_MAPILLARY_TOKEN: ${{ vars.MAPILLARY_TOKEN }}
       - if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
         with:

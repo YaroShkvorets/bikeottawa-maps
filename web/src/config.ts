@@ -14,6 +14,12 @@ export const ASSETS_BASE: string = new URL(
   window.location.href,
 ).href.replace(/\/$/, '')
 
+/**
+ * Mapillary client token, to show the street-level photo a place links to.
+ * Without one, place cards link to the photo instead.
+ */
+export const MAPILLARY_TOKEN: string | null = import.meta.env.VITE_MAPILLARY_TOKEN || null
+
 /** BRouter endpoint for the route planner; the planner is hidden when unset. */
 export const ROUTER_URL: string | null = import.meta.env.VITE_ROUTER_URL
   ? new URL(import.meta.env.VITE_ROUTER_URL, window.location.href).href

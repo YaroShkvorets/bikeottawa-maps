@@ -180,6 +180,9 @@ const PLACE_TAGS = [
   'operator',
   'barrier',
   'maxwidth:physical',
+  // Photos of the place: a Mapillary image id, or a link to one.
+  'mapillary',
+  'image',
 ]
 
 /**
