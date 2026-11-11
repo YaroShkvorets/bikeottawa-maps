@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { isPlaceKind, kindsInGroup, PLACE_GROUP_IDS, PLACE_KINDS, placeIconPaths, svgPaths } from './places'
 
 describe('places', () => {
-  it('has the 20 kinds of the original amenities map plus beaches, each in exactly one group', () => {
-    expect(PLACE_KINDS).toHaveLength(21)
+  it('puts every kind in exactly one group', () => {
+    expect(PLACE_KINDS).toHaveLength(31)
     expect(PLACE_GROUP_IDS.flatMap(kindsInGroup).sort()).toEqual([...PLACE_KINDS].sort())
   })
 

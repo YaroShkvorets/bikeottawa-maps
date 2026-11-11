@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { centreOf, classifyPlace, classifyWay, parseOsmId, placeFilters } from './classify.mjs'
+import { centreOf, classifyPlace, classifyWay, middleOf, parseOsmId, placeFilters } from './classify.mjs'
 
 test('cycleways are low-stress paths shown from far out', () => {
   const { props, minzoom } = classifyWay({ highway: 'cycleway', surface: 'asphalt', winter_service: 'yes' })
@@ -75,19 +75,64 @@ test('every place kind from the original amenities map is recognised', () => {
   assert.equal(classifyPlace({ amenity: 'restaurant', cuisine: 'thai' }).props.cuisine, 'thai')
 })
 
-test('beaches are places only when they have a name', () => {
+test('beaches need a name; swimming spots count as beaches', () => {
   assert.equal(classifyPlace({ natural: 'beach', name: 'Westboro Beach' }).props.kind, 'beach')
   assert.equal(classifyPlace({ natural: 'beach' }), null)
   assert.equal(classifyPlace({ natural: 'beach', name: 'Private Beach', access: 'private' }), null)
+  assert.equal(classifyPlace({ leisure: 'swimming_area' }).props.kind, 'beach')
+})
+
+test('stops, connections and obstacles useful on a ride are recognised', () => {
+  const cases = [
+    [{ amenity: 'bicycle_rental' }, 'rental'],
+    [{ shop: 'bakery', name: 'Boulangerie' }, 'bakery'],
+    [{ amenity: 'marketplace' }, 'market'],
+    [{ shop: 'supermarket' }, 'grocery'],
+    [{ shop: 'convenience' }, 'grocery'],
+    [{ tourism: 'camp_site' }, 'camping'],
+    [{ railway: 'station', station: 'light_rail' }, 'station'],
+    [{ amenity: 'ferry_terminal' }, 'ferry'],
+    [{ barrier: 'cycle_barrier' }, 'barrier'],
+    [{ barrier: 'kissing_gate' }, 'barrier'],
+    [{ highway: 'elevator' }, 'elevator'],
+  ]
+  for (const [tags, kind] of cases) assert.equal(classifyPlace(tags)?.props.kind, kind, JSON.stringify(tags))
+  assert.equal(classifyPlace({ barrier: 'gate' }), null)
+})
+
+test('stairs are a place only with a bike ramp, placed at their middle', () => {
+  const ramp = classifyPlace({ highway: 'steps', 'ramp:bicycle': 'yes' })
+  assert.equal(ramp.props.kind, 'ramp')
+  assert.equal(ramp.line, true)
+  assert.equal(classifyPlace({ highway: 'steps' }), null)
+  assert.equal(classifyPlace({ highway: 'steps', 'ramp:bicycle': 'no' }), null)
+  assert.equal(classifyPlace({ amenity: 'cafe' }).line, false)
+  assert.deepEqual(
+    middleOf([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+    ]),
+    [1, 1],
+  )
+  assert.deepEqual(
+    middleOf([
+      [0, 0],
+      [1, 1],
+    ]),
+    [0, 0],
+  )
 })
 
 test('the osmium filter covers every place kind, grouped by key', () => {
   const filters = placeFilters()
-  assert.ok(filters.includes('nw/shop=bicycle'))
+  assert.ok(filters.some((f) => f.startsWith('nw/shop=') && f.includes('bicycle') && f.includes('bakery')))
   assert.ok(filters.includes('nw/craft=brewery'))
   assert.ok(filters.includes('nw/natural=beach'))
+  assert.ok(filters.includes('nw/railway=station'))
+  assert.ok(filters.some((f) => f.startsWith('nw/barrier=') && f.includes('cycle_barrier')))
+  assert.ok(filters.includes('nw/leisure=picnic_table,splash_pad,swimming_area'))
   assert.ok(filters.some((f) => f.startsWith('nw/amenity=') && f.includes('bench') && f.includes('bicycle_parking')))
-  assert.ok(filters.includes('nw/leisure=picnic_table,splash_pad'))
 })
 
 test('osmium ids map back to OSM types', () => {

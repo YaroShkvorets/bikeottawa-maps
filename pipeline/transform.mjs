@@ -6,7 +6,7 @@ import { once } from 'node:events'
 import { createReadStream, createWriteStream } from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
-import { centreOf, classifyPlace, classifyWay, parseOsmId } from './classify.mjs'
+import { centreOf, classifyPlace, classifyWay, middleOf, parseOsmId } from './classify.mjs'
 
 const [input, outDir] = process.argv.slice(2)
 if (!input || !outDir) {
@@ -30,6 +30,17 @@ for await (const line of createInterface({ input: createReadStream(input), crlfD
   const tags = feature.properties
 
   if (geomType === 'LineString' && type === 'way') {
+    // A few places are mapped as lines (stairs with a bike ramp); they become a point.
+    const linePlace = classifyPlace(tags)
+    if (linePlace?.line) {
+      counts.places++
+      await write(places, {
+        type: 'Feature',
+        tippecanoe: { minzoom: linePlace.minzoom },
+        properties: { ...linePlace.props, osm: `${type}/${id}` },
+        geometry: { type: 'Point', coordinates: middleOf(feature.geometry.coordinates) },
+      })
+    }
     const way = classifyWay(tags)
     if (!way) continue
     counts.ways++
@@ -43,7 +54,7 @@ for await (const line of createInterface({ input: createReadStream(input), crlfD
     })
   } else if (geomType === 'Point' || geomType === 'Polygon' || geomType === 'MultiPolygon') {
     const place = classifyPlace(tags)
-    if (!place) continue
+    if (!place || place.line) continue
     counts.places++
     const geometry =
       geomType === 'Point' ? feature.geometry : { type: 'Point', coordinates: centreOf(feature.geometry) }

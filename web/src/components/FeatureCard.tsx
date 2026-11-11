@@ -26,13 +26,16 @@ const PLACE_FACTS = [
   'seasonal',
   'opening_hours',
   'phone',
+  'operator',
+  'barrier',
+  'maxwidth:physical',
 ] as const
 
 /** Shows an OSM tag value in plain words: yes/no translated, units added, underscores removed. */
 function formatValue(key: string, value: unknown, t: Translate): string {
   const text = String(value)
   if (text === 'yes' || text === 'no') return t(text)
-  if (key === 'width' && /^[\d.]+$/.test(text)) return `${text} m`
+  if ((key === 'width' || key === 'maxwidth:physical') && /^[\d.]+$/.test(text)) return `${text} m`
   if (key === 'maxspeed' && /^\d+$/.test(text)) return `${text} km/h`
   return text.replaceAll('_', ' ').replaceAll(';', ', ')
 }

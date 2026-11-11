@@ -61,15 +61,18 @@ export function classifyWay(tags) {
   return { props, minzoom }
 }
 
+const hasName = (tags) => Boolean(tags.name)
+
 /**
- * [OSM key, value, our kind, zoom from which it shows, needs a name?]. Dense kinds
- * appear later. Beaches need a name: unnamed ones are strips of sand, not places to stop.
+ * [OSM key, value, our kind, zoom from which it shows, extra condition]. Dense
+ * kinds appear later. Several tags can map to one kind.
  */
 const PLACE_KINDS = [
   ['amenity', 'bicycle_parking', 'parking', 13],
   ['shop', 'bicycle', 'shop', 10],
   ['amenity', 'bicycle_repair_station', 'repair', 10],
   ['amenity', 'compressed_air', 'air', 10],
+  ['amenity', 'bicycle_rental', 'rental', 10],
   ['amenity', 'drinking_water', 'water', 11],
   ['amenity', 'toilets', 'toilets', 11],
   ['amenity', 'shelter', 'shelter', 12],
@@ -81,14 +84,32 @@ const PLACE_KINDS = [
   ['tourism', 'viewpoint', 'viewpoint', 11],
   ['playground', 'splash_pad', 'splash', 11],
   ['leisure', 'splash_pad', 'splash', 11],
-  ['natural', 'beach', 'beach', 11, true],
+  // Unnamed beaches are strips of sand, not places to stop.
+  ['natural', 'beach', 'beach', 11, hasName],
+  ['leisure', 'swimming_area', 'beach', 11],
+  ['tourism', 'camp_site', 'camping', 10],
   ['amenity', 'cafe', 'cafe', 12],
   ['amenity', 'restaurant', 'restaurant', 13],
   ['amenity', 'fast_food', 'fast_food', 13],
   ['amenity', 'ice_cream', 'ice_cream', 11],
   ['amenity', 'pub', 'pub', 11],
   ['craft', 'brewery', 'brewery', 10],
+  ['shop', 'bakery', 'bakery', 13],
+  ['amenity', 'marketplace', 'market', 11],
+  ['shop', 'supermarket', 'grocery', 14],
+  ['shop', 'convenience', 'grocery', 14],
+  ['railway', 'station', 'station', 10],
+  ['amenity', 'ferry_terminal', 'ferry', 10],
+  ['barrier', 'cycle_barrier', 'barrier', 13],
+  ['barrier', 'motorcycle_barrier', 'barrier', 13],
+  ['barrier', 'kissing_gate', 'barrier', 13],
+  ['highway', 'elevator', 'elevator', 12],
+  // Stairs are lines; the ones with a ramp to push a bike up are worth knowing about.
+  ['highway', 'steps', 'ramp', 12, (tags) => tags['ramp:bicycle'] === 'yes'],
 ]
+
+/** Kinds mapped as lines, which become a point at their middle. */
+const LINE_KINDS = new Set(['ramp'])
 
 const PLACE_TAGS = [
   'name',
@@ -113,19 +134,26 @@ const PLACE_TAGS = [
   'opening_hours',
   'phone',
   'website',
+  'operator',
+  'barrier',
+  'maxwidth:physical',
 ]
 
 /**
  * @param {Record<string, string>} tags OSM tags of a node or area
- * @returns {{props: Record<string, string>, minzoom: number} | null}
+ * @returns {{props: Record<string, string>, minzoom: number, line: boolean} | null}
  */
 export function classifyPlace(tags) {
-  const match = PLACE_KINDS.find(([key, value]) => tags[key] === value)
+  const match = PLACE_KINDS.find(([key, value, , , when]) => tags[key] === value && (!when || when(tags)))
   if (!match) return null
   if (tags.access === 'private' || tags.access === 'no') return null
-  const [, , kind, minzoom, needsName] = match
-  if (needsName && !tags.name) return null
-  return { props: pick(tags, PLACE_TAGS, { kind }), minzoom }
+  const [, , kind, minzoom] = match
+  return { props: pick(tags, PLACE_TAGS, { kind }), minzoom, line: LINE_KINDS.has(kind) }
+}
+
+/** The middle point of a line, for places mapped as one. */
+export function middleOf(coordinates) {
+  return coordinates[Math.floor((coordinates.length - 1) / 2)]
 }
 
 /** The `osmium tags-filter` expressions that select every place kind. */
