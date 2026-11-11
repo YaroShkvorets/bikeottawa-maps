@@ -96,8 +96,10 @@ const PLACE_KINDS = [
   ['craft', 'brewery', 'brewery', 10],
   ['shop', 'bakery', 'bakery', 13],
   ['amenity', 'marketplace', 'market', 11],
-  ['shop', 'supermarket', 'grocery', 14],
-  ['shop', 'convenience', 'grocery', 14],
+  ['shop', 'supermarket', 'grocery', 13],
+  ['shop', 'convenience', 'convenience', 14],
+  // Out of town a gas station is often the only place to get water or a snack.
+  ['amenity', 'fuel', 'convenience', 14],
   ['railway', 'station', 'station', 10],
   ['amenity', 'ferry_terminal', 'ferry', 10],
   ['barrier', 'cycle_barrier', 'barrier', 13],
