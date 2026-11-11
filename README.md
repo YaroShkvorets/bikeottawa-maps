@@ -34,6 +34,12 @@ Tiles land in `web/public/tiles` and are not committed.
 
 The `Deploy` workflow rebuilds the tiles and the app and publishes them to GitHub Pages on every push to `main` and once a night.
 
+It also pushes a Docker image with the tiles baked in to `ghcr.io/yaroshkvorets/bikeottawa-maps`: tagged `main` on every push to `main`, and with the version (and `latest`) on every `v*` tag.
+
+```sh
+docker run -p 8080:80 ghcr.io/yaroshkvorets/bikeottawa-maps:main
+```
+
 ## Scripts
 
 - `npm run dev` / `npm run build`: run or build the app

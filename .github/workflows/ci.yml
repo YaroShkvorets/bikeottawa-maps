@@ -15,3 +15,4 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: docker build -t bikeottawa-maps .

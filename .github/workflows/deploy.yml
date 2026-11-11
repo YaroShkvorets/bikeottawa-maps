@@ -2,6 +2,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   schedule:
     - cron: "0 8 * * *" # nightly, 3 am in Ottawa, after Geofabrik publishes its daily extracts
   workflow_dispatch:
@@ -10,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  packages: write
 
 concurrency:
   group: pages
@@ -46,14 +48,48 @@ jobs:
       - if: steps.basemap.outputs.cache-hit != 'true'
         run: npm run basemap
       - run: npm run tiles
-      - uses: actions/configure-pages@v6
+      # GitHub Pages: main only (pushes and the nightly run), served under /<repo>/.
+      - if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v6
         id: pages
-      - run: npm run build -w web -- --base "${{ steps.pages.outputs.base_path }}/"
-      - uses: actions/upload-pages-artifact@v5
+      - if: github.ref == 'refs/heads/main'
+        run: npm run build -w web -- --base "${{ steps.pages.outputs.base_path }}/"
+      - if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
         with:
           path: web/dist
 
+      # Docker image with the tiles baked in: pushes to main and version tags.
+      - if: github.event_name == 'push'
+        uses: docker/setup-buildx-action@v4
+      - if: github.event_name == 'push'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - if: github.event_name == 'push'
+        uses: docker/metadata-action@v6
+        id: image
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - if: github.event_name == 'push'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: ${{ steps.image.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
