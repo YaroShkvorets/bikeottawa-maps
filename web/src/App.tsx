@@ -168,7 +168,7 @@ function useDataDate(lang: Lang): string | null {
       .catch(() => setTimestamp(null))
   }, [])
   if (!timestamp) return null
-  return new Date(timestamp).toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { dateStyle: 'long' })
+  return new Date(timestamp).toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { dateStyle: 'medium' })
 }
 
 /** Looks up the address of a point that has no name yet (picked on the map, dragged, or from a link). */
@@ -676,7 +676,7 @@ export function App() {
                       onPointerEnter={followMap}
                       onFocus={followMap}
                     >
-                      {t('viewOnOsm')}
+                      OpenStreetMap
                     </a>
                   )}
                 </p>
