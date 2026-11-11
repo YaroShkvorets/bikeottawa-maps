@@ -73,53 +73,56 @@ export function FeatureCard({ selected, onClose }: Props) {
   }
   const website = typeof props.website === 'string' && /^https?:\/\//.test(props.website) ? props.website : null
 
+  const hasFacts = facts.length > 0 || website !== null
+
   return (
     <section className="feature-card" aria-live="polite">
       <header>
-        <div>
-          <p className="eyebrow">
-            {selected.kind === 'place' && isPlaceKind(props.kind) && <PlaceIcon kind={props.kind} />}
-            {kindLabel}
-          </p>
+        {selected.kind === 'place' && isPlaceKind(props.kind) && <PlaceIcon kind={props.kind} large />}
+        <div className="feature-title">
           <h2>{name ?? kindLabel}</h2>
+          {/* The kind is the title when there is no name, so it is not repeated. */}
+          {name && kindLabel && <p>{kindLabel}</p>}
         </div>
-        <button type="button" className="icon-button" aria-label={t('close')} onClick={onClose}>
+        <button type="button" className="feature-close" aria-label={t('close')} onClick={onClose}>
           <svg
             aria-hidden="true"
-            width="18"
-            height="18"
+            width="14"
+            height="14"
             viewBox="0 0 18 18"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.4"
             strokeLinecap="round"
           >
             <path d="M4 4l10 10M14 4L4 14" />
           </svg>
         </button>
       </header>
-      <dl>
-        {facts.map((fact) => (
-          <div key={fact.label}>
-            <dt>{fact.label}</dt>
-            <dd>
-              {fact.color && <span className="swatch line" style={{ background: fact.color }} />}
-              {fact.value}
-            </dd>
-          </div>
-        ))}
-        {website && (
-          <div>
-            <dt>{t('fact.website')}</dt>
-            <dd>
-              <a href={website} target="_blank" rel="noopener noreferrer">
-                {new URL(website).hostname.replace(/^www\./, '')}
-              </a>
-            </dd>
-          </div>
-        )}
-      </dl>
-      <p className="links">
+      {hasFacts && (
+        <dl>
+          {facts.map((fact) => (
+            <div key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>
+                {fact.color && <span className="swatch line" style={{ background: fact.color }} />}
+                {fact.value}
+              </dd>
+            </div>
+          ))}
+          {website && (
+            <div>
+              <dt>{t('fact.website')}</dt>
+              <dd>
+                <a href={website} target="_blank" rel="noopener noreferrer">
+                  {new URL(website).hostname.replace(/^www\./, '')}
+                </a>
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+      <p className="feature-links">
         <a href={`https://www.openstreetmap.org/${type}/${id}`} target="_blank" rel="noopener noreferrer">
           {t('viewOnOsm')}
         </a>
