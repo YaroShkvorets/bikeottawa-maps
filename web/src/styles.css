@@ -135,14 +135,35 @@ a {
 
 .layer-button {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 56px;
-  padding: 10px 12px;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 12px 8px 8px;
   text-align: left;
   border: 2px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
+}
+
+.layer-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #eef1f0;
+}
+
+.layer-button[aria-pressed="true"] .layer-icon {
+  background: var(--surface);
+}
+
+.layer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .layer-button[aria-pressed="true"] {
@@ -1016,10 +1037,22 @@ a {
   .layer-button {
     flex: 1;
     min-height: 44px;
-    align-items: center;
     justify-content: center;
-    padding: 0 8px;
+    gap: 6px;
+    padding: 0 6px;
     border-radius: 10px;
+  }
+
+  .layer-icon,
+  .layer-button[aria-pressed="true"] .layer-icon {
+    width: auto;
+    height: auto;
+    background: none;
+  }
+
+  .layer-icon svg {
+    width: 18px;
+    height: 18px;
   }
 
   .sheet {
