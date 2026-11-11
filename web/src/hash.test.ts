@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseHash, withHashParam } from './hash'
+import { osmViewUrl, parseHash, withHashParam } from './hash'
 
 describe('parseHash', () => {
   it('reads entries and keeps slashes in the map entry', () => {
@@ -22,5 +22,16 @@ describe('withHashParam', () => {
   it('handles an empty hash', () => {
     expect(withHashParam('', 'layer', 'winter')).toBe('#layer=winter')
     expect(withHashParam('#layer=winter', 'layer', null)).toBe('')
+  })
+})
+
+describe('osmViewUrl', () => {
+  it('opens the same view, one zoom level further in', () => {
+    expect(osmViewUrl('#map=12.7/45.4125/-75.6765/30/45&layer=night')).toBe(
+      'https://www.openstreetmap.org/#map=14/45.4125/-75.6765',
+    )
+  })
+  it('falls back to the home page without a map entry', () => {
+    expect(osmViewUrl('#layer=night')).toBe('https://www.openstreetmap.org/')
   })
 })

@@ -6,7 +6,7 @@ import { type Mode, ModeSwitch } from './components/ModeSwitch'
 import { RouteForm } from './components/RouteForm'
 import { RouteResult } from './components/RouteResult'
 import { ASSETS_BASE, ROUTER_URL } from './config'
-import { parseHash, withHashParam } from './hash'
+import { osmViewUrl, parseHash, withHashParam } from './hash'
 import { initialLang, type Lang, LangContext, rememberLang, translator } from './i18n'
 import { type BasemapId, isBasemapId, isLayerId, type LayerId } from './layers'
 import { MapView } from './map/MapView'
@@ -38,6 +38,10 @@ import { useRoute, visibleRoute } from './route/useRoute'
 const DEFAULT_LAYER: LayerId = 'places'
 const PHONE_LAYOUT = '(max-width: 720px)'
 const ignoreSelection = () => {}
+
+function followMap(event: { currentTarget: HTMLAnchorElement }) {
+  event.currentTarget.href = osmViewUrl(window.location.hash)
+}
 
 /** Everything the URL hash carries besides the map position. */
 interface UrlState {
@@ -458,7 +462,21 @@ export function App() {
               )}
               {dataDate && (
                 <p className="footnote">
-                  {t('updated')} {dataDate}.
+                  {t('updated')} {dataDate}
+                  {phone ? '.' : ' · '}
+                  {!phone && (
+                    // The map moves without re-rendering this, so the link is
+                    // pointed at the current view just before it is used.
+                    <a
+                      href="https://www.openstreetmap.org/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onPointerEnter={followMap}
+                      onFocus={followMap}
+                    >
+                      {t('viewOnOsm')}
+                    </a>
+                  )}
                 </p>
               )}
             </div>
