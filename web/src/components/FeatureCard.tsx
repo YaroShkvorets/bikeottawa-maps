@@ -65,7 +65,7 @@ export function FeatureCard({ selected, onClose }: Props) {
       value: t(`lts.${lts}` as MessageKey),
       color: lts > 0 ? LTS_COLORS[lts - 1] : undefined,
     })
-    if (props.kind === 'path') {
+    if (props.kind === 'path' && props.winter !== undefined) {
       const winter = String(props.winter) as keyof typeof WINTER_COLORS
       facts.push({ label: t('fact.winter'), value: t(`winter.${winter}`), color: WINTER_COLORS[winter] })
     }

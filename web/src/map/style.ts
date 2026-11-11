@@ -224,7 +224,8 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
   const show = (layer: LayerId) => ({ visibility: state.layer === layer ? ('visible' as const) : ('none' as const) })
   const round = { 'line-cap': 'round' as const, 'line-join': 'round' as const }
   const bikeable: FilterSpecification = ['>', ['get', 'lts'], 0]
-  const pathway: FilterSpecification = ['==', ['get', 'kind'], 'path']
+  // Paths with a winter status; indoor walkways have none and are left out.
+  const pathway: FilterSpecification = ['all', ['==', ['get', 'kind'], 'path'], ['has', 'winter']]
   const plowKnown: FilterSpecification = ['all', pathway, ['!=', ['get', 'winter'], 'unknown']]
   const plowUnknown: FilterSpecification = ['all', pathway, ['==', ['get', 'winter'], 'unknown']]
   const selectedWay: FilterSpecification = ['==', ['id'], state.selected?.kind === 'way' ? state.selected.id : -1]

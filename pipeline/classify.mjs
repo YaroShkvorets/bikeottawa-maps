@@ -4,6 +4,26 @@ import stressmodel from 'stressmodel/stressmodel.js'
 const PATH_HIGHWAYS = new Set(['path', 'footway', 'cycleway'])
 const MAJOR_HIGHWAYS = new Set(['trunk', 'primary', 'secondary', 'tertiary'])
 const LOCAL_HIGHWAYS = new Set(['residential', 'unclassified', 'living_street'])
+const UNPAVED_SURFACES = new Set([
+  'unpaved',
+  'gravel',
+  'fine_gravel',
+  'ground',
+  'dirt',
+  'earth',
+  'mud',
+  'sand',
+  'grass',
+  'compacted',
+  'pebblestone',
+  'woodchips',
+  'rock',
+  'rocks',
+  'dirt/sand',
+  'clay',
+  'snow',
+  'ice',
+])
 const SKIPPED_HIGHWAYS = new Set([
   'proposed',
   'construction',
@@ -49,9 +69,13 @@ export function classifyWay(tags) {
 
   const props = { lts, kind: isPath ? 'path' : 'street', highway }
   pick(tags, ['name', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
-  if (isPath) {
+  // Indoor walkways have no snow to plow, so they carry no winter status and
+  // stay off the winter layer.
+  const isIndoor = tags.indoor !== undefined && tags.indoor !== 'no'
+  if (isPath && !isIndoor) {
+    // Without a tag saying otherwise, unpaved paths are taken to be left unplowed.
     const ws = tags.winter_service
-    props.winter = ws === 'yes' || ws === 'no' ? ws : 'unknown'
+    props.winter = ws === 'yes' || ws === 'no' ? ws : UNPAVED_SURFACES.has(tags.surface) ? 'no' : 'unknown'
   }
 
   let minzoom = 13

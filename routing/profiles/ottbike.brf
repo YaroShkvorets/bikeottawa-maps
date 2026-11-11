@@ -253,12 +253,14 @@ assign litpenalty =
     else if lit=yes then 0
     else multiply litPen 1
 
+# a winter_service tag settles it; without one, unpaved paths count as unplowed
+# (the Winter map layer makes the same assumption)
 assign snowpenalty =
-    if or or winter_service=no
-          surface=ground|grass|sand|gravel|fine_gravel
-          path=desire
-      then multiply plowPen 5
+    if winter_service=no then multiply plowPen 5
     else if winter_service=yes then 0
+    else if or surface=unpaved|gravel|fine_gravel|ground|dirt|earth|mud|sand|grass|compacted|pebblestone|clay|rock
+               path=desire
+      then multiply plowPen 5
     #else if footway=sidewalk then 0       # sidewalks always plowed
     #else if footway=crossing then 0.5     # consider snowbanks around crossings
     else multiply plowPen 1       # all other roads without tag - increase a bit

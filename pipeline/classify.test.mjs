@@ -14,6 +14,21 @@ test('pathways without a usable winter_service tag are unknown', () => {
   assert.equal(classifyWay({ highway: 'path', winter_service: 'no' }).props.winter, 'no')
 })
 
+test('unpaved pathways count as unplowed unless tagged otherwise', () => {
+  for (const surface of ['gravel', 'fine_gravel', 'ground', 'unpaved', 'sand', 'grass', 'dirt']) {
+    assert.equal(classifyWay({ highway: 'path', surface }).props.winter, 'no', surface)
+  }
+  assert.equal(classifyWay({ highway: 'path', surface: 'fine_gravel', winter_service: 'yes' }).props.winter, 'yes')
+  assert.equal(classifyWay({ highway: 'path', surface: 'asphalt' }).props.winter, 'unknown')
+  assert.equal(classifyWay({ highway: 'path', surface: 'wood' }).props.winter, 'unknown')
+})
+
+test('indoor walkways have no winter status', () => {
+  assert.equal('winter' in classifyWay({ highway: 'footway', indoor: 'yes' }).props, false)
+  assert.equal('winter' in classifyWay({ highway: 'footway', indoor: 'yes', winter_service: 'no' }).props, false)
+  assert.equal(classifyWay({ highway: 'footway', indoor: 'no' }).props.winter, 'unknown')
+})
+
 test('streets get a stress level and no winter property', () => {
   const { props, minzoom } = classifyWay({ highway: 'primary', maxspeed: '60', lanes: '4', name: 'Bank Street' })
   assert.equal(props.kind, 'street')
