@@ -62,6 +62,8 @@ interface Props {
     onHover: (distance: number | null) => void
     /** Legend item to bring into view when it changes. */
     zoomTo: RouteHighlight | null
+    /** Marker that shows a spinner while its result is on the way: B for a route, A for how far. */
+    busy?: 0 | 1 | null
   } | null
 }
 
@@ -294,6 +296,15 @@ export function MapView({ state, onSelect, onBasemapChange, popup, reach, routin
       }
     }
   }, [points])
+
+  // A spinner around a marker while the result for it is on its way.
+  const busy = routing?.busy ?? null
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new point can bring a new marker, which needs the class too
+  useEffect(() => {
+    for (const [index, marker] of markers.current.entries()) {
+      marker?.getElement().classList.toggle('busy', busy === index)
+    }
+  }, [busy, points])
 
   // Clicking an item of the route legend brings its stretches or signs into view. The
   // route is read at that moment, so a new route alone does not move the map.

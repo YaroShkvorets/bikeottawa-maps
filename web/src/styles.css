@@ -624,6 +624,30 @@ a {
   background: var(--ink);
 }
 
+/* Working out what the point leads to: a ring turning around the marker. */
+.route-marker.busy::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 3px solid rgb(11 110 110 / 20%);
+  border-top-color: var(--accent);
+  animation: marker-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes marker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-marker.busy::after {
+    animation-duration: 2.4s;
+  }
+}
+
 .route-marker.via {
   width: 18px;
   height: 18px;

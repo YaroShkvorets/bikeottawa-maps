@@ -356,6 +356,7 @@ export function App() {
             hover: routeHover,
             onHover: setRouteHover,
             zoomTo: pinnedPart,
+            busy: routeState.status === 'loading' ? (1 as const) : null,
           }
         : reaching
           ? {
@@ -369,11 +370,14 @@ export function App() {
               hover: null,
               onHover: ignore,
               zoomTo: null,
+              busy: reachState.status === 'loading' ? (0 as const) : null,
             }
           : null,
     [
       planning,
       reaching,
+      reachState.status,
+      routeState.status,
       points,
       vias,
       placePoint,
