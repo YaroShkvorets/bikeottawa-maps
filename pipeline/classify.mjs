@@ -183,6 +183,7 @@ const PLACE_TAGS = [
   // Photos of the place: a Mapillary image id, or a link to one.
   'mapillary',
   'image',
+  'wikimedia_commons',
 ]
 
 /**

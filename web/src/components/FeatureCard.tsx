@@ -3,10 +3,11 @@ import { describeStatus, hoursStatus, parseHours, weekTimeIn } from '../hours'
 import { isMessageKey, type MessageKey, type Translate, useI18n } from '../i18n'
 import { LTS_COLORS, WINTER_COLORS } from '../layers'
 import type { Selected } from '../map/style'
+import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, streetViewUrl } from '../photos'
 import { isPlaceKind } from '../places'
 import { wayType } from '../wayType'
 import { PlaceIcon } from './PlaceIcon'
-import { PlacePhoto } from './PlacePhoto'
+import { hasPhoto, PlacePhoto } from './PlacePhoto'
 
 const WAY_FACTS = ['surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'] as const
 const PLACE_FACTS = [
@@ -96,6 +97,18 @@ export function FeatureCard({ selected, onClose }: Props) {
 
   const hasFacts = facts.length > 0 || website !== null
 
+  // Photos the card does not show itself are linked instead.
+  const photoLinks: { href: string; label: string }[] = []
+  if (selected.kind === 'place') {
+    const shown = hasPhoto(props)
+    const mapillary = mapillaryId(props.mapillary)
+    const image = imageLink(props.image)
+    const commons = commonsLink(props.wikimedia_commons)
+    if (mapillary && !shown) photoLinks.push({ href: mapillaryViewerUrl(mapillary), label: t('photoOnMapillary') })
+    if (image && !directImage(props.image)) photoLinks.push({ href: image, label: t('photo') })
+    if (commons) photoLinks.push({ href: commons, label: 'Wikimedia Commons' })
+  }
+
   return (
     <section className="feature-card" aria-live="polite">
       <header>
@@ -152,9 +165,21 @@ export function FeatureCard({ selected, onClose }: Props) {
         </dl>
       )}
       <p className="feature-links">
-        <a href={`https://www.openstreetmap.org/${type}/${id}`} target="_blank" rel="noopener noreferrer">
-          {t('viewOnOsm')}
-        </a>
+        <span>
+          {t('viewIn')}{' '}
+          <a href={`https://www.openstreetmap.org/${type}/${id}`} target="_blank" rel="noopener noreferrer">
+            OSM
+          </a>
+          {' · '}
+          <a href={streetViewUrl(selected.at)} target="_blank" rel="noopener noreferrer">
+            Street View
+          </a>
+        </span>
+        {photoLinks.map(({ href, label }) => (
+          <a key={href} href={href} target="_blank" rel="noopener noreferrer">
+            {label}
+          </a>
+        ))}
       </p>
     </section>
   )

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { imageLink, mapillaryId, mapillaryViewerUrl } from './photos'
+import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, streetViewUrl } from './photos'
 
 describe('mapillaryId', () => {
   it('takes the first image id from the tag', () => {
@@ -23,5 +23,30 @@ describe('imageLink', () => {
     expect(imageLink('https://example.org/bench.jpg')).toBe('https://example.org/bench.jpg')
     expect(imageLink('File:Bench.jpg')).toBeNull()
     expect(imageLink('javascript:alert(1)')).toBeNull()
+  })
+})
+
+describe('directImage', () => {
+  it('takes links that are pictures, not pages', () => {
+    const osc = 'https://storage6.openstreetcam.org/files/photo/2017/10/4/lth/931937_73f33_38.jpg'
+    expect(directImage(osc)).toBe(osc)
+    expect(directImage('https://photos.app.goo.gl/abc123')).toBeNull()
+  })
+})
+
+describe('commonsLink', () => {
+  it('links files and categories', () => {
+    expect(commonsLink('Category:Greenboro Station')).toBe(
+      'https://commons.wikimedia.org/wiki/Category:Greenboro_Station',
+    )
+    expect(commonsLink('Bench.jpg')).toBeNull()
+  })
+})
+
+describe('streetViewUrl', () => {
+  it('opens Street View nearest the point', () => {
+    expect(streetViewUrl([-75.69485, 45.42021])).toBe(
+      'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=45.420210,-75.694850',
+    )
   })
 })
