@@ -1,3 +1,4 @@
+import type { FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification } from 'maplibre-gl'
 
 /**
@@ -124,4 +125,99 @@ export function collisionLocation(text: string, between: string): string {
 export function worstFirst<T extends { severity?: unknown; date?: unknown }>(items: readonly T[]): T[] {
   const rank = (s: unknown) => SEVERITIES.indexOf(s as Severity)
   return [...items].sort((a, b) => rank(b.severity) - rank(a.severity) || String(b.date).localeCompare(String(a.date)))
+}
+
+/** A collision and where it happened. */
+export interface Collision {
+  props: CollisionProps
+  at: [number, number]
+}
+
+/** Collisions this close to a spot's centre, in metres, belong to it. */
+export const SAME_SPOT_M = 25
+
+/** How much each injury adds to a spot's weight in the heat map. */
+const HEAT_WEIGHTS: Record<Severity, number> = { none: 0.15, minimal: 0.3, minor: 0.45, major: 0.8, fatal: 1 }
+
+/** A place where collisions happened: often an intersection, recorded a few metres apart each time. */
+export interface CollisionSpot {
+  key: string
+  at: [number, number]
+  /** Worst injury first, then the most recent. */
+  items: CollisionProps[]
+  worst: Severity
+  /** For the heat map: the injuries added up. */
+  weight: number
+}
+
+function metresBetween([lon1, lat1]: readonly [number, number], [lon2, lat2]: readonly [number, number]): number {
+  return Math.hypot((lon2 - lon1) * 111320 * Math.cos((lat1 * Math.PI) / 180), (lat2 - lat1) * 111320)
+}
+
+/**
+ * The collisions that pass the filters, grouped into spots: everything within
+ * SAME_SPOT_M of where a spot is centred. The city records one intersection
+ * under several names (the intersection, and the street segments meeting
+ * there) a few metres apart, so names are not used. The places with the most
+ * collisions start spots first, so an intersection's main point gathers the
+ * others around it.
+ */
+export function collisionSpots(all: readonly Collision[], f: CollisionFilters): CollisionSpot[] {
+  // Collisions recorded at exactly the same point, busiest points first.
+  const byPoint = new Map<string, Collision[]>()
+  for (const c of all) {
+    if (!matchesCollision(c.props, f)) continue
+    const key = c.at.join(',')
+    byPoint.set(key, [...(byPoint.get(key) ?? []), c])
+  }
+  const points = [...byPoint.values()].sort((a, b) => b.length - a.length)
+
+  // Spots in a grid of cells about SAME_SPOT_M across, to look only at nearby ones.
+  const cellDeg = SAME_SPOT_M / 111320
+  const cellOf = ([lon, lat]: readonly [number, number]) => [Math.floor(lon / cellDeg), Math.floor(lat / cellDeg)]
+  const grid = new Map<string, { at: [number, number]; members: Collision[] }[]>()
+  const spots: { at: [number, number]; members: Collision[] }[] = []
+  for (const members of points) {
+    const at = members[0].at
+    const [cx, cy] = cellOf(at)
+    let home: (typeof spots)[number] | undefined
+    for (let dx = -2; dx <= 2 && !home; dx++) {
+      for (let dy = -1; dy <= 1 && !home; dy++) {
+        home = grid.get(`${cx + dx},${cy + dy}`)?.find((s) => metresBetween(s.at, at) <= SAME_SPOT_M)
+      }
+    }
+    if (home) {
+      home.members.push(...members)
+      continue
+    }
+    const spot = { at, members: [...members] }
+    spots.push(spot)
+    const key = `${cx},${cy}`
+    grid.set(key, [...(grid.get(key) ?? []), spot])
+  }
+
+  return spots.map((spot) => {
+    const items = worstFirst(spot.members.map((m) => m.props))
+    return {
+      key: spot.at.join(','),
+      at: spot.at,
+      items,
+      worst: items[0].severity,
+      weight: items.reduce((sum, p) => sum + HEAT_WEIGHTS[p.severity], 0),
+    }
+  })
+}
+
+/** Spots for the map: bigger ones first, so smaller ones are drawn on top of them. */
+export function spotsGeoJSON(spots: readonly CollisionSpot[]): FeatureCollection<Point> {
+  return {
+    type: 'FeatureCollection',
+    features: [...spots]
+      .sort((a, b) => b.items.length - a.items.length)
+      .map((spot) => ({
+        type: 'Feature',
+        properties: { key: spot.key, count: spot.items.length, worst: spot.worst, weight: spot.weight },
+        geometry: { type: 'Point', coordinates: spot.at },
+      })),
+  }
 }

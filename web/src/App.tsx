@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type CollisionFilters, formatCollisionFilters, parseCollisionFilters } from './collisions'
+import {
+  type CollisionFilters,
+  collisionSpots,
+  formatCollisionFilters,
+  parseCollisionFilters,
+  spotsGeoJSON,
+} from './collisions'
 import { CollisionCard } from './components/CollisionCard'
 import { FeatureCard } from './components/FeatureCard'
 import { LayerPicker } from './components/LayerPicker'
@@ -45,6 +51,7 @@ import {
 } from './route/styles'
 import { useReach, visibleReach } from './route/useReach'
 import { useRoute, visibleRoute } from './route/useRoute'
+import { useCollisionData } from './useCollisions'
 
 const DEFAULT_LAYER: LayerId = 'places'
 const PHONE_LAYOUT = '(max-width: 720px)'
@@ -427,6 +434,15 @@ export function App() {
   }
 
   const reachStyle = useMemo(() => (reaching ? { minutes } : null), [reaching, minutes])
+  // Collisions: loaded once the layer is first shown, grouped into spots by the filters.
+  const collisionData = useCollisionData(layer === 'collisions')
+  const spots = useMemo(
+    () => (collisionData ? collisionSpots(collisionData, collisions) : null),
+    [collisionData, collisions],
+  )
+  const collisionGeo = useMemo(() => (spots ? spotsGeoJSON(spots) : null), [spots])
+  const spotByKey = useMemo(() => new Map((spots ?? []).map((spot) => [spot.key, spot])), [spots])
+
   const styleState = useMemo<StyleState>(
     () => ({
       lang,
@@ -438,9 +454,9 @@ export function App() {
       routeHighlight,
       routeOnFoot: travel === 'foot',
       reach: reachStyle,
-      collisions,
+      collisions: layer === 'collisions' ? collisionGeo : null,
     }),
-    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle, collisions],
+    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle, collisionGeo],
   )
   const mapRouting = useMemo(
     () =>
@@ -511,7 +527,12 @@ export function App() {
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
   const details =
     routing || !selected ? null : selected.kind === 'collision' ? (
-      <CollisionCard items={selected.items} at={selected.at} basemap={basemap} onClose={() => setSelected(null)} />
+      <CollisionCard
+        items={spotByKey.get(selected.spot)?.items ?? []}
+        at={selected.at}
+        basemap={basemap}
+        onClose={() => setSelected(null)}
+      />
     ) : (
       <FeatureCard selected={selected} onClose={() => setSelected(null)} />
     )
@@ -629,6 +650,7 @@ export function App() {
                   basemap={basemap}
                   placeKinds={placeKinds}
                   onTogglePlaceKind={togglePlaceKind}
+                  collisionData={collisionData}
                   collisionFilters={collisions}
                   onCollisionFiltersChange={changeCollisions}
                 />

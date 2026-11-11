@@ -1,6 +1,5 @@
 import type { FeatureCollection } from 'geojson'
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_COLLISION_FILTERS } from '../collisions'
 import { BASEMAP_IDS, LAYER_IDS } from '../layers'
 import { PLACE_KINDS } from '../places'
 import { buildStyle, INTERACTIVE_LAYERS, type StyleState } from './style'
@@ -14,7 +13,7 @@ const state: StyleState = {
   route: null,
   routeHighlight: null,
   reach: null,
-  collisions: DEFAULT_COLLISION_FILTERS,
+  collisions: null,
 }
 const build = (patch: Partial<StyleState> = {}) => buildStyle({ ...state, ...patch }, 'https://example.test')
 const layer = (style: ReturnType<typeof build>, id: string) => {
@@ -24,11 +23,12 @@ const layer = (style: ReturnType<typeof build>, id: string) => {
 }
 
 describe('buildStyle', () => {
-  it('loads collisions only while their layer is on, filtered', () => {
+  it('draws collision spots only while their layer is on, sized by their count', () => {
     expect(build().sources.collisions).toBeUndefined()
-    const style = buildStyle({ ...state, layer: 'collisions' }, 'https://tiles.test', 'https://app.test')
-    expect(style.sources.collisions).toMatchObject({ data: 'https://app.test/data/collisions.geojson' })
-    expect(JSON.stringify(layer(style, 'collisions-point').filter)).toContain('bicycles')
+    const spots: FeatureCollection = { type: 'FeatureCollection', features: [] }
+    const style = build({ layer: 'collisions', collisions: spots })
+    expect(style.sources.collisions).toMatchObject({ data: spots })
+    expect(JSON.stringify((layer(style, 'collisions-point') as { paint?: unknown }).paint)).toContain('count')
   })
 
   it('gives the reach map the street lines to itself', () => {

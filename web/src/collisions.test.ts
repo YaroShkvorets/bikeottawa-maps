@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type CollisionProps,
   collisionLocation,
+  collisionSpots,
   countBySeverity,
   DEFAULT_COLLISION_FILTERS,
   formatCollisionFilters,
@@ -79,5 +80,46 @@ describe('worstFirst', () => {
       { id: 'd', severity: 'none', date: '2024-06-01' },
     ])
     expect(order.map((c) => c.id)).toEqual(['b', 'a', 'c', 'd'])
+  })
+})
+
+describe('collisionSpots', () => {
+  const at = (dLat: number): [number, number] => [-75.68578, 45.428754 + dLat]
+  const c = (id: string, location: string, dLat: number, severity: CollisionProps['severity'] = 'minor') => ({
+    props: collision({ id, location, severity }),
+    at: at(dLat),
+  })
+  it('groups an intersection recorded a few metres apart, worst first', () => {
+    const spots = collisionSpots(
+      [c('a', 'KING EDWARD AVE @ RIDEAU ST', 0), c('b', 'KING EDWARD AVE @ RIDEAU ST', 0.00003, 'fatal')],
+      DEFAULT_COLLISION_FILTERS,
+    )
+    expect(spots).toHaveLength(1)
+    expect(spots[0].items.map((p) => p.id)).toEqual(['b', 'a'])
+    expect(spots[0].worst).toBe('fatal')
+  })
+  it('groups by distance, whatever the name, and keeps far points apart', () => {
+    const spots = collisionSpots(
+      [
+        c('a', 'KING EDWARD AVE @ RIDEAU ST', 0),
+        c('b', 'KING EDWARD AVE @ RIDEAU ST', 0),
+        // A street segment's collision recorded 7 m from the intersection.
+        c('c', 'RIDEAU ST btwn CUMBERLAND ST & KING EDWARD AVE', 0.000063),
+        // 110 m away: another spot.
+        c('d', 'RIDEAU ST btwn KING EDWARD AVE & NELSON ST', 0.001),
+      ],
+      DEFAULT_COLLISION_FILTERS,
+    )
+    expect(spots.map((s) => s.items.length).sort()).toEqual([1, 3])
+    // The spot sits where most of its collisions were recorded.
+    expect(spots.find((s) => s.items.length === 3)?.at).toEqual(at(0))
+  })
+  it('counts only what the filters show', () => {
+    const spots = collisionSpots([c('a', 'X', 0, 'fatal'), c('b', 'X', 0, 'minor')], {
+      ...DEFAULT_COLLISION_FILTERS,
+      severities: ['minor'],
+    })
+    expect(spots[0].items).toHaveLength(1)
+    expect(spots[0].worst).toBe('minor')
   })
 })

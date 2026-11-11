@@ -1388,3 +1388,16 @@ a {
   min-width: 36px;
   text-align: center;
 }
+
+.collision-sizes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.collision-sizes svg {
+  flex: none;
+}

@@ -7,7 +7,7 @@ import { CardPhoto } from './PlacePhoto'
 
 interface Props {
   /** The collisions recorded at the spot, worst first; the card steps through them. */
-  items: Record<string, unknown>[]
+  items: readonly CollisionProps[]
   at: [number, number]
   basemap: BasemapId
   onClose: () => void
@@ -40,8 +40,10 @@ export function CollisionCard({ items, at, basemap, onClose }: Props) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: resets when the collisions change
   useEffect(() => setIndex(0), [items])
   const count = items.length
-  const p = (items[index] ?? items[0]) as unknown as CollisionProps
+  const p = items[index] ?? items[0]
   const step = (by: number) => setIndex((i) => (i + by + count) % count)
+  // The spot can be gone (the filters changed under it): nothing to show then.
+  if (!p) return null
   const bicycles = Number(p.bicycles) > 0
   const pedestrians = Number(p.pedestrians) > 0
   const title = t(bicycles && pedestrians ? 'crash.title.both' : bicycles ? 'crash.title.bike' : 'crash.title.foot')

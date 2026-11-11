@@ -1,36 +1,30 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   COLLISION_PARTIES,
   COLLISION_YEARS,
+  type Collision,
   type CollisionFilters,
-  type CollisionProps,
   countBySeverity,
   SEVERITIES,
   type Severity,
 } from '../collisions'
-import { DATA_BASE } from '../config'
 import { useI18n } from '../i18n'
 import { type BasemapId, collisionColors } from '../layers'
 
 interface Props {
+  /** All collisions, for the counts; null while they load. */
+  data: readonly Collision[] | null
   filters: CollisionFilters
   onChange: (filters: CollisionFilters) => void
   basemap: BasemapId
 }
 
-/** The collisions, for counting what the filters show; the map loads the same file. */
-function useCollisionData(): readonly CollisionProps[] | null {
-  const [data, setData] = useState<readonly CollisionProps[] | null>(null)
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(`${DATA_BASE}/data/collisions.geojson`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((json: { features: { properties: CollisionProps }[] }) => setData(json.features.map((f) => f.properties)))
-      .catch(() => {})
-    return () => controller.abort()
-  }, [])
-  return data
-}
+/** Circles for 1, 5 and 15 collisions, about as big as on the map in the middle of its zoom range. */
+const SIZE_SAMPLES = [
+  { count: 1, r: 5, x: 8 },
+  { count: 5, r: 9, x: 32 },
+  { count: 15, r: 13.5, x: 70 },
+]
 
 const YEARS = Array.from(
   { length: COLLISION_YEARS.last - COLLISION_YEARS.first + 1 },
@@ -38,10 +32,18 @@ const YEARS = Array.from(
 ).filter((y) => !(COLLISION_YEARS.missing as readonly number[]).includes(y))
 
 /** Who, which years and which injuries the collisions layer shows, with how many of each. */
-export function CollisionLegend({ filters, onChange, basemap }: Props) {
+export function CollisionLegend({ data, filters, onChange, basemap }: Props) {
   const { t, lang } = useI18n()
-  const data = useCollisionData()
-  const counts = useMemo(() => (data ? countBySeverity(data, filters) : null), [data, filters])
+  const counts = useMemo(
+    () =>
+      data
+        ? countBySeverity(
+            data.map((c) => c.props),
+            filters,
+          )
+        : null,
+    [data, filters],
+  )
   const colors = collisionColors(basemap)
   const number = (n: number) => n.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')
   const shown = counts ? filters.severities.reduce((sum, s) => sum + counts[s], 0) : null
@@ -107,6 +109,19 @@ export function CollisionLegend({ filters, onChange, basemap }: Props) {
           </li>
         ))}
       </ul>
+      <div className="collision-sizes">
+        <svg aria-hidden="true" width="96" height="30" viewBox="0 0 96 30">
+          {SIZE_SAMPLES.map(({ count, r, x }) => (
+            <g key={count}>
+              <circle cx={x} cy={15} r={r} fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <text x={x} y={15} dy="0.35em" textAnchor="middle" fontSize="9" fill="currentColor">
+                {count}
+              </text>
+            </g>
+          ))}
+        </svg>
+        <span>{t('crash.sizes')}</span>
+      </div>
       {shown !== null && <p className="collision-total">{t('crash.shown').replace('{count}', number(shown))}</p>}
       <p className="footnote">
         {t('crash.source')
