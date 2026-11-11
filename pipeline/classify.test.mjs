@@ -101,6 +101,15 @@ test('stops, connections and obstacles useful on a ride are recognised', () => {
   assert.equal(classifyPlace({ barrier: 'gate' }), null)
 })
 
+test('general stores are dollar stores plus a few department store chains', () => {
+  assert.equal(classifyPlace({ shop: 'variety_store', brand: 'Dollarama' }).props.kind, 'general')
+  assert.equal(classifyPlace({ shop: 'department_store', brand: 'Canadian Tire' }).props.kind, 'general')
+  assert.equal(classifyPlace({ shop: 'department_store', name: 'Tigre Géant' }).props.kind, 'general')
+  assert.equal(classifyPlace({ shop: 'department_store', brand: 'Winners' }), null)
+  assert.equal(classifyPlace({ shop: 'department_store' }), null)
+  assert.equal(classifyPlace({ amenity: 'pharmacy', name: 'Pharmasave' }).props.kind, 'pharmacy')
+})
+
 test('stairs are a place only with a bike ramp, placed at their middle', () => {
   const ramp = classifyPlace({ highway: 'steps', 'ramp:bicycle': 'yes' })
   assert.equal(ramp.props.kind, 'ramp')

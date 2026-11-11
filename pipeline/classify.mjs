@@ -62,6 +62,7 @@ export function classifyWay(tags) {
 }
 
 const hasName = (tags) => Boolean(tags.name)
+const USEFUL_DEPARTMENT_STORES = /canadian tire|giant tiger|tigre géant|walmart/i
 
 /**
  * [OSM key, value, our kind, zoom from which it shows, extra condition]. Dense
@@ -100,6 +101,11 @@ const PLACE_KINDS = [
   ['shop', 'convenience', 'convenience', 14],
   // Out of town a gas station is often the only place to get water or a snack.
   ['amenity', 'fuel', 'convenience', 14],
+  ['shop', 'variety_store', 'general', 13],
+  ['shop', 'general', 'general', 13],
+  // Department stores are mostly fashion; these chains carry everyday and bike supplies.
+  ['shop', 'department_store', 'general', 13, (tags) => USEFUL_DEPARTMENT_STORES.test(tags.brand ?? tags.name ?? '')],
+  ['amenity', 'pharmacy', 'pharmacy', 14],
   ['railway', 'station', 'station', 10],
   ['amenity', 'ferry_terminal', 'ferry', 10],
   ['barrier', 'cycle_barrier', 'barrier', 13],

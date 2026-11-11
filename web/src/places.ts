@@ -16,10 +16,12 @@ import ferry from '@mapbox/maki/icons/ferry.svg?raw'
 import grocery from '@mapbox/maki/icons/grocery.svg?raw'
 import iceCream from '@mapbox/maki/icons/ice-cream.svg?raw'
 import information from '@mapbox/maki/icons/information.svg?raw'
+import pharmacy from '@mapbox/maki/icons/pharmacy.svg?raw'
 import picnicSite from '@mapbox/maki/icons/picnic-site.svg?raw'
 import railLight from '@mapbox/maki/icons/rail-light.svg?raw'
 import restaurant from '@mapbox/maki/icons/restaurant.svg?raw'
 import shelter from '@mapbox/maki/icons/shelter.svg?raw'
+import shop from '@mapbox/maki/icons/shop.svg?raw'
 import telephone from '@mapbox/maki/icons/telephone.svg?raw'
 import toilet from '@mapbox/maki/icons/toilet.svg?raw'
 import viewpoint from '@mapbox/maki/icons/viewpoint.svg?raw'
@@ -55,6 +57,7 @@ const DEFS = {
   toilets: { group: 'facilities', svg: toilet },
   shelter: { group: 'facilities', svg: shelter },
   telephone: { group: 'facilities', svg: telephone },
+  pharmacy: { group: 'facilities', svg: pharmacy },
   bench: { group: 'rest', svg: bench },
   picnic: { group: 'rest', svg: picnicSite },
   bbq: { group: 'rest', svg: bbq },
@@ -73,6 +76,7 @@ const DEFS = {
   market: { group: 'food', svg: farm },
   grocery: { group: 'food', svg: grocery },
   convenience: { group: 'food', svg: convenience },
+  general: { group: 'food', svg: shop },
   station: { group: 'connections', svg: railLight },
   ferry: { group: 'connections', svg: ferry },
 } as const satisfies Record<string, { group: PlaceGroupId; svg: string }>

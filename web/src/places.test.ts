@@ -3,7 +3,7 @@ import { isPlaceKind, kindsInGroup, PLACE_GROUP_IDS, PLACE_KINDS, placeIconPaths
 
 describe('places', () => {
   it('puts every kind in exactly one group', () => {
-    expect(PLACE_KINDS).toHaveLength(29)
+    expect(PLACE_KINDS).toHaveLength(31)
     expect(PLACE_GROUP_IDS.flatMap(kindsInGroup).sort()).toEqual([...PLACE_KINDS].sort())
   })
 
