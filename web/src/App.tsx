@@ -2,18 +2,64 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FeatureCard } from './components/FeatureCard'
 import { LayerPicker } from './components/LayerPicker'
 import { Legend } from './components/Legend'
-import { ASSETS_BASE } from './config'
+import { type Mode, ModeSwitch } from './components/ModeSwitch'
+import { RouteForm } from './components/RouteForm'
+import { RouteResult } from './components/RouteResult'
+import { ASSETS_BASE, ROUTER_URL } from './config'
 import { parseHash, withHashParam } from './hash'
 import { initialLang, type Lang, LangContext, rememberLang, translator } from './i18n'
 import { isLayerId, type LayerId, PLACE_KINDS, type PlaceKind } from './layers'
 import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
+import type { LngLat } from './route/brouter'
+import { formatParams, formatPoints, parseParams, parsePoints, type RoutePoint, type RoutePoints } from './route/state'
+import {
+  DEFAULT_STYLE,
+  isStyleId,
+  type ParamKey,
+  PRESETS,
+  paramsFor,
+  type RouteParams,
+  type StyleId,
+} from './route/styles'
+import { useRoute, visibleRoute } from './route/useRoute'
 
 const DEFAULT_LAYER: LayerId = 'comfort'
 
-function layerFromHash(): LayerId {
-  const { layer } = parseHash(window.location.hash)
-  return isLayerId(layer) ? layer : DEFAULT_LAYER
+/** Everything the URL hash carries besides the map position. */
+interface UrlState {
+  layer: LayerId
+  mode: Mode
+  points: RoutePoints
+  style: StyleId
+  custom: RouteParams
+}
+
+function readUrl(): UrlState {
+  const hash = parseHash(window.location.hash)
+  return {
+    layer: isLayerId(hash.layer) ? hash.layer : DEFAULT_LAYER,
+    mode: ROUTER_URL && hash.mode === 'route' ? 'route' : 'explore',
+    points: parsePoints(hash.route),
+    style: isStyleId(hash.style) ? hash.style : DEFAULT_STYLE,
+    custom: parseParams(hash.custom, PRESETS.balanced),
+  }
+}
+
+function writeUrl(state: UrlState): void {
+  const routing = state.mode === 'route'
+  const entries: [string, string | null][] = [
+    ['layer', state.layer === DEFAULT_LAYER ? null : state.layer],
+    ['mode', routing ? 'route' : null],
+    ['route', routing ? formatPoints(state.points) : null],
+    ['style', routing && state.style !== DEFAULT_STYLE ? state.style : null],
+    ['custom', routing && state.style === 'custom' ? formatParams(state.custom) : null],
+  ]
+  // MapLibre keeps its own `map=` entry in the hash; only ours are touched.
+  const hash = entries.reduce((h, [key, value]) => withHashParam(h, key, value), window.location.hash)
+  if (hash !== window.location.hash) {
+    window.history.replaceState(null, '', hash || window.location.pathname + window.location.search)
+  }
 }
 
 /** Date of the OpenStreetMap data in the tiles, written by the pipeline. */
@@ -31,13 +77,17 @@ function useDataDate(lang: Lang): string | null {
 
 export function App() {
   const [lang, setLang] = useState<Lang>(initialLang)
-  const [layer, setLayer] = useState<LayerId>(layerFromHash)
+  const [url, setUrl] = useState<UrlState>(readUrl)
   const [placeKinds, setPlaceKinds] = useState<readonly PlaceKind[]>(PLACE_KINDS)
   const [selected, setSelected] = useState<Selected | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
+  const { layer, mode, points, style, custom } = url
+  const routing = mode === 'route'
+  const routeState = useRoute(ROUTER_URL, points, paramsFor(style, custom), routing)
+  const route = routing ? visibleRoute(routeState) : null
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -45,10 +95,12 @@ export function App() {
     rememberLang(lang)
   }, [lang, t])
 
+  useEffect(() => writeUrl(url), [url])
+
   // Back/forward and pasted links change the hash without going through React.
   useEffect(() => {
     const onHashChange = () => {
-      setLayer(layerFromHash())
+      setUrl(readUrl())
       setSelected(null)
     }
     window.addEventListener('hashchange', onHashChange)
@@ -65,28 +117,78 @@ export function App() {
     return () => observer.disconnect()
   }, [])
 
-  const changeLayer = useCallback((next: LayerId) => {
-    setLayer(next)
-    setSelected(null)
-    const hash = withHashParam(window.location.hash, 'layer', next === DEFAULT_LAYER ? null : next)
-    window.history.replaceState(null, '', hash || window.location.pathname + window.location.search)
-  }, [])
+  const update = useCallback((patch: Partial<UrlState>) => setUrl((current) => ({ ...current, ...patch })), [])
+
+  const changeLayer = useCallback(
+    (next: LayerId) => {
+      update({ layer: next })
+      setSelected(null)
+    },
+    [update],
+  )
+
+  const changeMode = useCallback(
+    (next: Mode) => {
+      update({ mode: next })
+      setSelected(null)
+    },
+    [update],
+  )
 
   const togglePlaceKind = useCallback((kind: PlaceKind) => {
     setPlaceKinds((kinds) => (kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind]))
     setSelected(null)
   }, [])
 
+  const setPoint = useCallback((index: 0 | 1, point: RoutePoint | null) => {
+    setUrl((current) => {
+      const next: RoutePoints = [...current.points]
+      next[index] = point
+      return { ...current, points: next }
+    })
+  }, [])
+
+  // A click on the map fills the first point that is still missing.
+  const placePoint = useCallback((lngLat: LngLat) => {
+    setUrl((current) => {
+      const index = current.points.indexOf(null)
+      if (index === -1) return current
+      const next: RoutePoints = [...current.points]
+      next[index] = { lngLat }
+      return { ...current, points: next }
+    })
+  }, [])
+
+  const movePoint = useCallback((index: 0 | 1, lngLat: LngLat) => setPoint(index, { lngLat }), [setPoint])
+
+  const changeParam = useCallback((key: ParamKey, value: number) => {
+    setUrl((current) => ({ ...current, custom: { ...current.custom, [key]: value } }))
+  }, [])
+
+  // Custom starts from whatever style was active, so the sliders show how that style is made.
+  const changeStyle = useCallback((next: StyleId) => {
+    setUrl((current) => ({
+      ...current,
+      style: next,
+      custom: next === 'custom' && current.style !== 'custom' ? PRESETS[current.style] : current.custom,
+    }))
+  }, [])
+
   const styleState = useMemo<StyleState>(
-    () => ({ lang, layer, placeKinds, selected }),
-    [lang, layer, placeKinds, selected],
+    () => ({ lang, layer, placeKinds, selected, route }),
+    [lang, layer, placeKinds, selected, route],
   )
+  const mapRouting = useMemo(
+    () => (routing ? { points, onMapClick: placePoint, onMovePoint: movePoint } : null),
+    [routing, points, placePoint, movePoint],
+  )
+  const hasResult = routing && routeState.status !== 'idle'
 
   return (
     <LangContext.Provider value={i18n}>
-      <MapView state={styleState} onSelect={setSelected} />
+      <MapView state={styleState} onSelect={setSelected} routing={mapRouting} />
       <div className="sidebar">
-        <div className="card topbar">
+        <div className={`card topbar ${ROUTER_URL ? '' : 'no-router'}`}>
           <header className="brand">
             <svg
               aria-hidden="true"
@@ -105,22 +207,39 @@ export function App() {
             </svg>
             <h1>{t('title')}</h1>
           </header>
-          <LayerPicker active={layer} onChange={changeLayer} />
-          <button
-            type="button"
-            className="lang-button"
-            aria-label={t('switchLang')}
-            onClick={() => setLang(lang === 'en' ? 'fr' : 'en')}
-          >
-            {t('switchLangShort')}
-          </button>
+          <div className="topbar-row">
+            {ROUTER_URL && <ModeSwitch mode={mode} onChange={changeMode} />}
+            <button
+              type="button"
+              className="lang-button"
+              aria-label={t('switchLang')}
+              onClick={() => setLang(lang === 'en' ? 'fr' : 'en')}
+            >
+              {t('switchLangShort')}
+            </button>
+          </div>
+          {routing ? (
+            <RouteForm
+              points={points}
+              style={style}
+              params={paramsFor(style, custom)}
+              onPointChange={setPoint}
+              onReverse={() => update({ points: [points[1], points[0]] })}
+              onStyleChange={changeStyle}
+              onParamChange={changeParam}
+            />
+          ) : (
+            <LayerPicker active={layer} onChange={changeLayer} />
+          )}
         </div>
         <div className="card sheet" ref={sheet}>
-          {selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
-          <div className={selected ? 'sheet-rest when-selected' : 'sheet-rest'}>
-            <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />
+          {routing && <RouteResult state={routeState} />}
+          {!routing && selected && <FeatureCard selected={selected} onClose={() => setSelected(null)} />}
+          <div className={selected || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
+            {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
             <p className="footnote">
-              {t('hint')} {t('dataFrom')}
+              {!routing && `${t('hint')} `}
+              {t('dataFrom')}
               {dataDate && `, ${t('updated')} ${dataDate}`}.
             </p>
           </div>

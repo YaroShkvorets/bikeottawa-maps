@@ -11,6 +11,9 @@ export const INK = '#16242B'
 /** Level of traffic stress 1 to 4. */
 export const LTS_COLORS = ['#1B5FAE', '#62B0E8', '#F2A33A', '#B5341F'] as const
 
+/** Where cycling is not permitted, e.g. a sidewalk on a route. */
+export const NO_BIKES_COLOR = '#8A949A'
+
 export const WINTER_COLORS = { yes: '#1B5FAE', no: '#E07B1A', unknown: '#6F7B80' } as const
 
 export const PLACE_COLORS: Record<PlaceKind, string> = {

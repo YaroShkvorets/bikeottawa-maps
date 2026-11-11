@@ -11,3 +11,8 @@ export const ASSETS_BASE: string = new URL(
   import.meta.env.VITE_ASSETS_BASE ?? import.meta.env.BASE_URL,
   window.location.href,
 ).href.replace(/\/$/, '')
+
+/** BRouter endpoint for the route planner; the planner is hidden when unset. */
+export const ROUTER_URL: string | null = import.meta.env.VITE_ROUTER_URL
+  ? new URL(import.meta.env.VITE_ROUTER_URL, window.location.href).href
+  : null

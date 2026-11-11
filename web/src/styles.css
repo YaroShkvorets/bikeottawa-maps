@@ -309,6 +309,334 @@ a {
   right: 6px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.topbar-row {
+  display: flex;
+  gap: 8px;
+}
+
+.topbar.no-router .topbar-row {
+  display: contents;
+}
+
+.mode-switch {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #eef1f0;
+}
+
+.mode-switch button {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mode-switch button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgb(22 36 43 / 15%);
+}
+
+.route-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.route-points {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.route-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.place-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.place-input input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 36px 0 12px;
+  border: 1px solid #c9d0d3;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  text-overflow: ellipsis;
+}
+
+.place-input .icon-button.small {
+  position: absolute;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+}
+
+.place-results {
+  position: absolute;
+  z-index: 5;
+  top: 48px;
+  left: 34px;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.place-results button {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+}
+
+.place-results button:hover,
+.place-results button:focus-visible {
+  background: var(--accent-soft);
+}
+
+.route-marker {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgb(22 36 43 / 45%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: grab;
+}
+
+.route-marker.start {
+  background: var(--accent);
+}
+
+.route-marker.end {
+  background: var(--ink);
+}
+
+.route-marker.inline {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-width: 0;
+  box-shadow: none;
+  cursor: default;
+}
+
+.style-picker,
+.param-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.style-picker legend,
+.param-sliders legend {
+  margin-bottom: 8px;
+}
+
+.style-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.style-buttons button,
+.route-actions button {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.style-buttons button[aria-pressed="true"],
+.route-actions button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.param-sliders label {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  font-size: 14px;
+}
+
+.param-sliders input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.route-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.route-message.error {
+  color: #9a2b19;
+}
+
+.route-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: opacity 0.15s;
+}
+
+.route-result.stale {
+  opacity: 0.55;
+}
+
+.route-stats {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+}
+
+.route-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.route-stats dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.route-stats dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.comfort {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comfort-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.comfort ul {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.comfort li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comfort .share {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.elevation {
+  margin: 0;
+}
+
+.elevation figcaption {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.elevation svg {
+  display: block;
+  width: 100%;
+  height: 56px;
+  margin-top: 4px;
+}
+
+.elevation-area {
+  fill: var(--accent-soft);
+}
+
+.elevation-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.route-actions button {
+  flex: 1;
+}
+
 /* Phones: layer chips across the top, legend and details in a bottom sheet. */
 @media (max-width: 720px) {
   .sidebar {
@@ -319,12 +647,47 @@ a {
   }
 
   .topbar {
-    flex-direction: row;
-    align-items: center;
     gap: 8px;
     margin: max(10px, env(safe-area-inset-top)) 10px 0;
     padding: 6px;
     border-radius: 14px;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+
+  .lang-button {
+    position: static;
+    flex: none;
+  }
+
+  /* Without a route planner the layer chips and the language button share one row. */
+  .topbar.no-router {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .topbar.no-router .lang-button {
+    order: 1;
+  }
+
+  .route-form {
+    gap: 8px;
+    padding: 2px;
+  }
+
+  .style-picker legend,
+  .style-desc {
+    display: none;
+  }
+
+  .style-buttons {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .style-buttons button {
+    flex: none;
+    padding: 0 14px;
   }
 
   .brand {
@@ -353,11 +716,6 @@ a {
     justify-content: center;
     padding: 0 8px;
     border-radius: 10px;
-  }
-
-  .lang-button {
-    position: static;
-    flex: none;
   }
 
   .sheet {

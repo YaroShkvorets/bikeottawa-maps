@@ -1,0 +1,449 @@
+# *** The trekking profile is for slow travel
+# *** and avoiding car traffic, but still with
+# *** a focus on approaching your destination
+# *** efficiently.
+
+---context:global   # following code refers to global config
+
+
+#penalty parameters: 0=>no penalty, 1=>maximum penalty
+assign  roadsPen = 0.2       # Roads
+assign  sidewalkPen = 0.5    # Sidewalks
+assign  surfacePen = 0.1     # Surface
+assign  litPen = 0.0         # Lit
+assign  plowPen = 0.0        # Plow penalty
+assign  stopSignPen = 0.1    # Stop signs and Traffic lights penalty
+
+assign totalPenalty = 1                # use for turncost
+#    add roadsPen
+#    add sidewalkPen
+#    add surfacePen
+#    add litPen
+#    add plowPen
+#    stopSignPen
+
+# Use the following switches to change behaviour
+# (1=yes, 0=no):
+
+assign   processUnusedTags        = true
+assign   consider_elevation   = false   # set to false to ignore elevation in routing
+assign   allow_steps          = true   # set to false to disallow steps
+assign   allow_ferries        = true   # set to false to disallow ferries
+assign   ignore_cycleroutes   = false   # set to true for better elevation results
+assign   stick_to_cycleroutes = false   # set to true to just follow cycleroutes
+assign   avoid_unsafe         = false   # set to true to avoid standard highways
+assign   turnInstructionMode  = 1  # 0=none, 1=auto-choose, 2=locus-style, 3=osmand-style
+assign   considerTurnRestrictions = true
+
+assign   validForBikes        = true
+
+# the elevation parameters
+
+assign downhillcost    = if consider_elevation then 60 else 0
+assign downhillcutoff  = 1.5
+assign uphillcost      = 0
+assign uphillcutoff    = 1.5
+
+
+# classifier constants
+
+assign classifier_none     = 1
+assign classifier_ferry    = 2
+
+---context:way   # following code refers to way-tags
+
+#
+# pre-calculate some logical expressions
+#
+
+assign any_cycleroute =
+     if      route_bicycle_icn=yes then true
+     else if route_bicycle_ncn=yes then true
+     else if route_bicycle_rcn=yes then true
+     else if route_bicycle_lcn=yes then true
+     else false
+
+assign nodeaccessgranted =
+     if any_cycleroute then true
+     else lcn=yes
+
+assign is_ldcr =
+     if ignore_cycleroutes then false
+     else any_cycleroute
+
+assign isbike = or bicycle=yes or or bicycle=permissive bicycle=designated lcn=yes
+assign ispaved = surface=paved|asphalt|concrete|paving_stones
+assign isunpaved = not or surface= or ispaved surface=fine_gravel|cobblestone
+assign probablyGood = or ispaved and isbike not isunpaved
+
+
+#
+# this is the cost (in Meter) for a 90-degree turn
+# The actual cost is calculated as turncost*cos(angle)
+# (Suppressing turncost while following longdistance-cycleways
+# makes them a little bit more magnetic)
+#
+assign turncost = if junction=roundabout then 0
+                  else add 30 multiply 10 totalPenalty
+
+
+#
+# for any change in initialclassifier, initialcost is added once
+#
+assign initialclassifier =
+     if route=ferry then classifier_ferry
+     else classifier_none
+
+
+#
+# calculate the initial cost
+# this is added to the total cost each time the costfactor
+# changed
+#
+assign initialcost =
+     if ( equal initialclassifier classifier_ferry ) then 10000
+     else 0
+
+#
+# implicit access here just from the motorroad tag
+# (implicit access rules from highway tag handled elsewhere)
+#
+assign defaultaccess =
+       if access= then not motorroad=yes
+       else if access=private|no then false
+       else true
+
+#
+# calculate logical bike access
+#
+assign bikeaccess =
+       if any_cycleroute then true
+       else if bicycle= then
+       (
+         if vehicle= then defaultaccess
+         else not vehicle=private|no
+       )
+       else if and bicycle=no|dismount footway=sidewalk then true   # allow sidewalks - handling them in another place
+       else not bicycle=private|no|dismount
+
+#
+# calculate logical foot access
+#
+assign footaccess =
+       if bikeaccess then true
+       else if bicycle=dismount then true
+       else if foot= then defaultaccess
+       else not foot=private|no
+
+#
+# if not bike-, but foot-acess, just a moderate penalty,
+# otherwise access is forbidden
+#
+assign accesspenalty =
+       if access=no then 10000
+       else if bikeaccess then 0
+       else if footaccess then 4
+       else 10000
+
+#
+# handle one-ways. On primary roads, wrong-oneways should
+# be close to forbidden, while on other ways we just add
+# 4 to the costfactor (making it at least 5 - you are allowed
+# to push your bike)
+#
+assign badoneway =
+       if reversedirection=yes then
+         if oneway:bicycle=yes then true
+         else if oneway= then junction=roundabout
+         else oneway=yes|true|1
+       else oneway=-1
+
+assign onewaypenalty =
+       if ( badoneway ) then
+       (
+         if ( cycleway=opposite|opposite_lane|opposite_track ) then 0
+         else if ( and reversedirection=yes cycleway:left=opposite|opposite_lane|opposite_track ) then 0
+         else if ( oneway:bicycle=no                         ) then 0
+         else if ( highway=primary|primary_link              ) then 50
+         else if ( highway=secondary|secondary_link          ) then 30
+         else if ( highway=tertiary|tertiary_link            ) then 20
+         else 4.0
+       )
+       else 0.0
+
+
+# ottbike stuff
+
+assign lanes =
+    if highway=path|footway|cycleway|steps|pedestrian|track then 0
+    else if and lanes:forward=1 not reversedirection=yes then 1
+    else if and lanes:forward=2 not reversedirection=yes then 2
+    else if and lanes:forward=3 not reversedirection=yes then 3
+    else if and lanes:forward=4|5|6 not reversedirection=yes then 4
+    else if and lanes:backward=1 reversedirection=yes then 1
+    else if and lanes:backward=2 reversedirection=yes then 2
+    else if and lanes:backward=3 reversedirection=yes then 3
+    else if and lanes:backward=4|5|6 reversedirection=yes then 4
+    else if lanes=1|2 then 1
+    else if lanes=3|4 then 2
+    else if lanes=5|6 then 3
+    else if lanes=7|8 then 4
+    else 1  #default - 1/2 lanes
+
+assign stepspenalty =
+    if highway=steps then 60
+    else 0
+
+assign lanespenalty = multiply lanes 0.5 # between 0 and 2
+
+assign cyclewaypenalty =
+    if highway=path|footway|cycleway|steps|pedestrian|track then 0
+    else if cycleway=track then 0
+    else if bicycle=designated then 0.1   # other road mostly used for cycling
+    else if or or cycleway=lane
+              and cycleway:left=lane reversedirection=yes
+              and cycleway:right=lane not reversedirection=yes
+            then 0.2
+    else if cycleway=shoulder then 0.3
+    else if or
+              or cycleway=shared_lane and cycleway:left=shared_lane reversedirection=yes
+              and cycleway:right=shared_lane not reversedirection=yes
+            then 0.4
+    else 0.5  # no cycling infrastructure
+
+assign maxspeedpenalty =
+    if highway=path|footway|cycleway|steps|pedestrian|track then 0
+    else if cycleway=track then 0
+    else if maxspeed=10|20 then 0
+    else if maxspeed=30 then 0.1
+    else if maxspeed=40 then 0.2
+    else if maxspeed=50 then 0.3
+    else if maxspeed=60 then 0.4
+    else if maxspeed=70 then 0.5
+    else if maxspeed=80 then 0.6
+    else if maxspeed=100 then 0.7
+    else 0.3  # default value - 50kmh
+
+# surface penalty = initial surface penalty + modifiable surfacePen parameter
+assign surfacepenalty =
+    if surface=asphalt|paved then add 0 0
+    else if surface=concrete then 0.2
+    else if surface=paving_stones then add 0.2 multiply surfacePen 0.2
+    else if surface=fine_gravel then add 0.1 multiply surfacePen 0.4
+    else if surface=wood then add 0.1 multiply surfacePen 0.2
+    else if surface=gravel|unpaved then add 0.3 multiply surfacePen 1
+    else if surface=ground then add 0.5 multiply surfacePen 3
+    else if surface=grass then add 0.5 multiply surfacePen 3
+    else if path=desire then add 0.5 multiply surfacePen 3       # unknown desire path = very bad
+    else if highway=cycleway then add 0.1 0       # unknown cycleway = ok (0.1 because it could be gravel?)
+    else if and highway=footway footway=crossing|sidewalk then add 0 0       # unknown sidewalk/crossing = ok
+    else if highway=path|footway then add 0.1 multiply surfacePen 0.3  #unknown path/footway = could be anything
+    else if highway=track then add 0.5 multiply surfacePen 2         #track = unpaved
+    else 0      # regular roads with no surface tag set - assume asphalt
+
+
+assign litpenalty =
+    if lit=no then multiply litPen 2
+    else if lit=yes then 0
+    else multiply litPen 1
+
+assign snowpenalty =
+    if or or winter_service=no
+          surface=ground|grass|sand|gravel|fine_gravel
+          path=desire
+      then multiply plowPen 5
+    else if winter_service=yes then 0
+    #else if footway=sidewalk then 0       # sidewalks always plowed
+    #else if footway=crossing then 0.5     # consider snowbanks around crossings
+    else multiply plowPen 1       # all other roads without tag - increase a bit
+
+assign roadtypepenalty =        # add penalty for dangerous roads
+
+    if highway=trunk|trunk_link               then 3
+    else if highway=primary|primary_link      then 2.5
+    else if highway=secondary|secondary_link  then 2
+    else if highway=tertiary|tertiary_link    then 1.5
+    else if bicycle=designated                then 0    # for minor roads that are primarily for bicycles (see Exp Farm roads)
+    else if highway=unclassified              then 1
+    else if highway=residential|living_street then 0.4
+    else if highway=service                   then
+            if service=driveway|parking_aisle then 0.5
+            else                                   1
+    else if highway=road                      then 1
+    else if highway=track                     then 0.2
+    else if highway=pedestrian                then 0
+    else if highway=cycleway                  then 0       #what about bicycle=designated?
+    else if highway=path                      then 0
+    else if highway=bridleway                 then 0.2
+    else if highway=footway                   then
+            if footway=crossing               then 0.3
+            else 0.2
+    else if highway=steps                     then  0
+    else 0
+
+
+assign sidewalkpenalty =
+
+    if highway=footway then
+      if footway=sidewalk then multiply sidewalkPen 3    # add 0-3 for sidewalks
+      else multiply sidewalkPen 0.5                        # add 0-0.5 for footways
+    else 0
+
+assign smoothnesspenalty =
+    if smoothness=excellent then 0
+    else if smoothness=good then 0
+    else if smoothness=intermediate then 0.1
+    else if smoothness=bad then 0.3
+    else if smoothness=very_bad then 0.5
+    else if smoothness=horrible then 0.8
+    else if smoothness=very_horrible then 2
+    else if smoothness=impassable then 5
+    else 0.1       # unknown
+
+assign widthpenalty =
+    if not highway=path|footway|cycleway|steps|pedestrian|track then 0  # if sharing with cars - see lanespenalty
+    else if oneway=yes then 0         # oneway cycleways are fine
+    else if width=0.5 then 0.30
+    else if width=1 then 0.20
+    else if width=1.5 then 0.15
+    else if width=2 then 0.05
+    else if width=2.5|3|4|5|10 then 0
+    else 0.1       # unknown
+#
+# calculate the cost-factor, which is the factor
+# by which the distance of a way-segment is multiplied
+# to calculate the cost of that segment. The costfactor
+# must be >=1 and it's supposed to be close to 1 for
+# the type of way the routing profile is searching for
+#
+assign costfactor
+
+  #
+  # exclude rivers, rails etc.
+  #
+  if ( and highway= not route=ferry ) then 10000
+
+  #
+  # exclude motorways and proposed roads
+  #
+  else if ( highway=motorway|motorway_link ) then   10000
+  else if ( highway=proposed|abandoned|construction ) then   10000
+
+  #
+  # all other exclusions below (access, steps, ferries,..)
+  # should not be deleted by the decoder, to be available
+  # in voice-hint-processing
+  #
+  else min 9999
+
+  add max onewaypenalty accesspenalty
+
+  add stepspenalty     # 0-60 (todo: change to initialcost+costfactor)
+  add surfacepenalty   # 0-3  (asphalt-wet grass)
+  add multiply roadsPen
+      add add add
+        roadtypepenalty     # 0-3     (separated-trunk)
+        lanespenalty        # 0-2     (1-4 lanes)
+        maxspeedpenalty     # 0-0.7   (0-100kmh)
+        cyclewaypenalty     # 0-0.5   (track-no cycleway)
+  add smoothnesspenalty     # 0-5     (good-impassable)
+  add widthpenalty          # 0-0.30  (2.5m-0.5m)
+  add sidewalkpenalty       # 0-3     (not sidewalk-sidewalk)
+  add litpenalty            # 0-2     (lit-not lit)
+  add snowpenalty           # 0-5     (plowed-not plowed)
+  1.0
+
+# way priorities used for voice hint generation
+
+assign priorityclassifier =
+
+  if      ( highway=motorway                  ) then  30
+  else if ( highway=motorway_link             ) then  29
+  else if ( highway=trunk                     ) then  28
+  else if ( highway=trunk_link                ) then  27
+  else if ( highway=primary                   ) then  26
+  else if ( highway=primary_link              ) then  25
+  else if ( highway=secondary                 ) then  24
+  else if ( highway=secondary_link            ) then  23
+  else if ( highway=tertiary                  ) then  22
+  else if ( highway=tertiary_link             ) then  21
+  else if ( highway=unclassified              ) then  20
+  else if ( highway=residential|living_street ) then  6
+  else if ( highway=service                   ) then  6
+  else if ( highway=cycleway                  ) then  6
+  else if ( bicycle=designated                ) then  6
+  else if ( highway=track                     ) then if tracktype=grade1 then 6 else 4
+  else if ( highway=bridleway|road|path|footway ) then  4
+  else if ( highway=steps                     ) then  2
+  else if ( highway=pedestrian                ) then  2
+  else 0
+
+# some more classifying bits used for voice hint generation...
+
+assign isbadoneway = not equal onewaypenalty 0
+assign isgoodoneway = if reversedirection=yes then oneway=-1
+                      else if oneway= then junction=roundabout else oneway=yes|true|1
+assign isroundabout = junction=roundabout
+assign islinktype = highway=motorway_link|trunk_link|primary_link|secondary_link|tertiary_link
+assign isgoodforcars = if greater priorityclassifier 6 then true
+                  else if highway=residential|living_street|service then true
+                  else if ( and highway=track tracktype=grade1 ) then true
+                  else false
+
+# ... encoded into a bitmask
+
+assign classifiermask add          isbadoneway
+                      add multiply isgoodoneway   2
+                      add multiply isroundabout   4
+                      add multiply islinktype     8
+                          multiply isgoodforcars 16
+
+assign iswayreverse = reversedirection=yes
+
+---context:node  # following code refers to node tags
+
+assign defaultaccess =
+       if ( access= ) then true # add default barrier restrictions here!
+       else if ( access=private|no ) then false
+       else true
+
+assign bikeaccess =
+       if nodeaccessgranted=yes then true
+       else if bicycle= then
+       (
+         if vehicle= then defaultaccess
+         else not vehicle=private|no
+       )
+       else not bicycle=private|no|dismount
+
+assign footaccess =
+       if bicycle=dismount then true
+       else if foot= then defaultaccess
+       else not foot=private|no
+
+assign stoppenalty multiply stopSignPen 100 #0-100 meters penalty for stop sign
+assign stoppenalty =
+      if highway=stop then
+       (
+         if direction= then stoppenalty
+         else if and way:iswayreverse direction=backward then stoppenalty
+         else if and not way:iswayreverse direction=forward then stoppenalty
+         else 0
+       )
+      else 0
+assign signalspenalty multiply stopSignPen 100 # 0-100 meters penalty for traffic signals (usually 2-3 signals per intersection)
+assign signalspenalty =
+      if or highway=traffic_signals crossing=traffic_signals then
+       (
+         if direction= then signalspenalty
+         else if and way:iswayreverse direction=backward then signalspenalty
+         else if and not way:iswayreverse direction=forward then signalspenalty
+         else 0
+       )
+      else 0
+assign initialcost =
+      add
+        if bikeaccess then 0
+          else ( if footaccess then 100 else 1000000 )
+      add stoppenalty
+      signalspenalty

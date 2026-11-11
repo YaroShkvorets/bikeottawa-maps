@@ -1,0 +1,12 @@
+# The whole site on one machine: the app with its tiles, and the route planner behind it.
+#   docker compose up -d        then open http://localhost:8080
+#   docker compose pull && docker compose up -d   to pick up the nightly data refresh
+services:
+  web:
+    image: ghcr.io/yaroshkvorets/bikeottawa-maps:main
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+  router:
+    image: ghcr.io/yaroshkvorets/bikeottawa-maps-router:main
+    restart: unless-stopped

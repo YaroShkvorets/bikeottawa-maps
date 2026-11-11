@@ -5,3 +5,5 @@ web/public/tiles
 web/public/basemap-assets
 *.local
 .DS_Store
+
+routing/data
