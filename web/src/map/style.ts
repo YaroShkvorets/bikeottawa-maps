@@ -1,7 +1,9 @@
 import { layers as basemapLayers, namedFlavor } from '@protomaps/basemaps'
+import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import type { Lang } from '../i18n'
-import { INK, type LayerId, LTS_COLORS, PLACE_COLORS, type PlaceKind, WINTER_COLORS } from '../layers'
+import { INK, type LayerId, LTS_COLORS, NO_BIKES_COLOR, PLACE_COLORS, type PlaceKind, WINTER_COLORS } from '../layers'
+import type { Route } from '../route/brouter'
 
 export type Selected =
   | { kind: 'way'; id: number; props: Record<string, unknown> }
@@ -13,6 +15,8 @@ export interface StyleState {
   /** Place kinds shown on the places layer. */
   placeKinds: readonly PlaceKind[]
   selected: Selected | null
+  /** Planned route to draw, coloured by comfort. */
+  route: Route | null
 }
 
 /** Layers a click can hit, per data layer. */
@@ -60,7 +64,52 @@ const placeColor: ExpressionSpecification = [
   PLACE_COLORS.toilets,
 ]
 
+function routeData(route: Route | null): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: (route?.segments ?? []).map((segment) => ({
+      type: 'Feature',
+      properties: { lts: segment.lts },
+      geometry: { type: 'LineString', coordinates: segment.coords },
+    })),
+  }
+}
+
+const routeLayers: LayerSpecification[] = [
+  {
+    id: 'route-casing',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': INK, 'line-width': lineWidth(8) },
+  },
+  {
+    id: 'route-line',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': [
+        'match',
+        ['get', 'lts'],
+        1,
+        LTS_COLORS[0],
+        2,
+        LTS_COLORS[1],
+        3,
+        LTS_COLORS[2],
+        4,
+        LTS_COLORS[3],
+        NO_BIKES_COLOR,
+      ],
+      'line-width': lineWidth(3.5),
+    },
+  },
+]
+
 function overlayLayers(state: StyleState): LayerSpecification[] {
+  // The data steps back when a planned route is drawn over it.
+  const fade = state.route ? 0.35 : 1
   const show = (layer: LayerId) => ({ visibility: state.layer === layer ? ('visible' as const) : ('none' as const) })
   const round = { 'line-cap': 'round' as const, 'line-join': 'round' as const }
   const bikeable: FilterSpecification = ['>', ['get', 'lts'], 0]
@@ -82,14 +131,14 @@ function overlayLayers(state: StyleState): LayerSpecification[] {
       id: 'comfort-casing',
       filter: bikeable,
       layout: { ...round, ...show('comfort') },
-      paint: { 'line-color': '#FFFFFF', 'line-width': lineWidth(1.5), 'line-opacity': 0.7 },
+      paint: { 'line-color': '#FFFFFF', 'line-width': lineWidth(1.5), 'line-opacity': 0.7 * fade },
     },
     {
       ...way,
       id: 'winter-casing',
       filter: pathway,
       layout: { ...round, ...show('winter') },
-      paint: { 'line-color': '#FFFFFF', 'line-width': lineWidth(1.5), 'line-opacity': 0.7 },
+      paint: { 'line-color': '#FFFFFF', 'line-width': lineWidth(1.5), 'line-opacity': 0.7 * fade },
     },
     {
       ...way,
@@ -106,6 +155,7 @@ function overlayLayers(state: StyleState): LayerSpecification[] {
       paint: {
         'line-color': ['match', ['get', 'lts'], 1, LTS_COLORS[0], 2, LTS_COLORS[1], 3, LTS_COLORS[2], LTS_COLORS[3]],
         'line-width': lineWidth(),
+        'line-opacity': fade,
       },
     },
     {
@@ -116,6 +166,7 @@ function overlayLayers(state: StyleState): LayerSpecification[] {
       paint: {
         'line-color': ['match', ['get', 'winter'], 'yes', WINTER_COLORS.yes, WINTER_COLORS.no],
         'line-width': lineWidth(0.5),
+        'line-opacity': fade,
       },
     },
     {
@@ -123,7 +174,12 @@ function overlayLayers(state: StyleState): LayerSpecification[] {
       id: 'winter-unknown',
       filter: plowUnknown,
       layout: { 'line-join': 'round', ...show('winter') },
-      paint: { 'line-color': WINTER_COLORS.unknown, 'line-width': lineWidth(), 'line-dasharray': [2, 2] },
+      paint: {
+        'line-color': WINTER_COLORS.unknown,
+        'line-width': lineWidth(),
+        'line-dasharray': [2, 2],
+        'line-opacity': fade,
+      },
     },
     {
       ...place,
@@ -166,7 +222,8 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
     sources: {
       basemap: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/basemap.pmtiles`, attribution: ATTRIBUTION },
       overlays: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
+      route: { type: 'geojson', data: routeData(state.route) },
     },
-    layers: [...base.slice(0, at), ...overlayLayers(state), ...base.slice(at)],
+    layers: [...base.slice(0, at), ...overlayLayers(state), ...routeLayers, ...base.slice(at)],
   }
 }
