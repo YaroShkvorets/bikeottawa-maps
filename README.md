@@ -38,10 +38,9 @@ The planner asks a BRouter server for routes. Riding styles are sets of weights 
 The router image builds its own routing data, because the profile uses tags that stock BRouter data leaves out (`winter_service`, `width`, lane counts). To run it locally:
 
 ```sh
-routing/prepare-data.sh                       # OSM clip and elevation tiles into routing/data
-docker build -t bikeottawa-router routing     # about 4 minutes
-docker run --rm -p 17777:17777 bikeottawa-router
-npm run dev                                   # .env.development points the app at localhost:17777
+npm run router:build   # OSM clip, elevation tiles and the image; about 5 minutes
+npm run router         # BRouter on localhost:17777
+npm run dev            # .env.development points the app at it
 ```
 
 Without `VITE_ROUTER_URL` the app hides the planner. Place search uses [Photon](https://photon.komoot.io) (override with `VITE_GEOCODER_URL`).
@@ -65,6 +64,7 @@ docker compose up -d    # http://localhost:8080
 - `npm test`: unit tests for the app and the pipeline
 - `npm run lint` / `npm run format`: check or fix with Biome
 - `npm run tiles` / `npm run basemap`: rebuild the tiles
+- `npm run router:build` / `npm run router`: build and run the local router
 
 ## Roadmap
 

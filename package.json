@@ -14,7 +14,9 @@
     "lint": "biome check",
     "format": "biome check --write",
     "tiles": "pipeline/build-overlays.sh",
-    "basemap": "pipeline/build-basemap.sh"
+    "basemap": "pipeline/build-basemap.sh",
+    "router": "docker run --rm -p 17777:17777 bikeottawa-router",
+    "router:build": "routing/prepare-data.sh && docker build -t bikeottawa-router routing"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6"
