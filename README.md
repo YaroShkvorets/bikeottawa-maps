@@ -1,0 +1,39 @@
+# Bike Ottawa Maps
+
+Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, and places such as bike parking, repair stations and water. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
+
+No map vendor or API keys: the basemap and data layers are static [PMTiles](https://docs.protomaps.com/pmtiles/) files rendered with [MapLibre](https://maplibre.org).
+
+## Layout
+
+| Path          | What                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `web/`        | The app: React, TypeScript, Vite, MapLibre                                                                          |
+| `pipeline/`   | Builds the tiles from an OSM extract (osmium, [stressmodel](https://github.com/BikeOttawa/stressmodel), tippecanoe) |
+| `region.json` | Area covered and the OSM extract to use                                                                             |
+
+## Getting started
+
+```sh
+brew install osmium-tool tippecanoe pmtiles
+npm install
+npm run basemap   # once: basemap extract, fonts and icons (~55 MB)
+npm run tiles     # data layers from the latest OSM extract (~15 s)
+npm run dev
+```
+
+Tiles land in `web/public/tiles` and are not committed.
+
+## Scripts
+
+- `npm run dev` / `npm run build`: run or build the app
+- `npm test`: unit tests for the app and the pipeline
+- `npm run lint` / `npm run format`: check or fix with Biome
+- `npm run tiles` / `npm run basemap`: rebuild the tiles
+
+## Roadmap
+
+1. Nightly tile build and hosting
+2. Editing from the map (plowed or not, parking details) saved to OpenStreetMap
+3. Route planner with riding styles, backed by BRouter
+4. Collisions layer, search, offline use

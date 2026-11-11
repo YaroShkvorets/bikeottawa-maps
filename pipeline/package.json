@@ -1,0 +1,12 @@
+{
+  "name": "@bikeottawa-maps/pipeline",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "stressmodel": "github:BikeOttawa/stressmodel#a0fdab9e5b9319b16e2ddf16602aa7fa944ecff3"
+  }
+}

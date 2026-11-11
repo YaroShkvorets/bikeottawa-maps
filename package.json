@@ -1,0 +1,22 @@
+{
+  "name": "bikeottawa-maps",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "web",
+    "pipeline"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "test": "npm test --workspaces",
+    "typecheck": "npm run typecheck -w web",
+    "lint": "biome check",
+    "format": "biome check --write",
+    "tiles": "pipeline/build-overlays.sh",
+    "basemap": "pipeline/build-basemap.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.6"
+  }
+}

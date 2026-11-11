@@ -1,0 +1,6 @@
+{
+  "name": "Ottawa–Gatineau",
+  "bbox": [-75.95, 45.21, -75.4, 45.532],
+  "center": [-75.6972, 45.4215],
+  "osmPbfUrl": "https://download.bbbike.org/osm/bbbike/Ottawa/Ottawa.osm.pbf"
+}
