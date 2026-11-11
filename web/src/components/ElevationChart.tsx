@@ -1,4 +1,5 @@
 import type { PointerEvent } from 'react'
+import { useI18n } from '../i18n'
 import { type ProfilePoint, pointAtDistance } from '../route/profile'
 
 const WIDTH = 320
@@ -16,6 +17,7 @@ interface Props {
 
 /** Elevation against distance. Pointing at it marks the spot on the map, and the other way round. */
 export function ElevationChart({ profile, label, hover, onHover }: Props) {
+  const { t } = useI18n()
   const points = profile.filter((p): p is ProfilePoint & { ele: number } => p.ele !== undefined)
   const length = profile.at(-1)?.distance ?? 0
   if (points.length < 2 || length === 0) return null
@@ -52,7 +54,7 @@ export function ElevationChart({ profile, label, hover, onHover }: Props) {
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           preserveAspectRatio="none"
           role="img"
-          aria-label={`${label}: ${Math.round(low)}–${Math.round(high)} m`}
+          aria-label={`${label}${t('colon')}${Math.round(low)}–${Math.round(high)} m`}
         >
           <path d={`M0,${HEIGHT} L${line.join(' L')} L${WIDTH},${HEIGHT} Z`} className="elevation-area" />
           <path d={`M${line.join(' L')}`} className="elevation-line" />

@@ -63,7 +63,7 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
         id={id}
         type="text"
         autoComplete="off"
-        placeholder={`${label}: ${t('searchPlaceholder')}`}
+        placeholder={`${label}${t('colon')}${t('searchPlaceholder')}`}
         value={shown}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={(e) => e.target.select()}
@@ -80,7 +80,7 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
         <button
           type="button"
           className="icon-button small"
-          aria-label={`${t('clear')}: ${label}`}
+          aria-label={`${t('clear')}${t('colon')}${label}`}
           onClick={() => onChange(null)}
         >
           <svg

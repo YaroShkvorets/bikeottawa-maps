@@ -204,7 +204,7 @@ export function RouteResult({ travel, state, hover, onHover, highlight, pinned, 
           onClick={() =>
             downloadText(
               `${travel === 'bike' ? 'bike' : 'walk'}-route.gpx`,
-              toGpx(route, t('gpxName')),
+              toGpx(route, t(travel === 'bike' ? 'gpxName' : 'gpxNameWalk')),
               'application/gpx+xml',
             )
           }
