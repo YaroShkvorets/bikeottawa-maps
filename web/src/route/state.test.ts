@@ -53,4 +53,9 @@ describe('custom weights in the URL', () => {
     expect(parseParams(formatParams(PRESETS.cargo), PRESETS.balanced).noWalk).toBe(1)
     expect(parseParams('0.5,0.5,0.5,0,0,0.1', PRESETS.balanced).noWalk).toBe(0)
   })
+  it('keeps the riding speed in km/h, and defaults it for older links', () => {
+    expect(parseParams(formatParams(PRESETS.fast), PRESETS.balanced).cruiseSpeed).toBe(25)
+    expect(parseParams('0.5,0.5,0.5,0,0,0.1,0', PRESETS.balanced).cruiseSpeed).toBe(20)
+    expect(parseParams('0.5,0.5,0.5,0,0,0.1,0,90', PRESETS.balanced).cruiseSpeed).toBe(20)
+  })
 })

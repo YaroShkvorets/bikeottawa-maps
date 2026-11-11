@@ -19,6 +19,16 @@ assign  stopSignPen = 0.1    # Stop signs and Traffic lights penalty
 # sidewalks unless they are open to bikes
 assign  noWalk = 0
 
+# Riding speed on the flat, km/h; each riding style sets its own. It only
+# changes travel times, not which way is taken. BRouter's bike model rides at a
+# steady power, so this is turned into the power that holds this speed on the
+# flat (with its default 90 kg, S_C_x 0.225 and C_r 0.01): climbs are slower,
+# descents faster, up to maxSpeed.
+assign  cruiseSpeed = 20
+assign  cruiseMs = divide cruiseSpeed 3.6
+assign  bikerPower = multiply cruiseMs add multiply 0.225 multiply cruiseMs cruiseMs 8.829
+assign  maxSpeed = multiply cruiseSpeed 1.6
+
 assign totalPenalty = 1                # use for turncost
 #    add roadsPen
 #    add sidewalkPen
@@ -301,6 +311,15 @@ assign sidewalkpenalty =
       else multiply sidewalkPen 0.5                        # add 0-0.5 for footways
     else 0
 
+# Speed cap for travel times, km/h (0 = none): walking pace where the bike is
+# pushed, slower still on stairs.
+assign maxspeed =
+    if highway=steps then 2
+    else if not bikeaccess then 5
+    else if greater onewaypenalty 0 then 5
+    else if and highway=footway and footway=sidewalk not bicycle=yes|designated|permissive then 5
+    else 0
+
 assign smoothnesspenalty =
     if smoothness=excellent then 0
     else if smoothness=good then 0
@@ -433,26 +452,21 @@ assign footaccess =
        else if foot= then defaultaccess
        else not foot=private|no
 
-assign stoppenalty multiply stopSignPen 100 #0-100 meters penalty for stop sign
-assign stoppenalty =
-      if highway=stop then
-       (
-         if direction= then stoppenalty
-         else if and way:iswayreverse direction=backward then stoppenalty
-         else if and not way:iswayreverse direction=forward then stoppenalty
-         else 0
-       )
-      else 0
-assign signalspenalty multiply stopSignPen 100 # 0-100 meters penalty for traffic signals (usually 2-3 signals per intersection)
-assign signalspenalty =
-      if or or highway=traffic_signals crossing=traffic_signals crossing:signals=yes then
-       (
-         if direction= then signalspenalty
-         else if and way:iswayreverse direction=backward then signalspenalty
-         else if and not way:iswayreverse direction=forward then signalspenalty
-         else 0
-       )
-      else 0
+# A stop sign or signal that faces the direction ridden (or has no direction).
+assign facesway =
+      if direction= then true
+      else if and way:iswayreverse direction=backward then true
+      else if and not way:iswayreverse direction=forward then true
+      else false
+assign isstop = and highway=stop facesway
+assign issignals = and ( or or highway=traffic_signals crossing=traffic_signals crossing:signals=yes ) facesway
+
+assign stoppenalty = multiply isstop multiply stopSignPen 100        # 0-100 meters penalty for stop sign
+assign signalspenalty = multiply issignals multiply stopSignPen 100  # 0-100 meters penalty for traffic signals (usually 2-3 signals per intersection)
+
+# Seconds lost there, for travel times: slowing, stopping and starting again at a
+# stop sign; the average wait at a signal (often mapped once per approach).
+assign stopdelay = add multiply isstop 6 multiply issignals 10
 assign initialcost =
       add
         if bikeaccess then 0

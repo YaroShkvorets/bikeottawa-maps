@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n'
-import { type ParamKey, type RouteParams, STYLE_IDS, type StyleId, WEIGHT_KEYS } from '../route/styles'
+import { type ParamKey, type RouteParams, SPEED_RANGE, STYLE_IDS, type StyleId, WEIGHT_KEYS } from '../route/styles'
 
 interface Props {
   style: StyleId
@@ -22,8 +22,26 @@ export function StylePicker({ style, params, onStyleChange, onParamChange }: Pro
             </button>
           ))}
         </div>
-        <p className="footnote style-desc">{t(`style.${style}.desc`)}</p>
+        <p className="footnote style-desc">
+          {t(`style.${style}.desc`)} {t('speedNote').replace('{speed}', String(params.cruiseSpeed))}
+        </p>
       </fieldset>
+      {style === 'custom' && (
+        <fieldset className="param-sliders">
+          <legend className="eyebrow">{t('param.cruiseSpeed')}</legend>
+          <label>
+            <span>{t('speedOnFlat').replace('{speed}', String(params.cruiseSpeed))}</span>
+            <input
+              type="range"
+              min={SPEED_RANGE.min}
+              max={SPEED_RANGE.max}
+              step={1}
+              value={params.cruiseSpeed}
+              onChange={(e) => onParamChange('cruiseSpeed', Number(e.target.value))}
+            />
+          </label>
+        </fieldset>
+      )}
       {style === 'custom' && (
         <fieldset className="param-sliders">
           <legend className="eyebrow">{t('avoid')}</legend>

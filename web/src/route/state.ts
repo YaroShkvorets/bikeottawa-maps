@@ -1,5 +1,5 @@
 import type { LngLat } from './brouter'
-import { PARAM_KEYS, type RouteParams } from './styles'
+import { PARAM_KEYS, paramRange, type RouteParams } from './styles'
 
 /** A start or end of the route; `label` is the place name when it came from search. */
 export interface RoutePoint {
@@ -53,7 +53,8 @@ export function parseParams(text: string | undefined, fallback: RouteParams): Ro
   const params = { ...fallback }
   PARAM_KEYS.forEach((key, i) => {
     const value = values[i]
-    if (text && Number.isFinite(value) && value >= 0 && value <= 1) params[key] = value
+    const { min, max } = paramRange(key)
+    if (text && Number.isFinite(value) && value >= min && value <= max) params[key] = value
   })
   return params
 }
