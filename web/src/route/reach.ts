@@ -10,15 +10,15 @@ import { PARAM_KEYS, type RouteParams } from './styles'
 export type Reach = FeatureCollection<MultiLineString, { minutes: number }>
 
 /** Riding times on offer, in minutes. The router stops at 30. */
-export const REACH_MINUTES = [10, 15, 20, 30] as const
+export const REACH_MINUTES = [10, 20, 30] as const
 export type ReachMinutes = (typeof REACH_MINUTES)[number]
-export const DEFAULT_REACH_MINUTES: ReachMinutes = 15
+export const DEFAULT_REACH_MINUTES: ReachMinutes = 20
 
 export function isReachMinutes(value: unknown): value is ReachMinutes {
   return REACH_MINUTES.includes(Number(value) as ReachMinutes)
 }
 
-/** BRouter's isochrone mode, added by routing/brouter/isochrone.patch. */
+/** BRouter's isochrone mode, from our fork's isochrone branch (see routing/Dockerfile). */
 const ISOCHRONE_MODE = 5
 
 export function reachUrl(base: string, start: LngLat, minutes: number, params: RouteParams): string {
