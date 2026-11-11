@@ -13,6 +13,7 @@ import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, type PlaceKind } from './places'
 import type { ComfortKey, LngLat } from './route/brouter'
+import { reverseLabel } from './route/geocode'
 import {
   formatParams,
   formatPoints,
@@ -104,6 +105,26 @@ function useDataDate(lang: Lang): string | null {
   }, [])
   if (!timestamp) return null
   return new Date(timestamp).toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { dateStyle: 'long' })
+}
+
+/** Looks up the address of a point that has no name yet (picked on the map, dragged, or from a link). */
+function useAddressLabel(
+  point: RoutePoint | null,
+  lang: Lang,
+  enabled: boolean,
+  onLabel: (lngLat: LngLat, label: string) => void,
+): void {
+  const pending = enabled && point && !point.label ? point.lngLat : null
+  const [lon, lat] = pending ?? [null, null]
+  useEffect(() => {
+    if (lon === null || lat === null) return
+    const controller = new AbortController()
+    reverseLabel([lon, lat], lang, controller.signal)
+      .then((label) => label && onLabel([lon, lat], label))
+      // No address is not an error worth showing; the field keeps its coordinates.
+      .catch(() => {})
+    return () => controller.abort()
+  }, [lon, lat, lang, onLabel])
 }
 
 export function App() {
@@ -221,6 +242,21 @@ export function App() {
       return { ...current, points: next }
     })
   }, [])
+
+  // Names a point once its address arrives, unless it has moved on in the meantime.
+  const labelPoint = useCallback((index: 0 | 1, lngLat: LngLat, label: string) => {
+    setUrl((current) => {
+      const point = current.points[index]
+      if (!point || point.label || point.lngLat[0] !== lngLat[0] || point.lngLat[1] !== lngLat[1]) return current
+      const next: RoutePoints = [...current.points]
+      next[index] = { ...point, label }
+      return { ...current, points: next }
+    })
+  }, [])
+  const labelStart = useCallback((lngLat: LngLat, label: string) => labelPoint(0, lngLat, label), [labelPoint])
+  const labelEnd = useCallback((lngLat: LngLat, label: string) => labelPoint(1, lngLat, label), [labelPoint])
+  useAddressLabel(points[0], lang, routing, labelStart)
+  useAddressLabel(points[1], lang, routing, labelEnd)
 
   const movePoint = useCallback((index: 0 | 1, lngLat: LngLat) => setPoint(index, { lngLat }), [setPoint])
 

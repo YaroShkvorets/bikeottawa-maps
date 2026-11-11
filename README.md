@@ -45,7 +45,7 @@ npm run dev            # .env.development points the app at it
 
 `npm run router` mounts `routing/profiles/ottbike.brf` into the container, so profile edits take effect on the next route request; rebuild the image only for fresh OSM data or new lookup tags.
 
-Without `VITE_ROUTER_URL` the app hides the planner. Place search uses [Photon](https://photon.komoot.io) (override with `VITE_GEOCODER_URL`).
+Without `VITE_ROUTER_URL` the app hides the planner. Place search and the addresses shown for points picked on the map come from [Photon](https://photon.komoot.io); set `VITE_GEOCODER_URL` to use another Photon server.
 
 ## Deployment
 
