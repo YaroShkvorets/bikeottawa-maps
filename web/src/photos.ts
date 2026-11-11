@@ -75,3 +75,72 @@ export function directPhoto(url: string): Photo {
   const host = new URL(url).hostname.replace(/^(www|storage\d*)\./, '')
   return { url, largeUrl: url, credit: host, link: url }
 }
+
+interface MapillaryImage {
+  id: string
+  computed_geometry?: { coordinates: [number, number] }
+  is_pano?: boolean
+}
+
+/** Metres between two nearby points. */
+function metres([lon1, lat1]: readonly [number, number], [lon2, lat2]: readonly [number, number]): number {
+  const kx = 111320 * Math.cos((lat1 * Math.PI) / 180)
+  return Math.hypot((lon2 - lon1) * kx, (lat2 - lat1) * 111320)
+}
+
+/**
+ * Which of the photos found to show: the closest, with panoramas counted a
+ * little farther away because they look stretched in a card.
+ */
+export function closestImage(
+  images: readonly MapillaryImage[],
+  at: readonly [number, number],
+): { id: string; distance: number } | null {
+  let best: { id: string; distance: number; score: number } | null = null
+  for (const image of images) {
+    const where = image.computed_geometry?.coordinates
+    if (!where) continue
+    const distance = metres(at, where)
+    const score = distance + (image.is_pano ? 15 : 0)
+    if (!best || score < best.score) best = { id: image.id, distance, score }
+  }
+  return best && { id: best.id, distance: best.distance }
+}
+
+/**
+ * Searches around the point, about ±25 m first and ±70 m if nothing is that
+ * close. Mapillary returns a sample, not the closest, when a box holds more
+ * photos than asked for, so the first box is kept small.
+ */
+const SEARCH_BOXES = [
+  { degrees: 0.0002, limit: 100 },
+  { degrees: 0.0006, limit: 500 },
+]
+
+/** The street-level photo taken closest to a point, and how far from it. */
+export async function nearestMapillaryPhoto(
+  at: readonly [number, number],
+  token: string,
+  signal?: AbortSignal,
+): Promise<(Photo & { distance: number }) | null> {
+  const [lon, lat] = at
+  for (const { degrees, limit } of SEARCH_BOXES) {
+    const dLon = degrees / Math.cos((lat * Math.PI) / 180)
+    const bbox = [lon - dLon, lat - degrees, lon + dLon, lat + degrees].map((v) => v.toFixed(6)).join(',')
+    const params = new URLSearchParams({
+      fields: 'id,computed_geometry,is_pano',
+      bbox,
+      limit: String(limit),
+      access_token: token,
+    })
+    const res = await fetch(`https://graph.mapillary.com/images?${params}`, { signal })
+    if (!res.ok) return null
+    const { data } = (await res.json()) as { data?: MapillaryImage[] }
+    const closest = closestImage(data ?? [], at)
+    if (closest) {
+      const photo = await fetchMapillaryPhoto(closest.id, token, signal)
+      return photo && { ...photo, distance: closest.distance }
+    }
+  }
+  return null
+}

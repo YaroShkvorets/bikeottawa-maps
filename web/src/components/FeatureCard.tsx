@@ -7,7 +7,7 @@ import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, s
 import { isPlaceKind } from '../places'
 import { wayType } from '../wayType'
 import { PlaceIcon } from './PlaceIcon'
-import { hasPhoto, PlacePhoto } from './PlacePhoto'
+import { hasPhoto, NearbyPhoto, PlacePhoto } from './PlacePhoto'
 
 const WAY_FACTS = ['surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'] as const
 const PLACE_FACTS = [
@@ -133,7 +133,7 @@ export function FeatureCard({ selected, onClose }: Props) {
           </svg>
         </button>
       </header>
-      {selected.kind === 'place' && <PlacePhoto props={props} />}
+      {selected.kind === 'place' ? <PlacePhoto props={props} /> : <NearbyPhoto at={selected.at} />}
       {hasFacts && (
         <dl>
           {facts.map((fact) => (

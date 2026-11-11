@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, streetViewUrl } from './photos'
+import {
+  closestImage,
+  commonsLink,
+  directImage,
+  imageLink,
+  mapillaryId,
+  mapillaryViewerUrl,
+  streetViewUrl,
+} from './photos'
 
 describe('mapillaryId', () => {
   it('takes the first image id from the tag', () => {
@@ -48,5 +56,20 @@ describe('streetViewUrl', () => {
     expect(streetViewUrl([-75.69485, 45.42021])).toBe(
       'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=45.420210,-75.694850',
     )
+  })
+})
+
+describe('closestImage', () => {
+  const at: [number, number] = [-75.69485, 45.42021]
+  const image = (id: string, dLat: number, pano = false) => ({
+    id,
+    computed_geometry: { coordinates: [at[0], at[1] + dLat] as [number, number] },
+    is_pano: pano,
+  })
+  it('picks the photo taken closest, preferring flat photos over panoramas', () => {
+    expect(closestImage([image('far', 0.0003), image('near', 0.0001)], at)?.id).toBe('near')
+    // A panorama 5 m away loses to a flat photo 11 m away.
+    expect(closestImage([image('pano', 0.000045, true), image('flat', 0.0001)], at)?.id).toBe('flat')
+    expect(closestImage([], at)).toBeNull()
   })
 })
