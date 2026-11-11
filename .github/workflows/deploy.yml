@@ -28,10 +28,17 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # osmium and tippecanoe come from conda-forge, not apt: hosted runners cannot
+      # always reach Ubuntu's archive (actions/runner-images#15296).
       - name: Install tile tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y osmium-tool tippecanoe
+          curl -fsSL https://micro.mamba.pm/api/micromamba/linux-64/2.3.3 | tar -xj -C "$RUNNER_TEMP" bin/micromamba
+          "$RUNNER_TEMP/bin/micromamba" create -y -q -r "$RUNNER_TEMP/mamba" -p "$RUNNER_TEMP/tools" \
+            -c conda-forge osmium-tool=1.19 tippecanoe=2.79
+          for tool in osmium tippecanoe; do
+            printf '#!/bin/sh\nexec %s "$@"\n' "$RUNNER_TEMP/tools/bin/$tool" | sudo tee /usr/local/bin/$tool >/dev/null
+            sudo chmod +x /usr/local/bin/$tool
+          done
           pipx install osmium # pyosmium-up-to-date, which applies OSM's change files
           curl -fsSL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz \
             | sudo tar -xz -C /usr/local/bin pmtiles
