@@ -20,6 +20,17 @@ interface Props {
   basemap: BasemapId
 }
 
+/** A spot's circle as the map draws it in the middle of its zoom range: area grows with the count. */
+function SpotDot({ count, color }: { count: number; color: string }) {
+  const r = 4 + 2.2 * Math.sqrt(Math.max(0, count - 1))
+  const size = Math.ceil(2 * r + 2)
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="spot-dot">
+      <circle cx={size / 2} cy={size / 2} r={r} fill={color} stroke="#fff" />
+    </svg>
+  )
+}
+
 const YEARS = Array.from(
   { length: COLLISION_YEARS.last - COLLISION_YEARS.first + 1 },
   (_, i) => COLLISION_YEARS.first + i,
@@ -109,15 +120,19 @@ export function CollisionLegend({ spots, busiestSpot, filters, onChange, basemap
             : t('crash.minCount').replace('{count}', number(filters.minCount))}
         </span>
         {/* Dragged right, only the places where collisions keep happening stay on the map. */}
-        <input
-          className="collision-min-range"
-          type="range"
-          min={1}
-          max={Math.max(2, busiestSpot)}
-          step={1}
-          value={Math.min(filters.minCount, Math.max(2, busiestSpot))}
-          onChange={(e) => onChange({ ...filters, minCount: Number(e.target.value) })}
-        />
+        <span className="collision-min-row">
+          <SpotDot count={1} color={colors.minor} />
+          <input
+            className="collision-min-range"
+            type="range"
+            min={1}
+            max={Math.max(2, busiestSpot)}
+            step={1}
+            value={Math.min(filters.minCount, Math.max(2, busiestSpot))}
+            onChange={(e) => onChange({ ...filters, minCount: Number(e.target.value) })}
+          />
+          <SpotDot count={busiestSpot} color={colors.minor} />
+        </span>
       </label>
       {shown !== null && spots && (
         <p className="collision-total">

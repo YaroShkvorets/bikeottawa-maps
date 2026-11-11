@@ -1397,7 +1397,18 @@ a {
   color: var(--muted);
 }
 
+.collision-min-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spot-dot {
+  flex: none;
+}
+
 .collision-min-range {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   accent-color: var(--accent);
 }
