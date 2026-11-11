@@ -1,38 +1,24 @@
 #!/usr/bin/env bash
-# Builds web/public/tiles/overlays.pmtiles (ways + places) from OSM extracts.
-# Needs: osmium, tippecanoe, node. Extracts and bbox come from region.json;
-# set OSM_PBF_URLS (space-separated) to use other extracts.
+# Builds web/public/tiles/overlays.pmtiles (ways + places) for the map area in
+# region.json, from OSM data brought up to date by pipeline/update-osm.sh.
+# Needs: osmium, tippecanoe, node, and what update-osm.sh needs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-URLS="${OSM_PBF_URLS:-$(node -p "require('./region.json').osmPbfUrls.join(' ')")}"
+pipeline/update-osm.sh
+
+REGION="${OSM_DIR:-.cache/osm}/region.osm.pbf"
 BBOX="$(node -p "require('./region.json').bbox.join(',')")"
 WORK="${WORK_DIR:-.cache/pipeline}"
-# Which places to keep is defined once, in classify.mjs.
-PLACE_FILTERS="$(node -e "import('./pipeline/classify.mjs').then((m) => console.log(m.placeFilters().join(' ')))")"
 OUT=web/public/tiles
 mkdir -p "$WORK" "$OUT"
+# Which places to keep is defined once, in classify.mjs.
+PLACE_FILTERS="$(node -e "import('./pipeline/classify.mjs').then((m) => console.log(m.placeFilters().join(' ')))")"
 
-parts=()
-timestamps=()
-for url in $URLS; do
-  src="$WORK/$(basename "$url")"
-  echo "Downloading $url"
-  # Re-download only when the server has a newer file than the cached one.
-  if [ -f "$src" ]; then
-    curl -fsSL --retry 3 -z "$src" -o "$src" "$url"
-  else
-    curl -fsSL --retry 3 -o "$src" "$url"
-  fi
-  echo "Filtering $(basename "$src")"
-  # shellcheck disable=SC2086 # one filter expression per word
-  osmium tags-filter "$src" w/highway $PLACE_FILTERS --overwrite -o "$src.filtered.osm.pbf"
-  osmium extract --bbox "$BBOX" "$src.filtered.osm.pbf" --overwrite -o "$src.clipped.osm.pbf"
-  parts+=("$src.clipped.osm.pbf")
-  timestamps+=("$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$src" 2>/dev/null || true)")
-done
-
-osmium merge "${parts[@]}" --overwrite -o "$WORK/filtered.osm.pbf"
+echo "Filtering and exporting"
+# shellcheck disable=SC2086 # one filter expression per word
+osmium tags-filter "$REGION" w/highway $PLACE_FILTERS --overwrite -o "$WORK/tagged.osm.pbf"
+osmium extract --bbox "$BBOX" "$WORK/tagged.osm.pbf" --overwrite -o "$WORK/filtered.osm.pbf"
 osmium export "$WORK/filtered.osm.pbf" --add-unique-id=type_id -f geojsonseq -x print_record_separator=false \
   --overwrite -o "$WORK/filtered.geojsonseq"
 
@@ -45,12 +31,8 @@ tippecanoe --force --quiet -o "$OUT/overlays.pmtiles" \
   --name "Bike Ottawa overlays" --attribution "© OpenStreetMap contributors" \
   -L "ways:$WORK/ways.geojsonseq" -L "places:$WORK/places.geojsonseq"
 
-# Date of the OSM data: the oldest extract's replication timestamp, or failing
-# that the newest edit among the features kept.
-OSM_TIMESTAMP="$(printf '%s\n' "${timestamps[@]}" | grep . | sort | head -1 || true)"
-if [ -z "$OSM_TIMESTAMP" ]; then
-  OSM_TIMESTAMP="$(osmium fileinfo -e -g data.timestamp.last "$WORK/filtered.osm.pbf")"
-fi
+# Date of the OSM data: how far the change files have been applied.
+OSM_TIMESTAMP="$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$REGION")"
 printf '{"osmTimestamp":"%s","builtAt":"%s"}\n' "$OSM_TIMESTAMP" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT/meta.json"
 ls -lh "$OUT/overlays.pmtiles"
 cat "$OUT/meta.json"

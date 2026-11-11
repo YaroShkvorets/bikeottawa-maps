@@ -4,7 +4,7 @@ on:
     branches: [main]
     tags: ["v*"]
   schedule:
-    # Nightly, a little after 3 am in Ottawa and after Geofabrik publishes its daily extracts.
+    # Nightly, a little after 3 am in Ottawa.
     # Off the hour on purpose: GitHub delays or drops schedules set for :00.
     - cron: "17 8 * * *"
   workflow_dispatch:
@@ -32,6 +32,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y osmium-tool tippecanoe
+          pipx install osmium # pyosmium-up-to-date, which applies OSM's change files
           curl -fsSL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz \
             | sudo tar -xz -C /usr/local/bin pmtiles
       - run: npm ci
@@ -49,6 +50,15 @@ jobs:
           key: basemap-${{ hashFiles('region.json', 'pipeline/build-basemap.sh') }}-${{ steps.month.outputs.value }}
       - if: steps.basemap.outputs.cache-hit != 'true'
         run: npm run basemap
+      # The region's OSM data carries over from run to run and is only topped up
+      # with the latest changes. Every run saves its own copy; the newest is restored.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .cache/osm/region.osm.pbf
+            .cache/osm/*.poly
+          key: osm-${{ hashFiles('region.json', 'pipeline/update-osm.sh') }}-${{ github.run_id }}
+          restore-keys: osm-${{ hashFiles('region.json', 'pipeline/update-osm.sh') }}-
       - run: npm run tiles
       # GitHub Pages: main only, served under /<repo>/. The route planner shows
       # there once the ROUTER_URL repository variable points at a running router.
@@ -65,6 +75,10 @@ jobs:
           path: web/dist
 
       # Docker images with the data baked in: the site, and the router.
+      - uses: actions/cache@v6
+        with:
+          path: routing/data/elevation
+          key: elevation-${{ hashFiles('region.json', 'routing/prepare-data.sh') }}
       - run: routing/prepare-data.sh
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
