@@ -19,8 +19,10 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Three jobs: site (checks, tiles, Pages build, site image), router (the router
+# image) in parallel with it, and deploy (Pages), which waits only for site.
 jobs:
-  build:
+  site:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -83,12 +85,7 @@ jobs:
         with:
           path: web/dist
 
-      # Docker images with the data baked in: the site, and the router.
-      - uses: actions/cache@v6
-        with:
-          path: routing/data/elevation
-          key: elevation-${{ hashFiles('region.json', 'routing/prepare-data.sh') }}
-      - run: routing/prepare-data.sh
+      # Docker image of the site, with the tiles baked in.
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -112,6 +109,44 @@ jobs:
           labels: ${{ steps.image.outputs.labels }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
+
+  router:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # osmium from conda-forge, not apt (see the site job).
+      - name: Install OSM tools
+        run: |
+          curl -fsSL https://micro.mamba.pm/api/micromamba/linux-64/2.3.3 | tar -xj -C "$RUNNER_TEMP" bin/micromamba
+          "$RUNNER_TEMP/bin/micromamba" create -y -q -r "$RUNNER_TEMP/mamba" -p "$RUNNER_TEMP/tools" \
+            -c conda-forge osmium-tool=1.19
+          printf '#!/bin/sh\nexec %s "$@"\n' "$RUNNER_TEMP/tools/bin/osmium" | sudo tee /usr/local/bin/osmium >/dev/null
+          sudo chmod +x /usr/local/bin/osmium
+          pipx install osmium # pyosmium-up-to-date
+      # The OSM data the site job saved last time, brought up to date here; only
+      # the site job saves it, so the two jobs do not race to write the cache.
+      - uses: actions/cache/restore@v6
+        with:
+          path: |
+            .cache/osm/region.osm.pbf
+            .cache/osm/*.poly
+          key: osm-${{ hashFiles('region.json', 'pipeline/update-osm.sh') }}-${{ github.run_id }}
+          restore-keys: osm-${{ hashFiles('region.json', 'pipeline/update-osm.sh') }}-
+      - run: pipeline/update-osm.sh
+      - uses: actions/cache@v6
+        with:
+          path: routing/data/elevation
+          key: elevation-${{ hashFiles('region.json', 'routing/prepare-data.sh') }}
+      - run: routing/prepare-data.sh
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/metadata-action@v6
         id: router-image
         with:
@@ -130,7 +165,7 @@ jobs:
 
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: build
+    needs: site
     runs-on: ubuntu-latest
     environment:
       name: github-pages
