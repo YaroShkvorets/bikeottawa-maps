@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type CollisionFilters, formatCollisionFilters, parseCollisionFilters } from './collisions'
+import { CollisionCard } from './components/CollisionCard'
 import { FeatureCard } from './components/FeatureCard'
 import { LayerPicker } from './components/LayerPicker'
 import { Legend } from './components/Legend'
@@ -58,6 +60,8 @@ interface UrlState {
   layer: LayerId
   /** Place kinds switched on in the Places layer; none to start with. */
   placeKinds: readonly PlaceKind[]
+  /** Which collisions the collisions layer shows. */
+  collisions: CollisionFilters
   mode: Mode
   points: RoutePoints
   /** Places the route must pass through, in riding order. */
@@ -76,6 +80,7 @@ function readUrl(): UrlState {
   return {
     layer: isLayerId(hash.layer) ? hash.layer : DEFAULT_LAYER,
     placeKinds: (hash.places ?? '').split(',').filter(isPlaceKind),
+    collisions: parseCollisionFilters(hash.collisions),
     mode: hash.mode === 'route' || hash.mode === 'reach' ? hash.mode : 'explore',
     points: parsePoints(hash.route),
     vias: parseVias(hash.via),
@@ -94,6 +99,7 @@ function writeUrl(state: UrlState): void {
   const entries: [string, string | null][] = [
     ['layer', state.layer === DEFAULT_LAYER ? null : state.layer],
     ['places', state.placeKinds.length ? state.placeKinds.join(',') : null],
+    ['collisions', state.layer === 'collisions' ? formatCollisionFilters(state.collisions) : null],
     ['mode', riding ? state.mode : null],
     // How far starts from the route's start, so the two modes share it.
     ['route', routing ? formatPoints(state.points) : reaching ? formatPoints([state.points[0], null]) : null],
@@ -235,7 +241,7 @@ export function App() {
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
-  const { layer, placeKinds, mode, points, vias, travel, style, custom, walkStyle, minutes } = url
+  const { layer, placeKinds, collisions, mode, points, vias, travel, style, custom, walkStyle, minutes } = url
   const profile = useMemo(() => profileFor(travel, style, custom, walkStyle), [travel, style, custom, walkStyle])
   const basemap = layer === 'night' ? nightBasemap : dayBasemap
   // Not exploring: planning a route, or seeing how far you get.
@@ -306,6 +312,14 @@ export function App() {
   const changeMode = useCallback(
     (next: Mode) => {
       update({ mode: next })
+      setSelected(null)
+    },
+    [update],
+  )
+
+  const changeCollisions = useCallback(
+    (next: CollisionFilters) => {
+      update({ collisions: next })
       setSelected(null)
     },
     [update],
@@ -424,8 +438,9 @@ export function App() {
       routeHighlight,
       routeOnFoot: travel === 'foot',
       reach: reachStyle,
+      collisions,
     }),
-    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle],
+    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle, collisions],
   )
   const mapRouting = useMemo(
     () =>
@@ -494,7 +509,12 @@ export function App() {
       : t('legend')
 
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
-  const details = !routing && selected ? <FeatureCard selected={selected} onClose={() => setSelected(null)} /> : null
+  const details =
+    routing || !selected ? null : selected.kind === 'collision' ? (
+      <CollisionCard props={selected.props} at={selected.at} basemap={basemap} onClose={() => setSelected(null)} />
+    ) : (
+      <FeatureCard selected={selected} onClose={() => setSelected(null)} />
+    )
 
   return (
     <LangContext.Provider value={i18n}>
@@ -604,7 +624,14 @@ export function App() {
             {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && (
-                <Legend layer={layer} basemap={basemap} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />
+                <Legend
+                  layer={layer}
+                  basemap={basemap}
+                  placeKinds={placeKinds}
+                  onTogglePlaceKind={togglePlaceKind}
+                  collisionFilters={collisions}
+                  onCollisionFiltersChange={changeCollisions}
+                />
               )}
               {dataDate && (
                 <p className="footnote">

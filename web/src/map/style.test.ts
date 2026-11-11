@@ -1,5 +1,6 @@
 import type { FeatureCollection } from 'geojson'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_COLLISION_FILTERS } from '../collisions'
 import { BASEMAP_IDS, LAYER_IDS } from '../layers'
 import { PLACE_KINDS } from '../places'
 import { buildStyle, INTERACTIVE_LAYERS, type StyleState } from './style'
@@ -13,6 +14,7 @@ const state: StyleState = {
   route: null,
   routeHighlight: null,
   reach: null,
+  collisions: DEFAULT_COLLISION_FILTERS,
 }
 const build = (patch: Partial<StyleState> = {}) => buildStyle({ ...state, ...patch }, 'https://example.test')
 const layer = (style: ReturnType<typeof build>, id: string) => {
@@ -22,6 +24,13 @@ const layer = (style: ReturnType<typeof build>, id: string) => {
 }
 
 describe('buildStyle', () => {
+  it('loads collisions only while their layer is on, filtered', () => {
+    expect(build().sources.collisions).toBeUndefined()
+    const style = buildStyle({ ...state, layer: 'collisions' }, 'https://tiles.test', 'https://app.test')
+    expect(style.sources.collisions).toMatchObject({ data: 'https://app.test/data/collisions.geojson' })
+    expect(JSON.stringify(layer(style, 'collisions-point').filter)).toContain('bicycles')
+  })
+
   it('gives the reach map the street lines to itself', () => {
     const style = build({ layer: 'comfort', reach: { minutes: 15 } })
     expect(style.sources.reach).toBeDefined()
@@ -35,6 +44,14 @@ describe('buildStyle', () => {
       const style = build({ layer: active })
       for (const id of LAYER_IDS) {
         for (const mapLayer of INTERACTIVE_LAYERS[id]) {
+          // Collisions are only added to the style while they are shown.
+          if (id === 'collisions') {
+            expect(
+              style.layers.some((l) => l.id === mapLayer),
+              `${mapLayer} when ${active}`,
+            ).toBe(id === active)
+            continue
+          }
           expect(layer(style, mapLayer).layout?.visibility, `${mapLayer} when ${active}`).toBe(
             id === active ? 'visible' : 'none',
           )

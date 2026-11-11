@@ -1311,3 +1311,52 @@ a {
 .photo-viewer-step.next {
   right: 12px;
 }
+
+/* Collisions: who, which years and which injuries, with counts. */
+.collision-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.collision-parties {
+  display: flex;
+  gap: 18px;
+}
+
+.collision-years {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.collision-years select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+}
+
+.legend .collision-severities {
+  gap: 0;
+  margin: 0;
+}
+
+.collision-severities label {
+  flex: 1;
+}
+
+.collision-severities .share {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.collision-total {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}

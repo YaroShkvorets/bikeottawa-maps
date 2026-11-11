@@ -1,9 +1,11 @@
 import { layers as basemapLayers, type Flavor, namedFlavor } from '@protomaps/basemaps'
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
+import { type CollisionFilters, collisionFilter, SEVERITIES, type Severity } from '../collisions'
 import type { Lang } from '../i18n'
 import {
   type BasemapId,
+  collisionColors,
   INK,
   LAMP_COLOR,
   LAMP_COLOR_ON_PALE,
@@ -20,6 +22,7 @@ import { comfortKeyOf, type Route, type RouteHighlight } from '../route/brouter'
 export type Selected =
   | { kind: 'way'; id: number; props: Record<string, unknown>; at: [number, number] }
   | { kind: 'place'; osm: string; props: Record<string, unknown>; at: [number, number] }
+  | { kind: 'collision'; props: Record<string, unknown>; at: [number, number] }
 
 export interface StyleState {
   lang: Lang
@@ -40,6 +43,8 @@ export interface StyleState {
    * source directly.
    */
   reach: { minutes: number } | null
+  /** Which collisions the collisions layer shows. */
+  collisions: CollisionFilters
 }
 
 /** Layers a click can hit, per data layer. */
@@ -48,6 +53,7 @@ export const INTERACTIVE_LAYERS: Record<LayerId, string[]> = {
   winter: ['winter-line', 'winter-unknown'],
   places: ['places-icon'],
   night: [],
+  collisions: ['collisions-point'],
 }
 
 const ATTRIBUTION =
@@ -514,6 +520,113 @@ const PLACE_LABEL_ZOOM = 15
  * data layers because it sits above the basemap's labels: MapLibre gives the
  * topmost labels first pick, and here a shop's name matters more than the street's.
  */
+export const COLLISIONS_SOURCE = 'collisions'
+const COLLISIONS_ATTRIBUTION =
+  'Collisions: <a href="https://open.ottawa.ca/" target="_blank" rel="noopener">City of Ottawa</a>'
+
+/** Zoom from which single collisions show; further out they make a heat map. */
+const COLLISION_POINTS_FROM = 12.5
+
+/**
+ * Collisions involving cyclists or pedestrians: where they cluster, zoomed out,
+ * and each one zoomed in, coloured and sized by the worst injury.
+ */
+function collisionLayers(state: StyleState): { under: LayerSpecification[]; over: LayerSpecification[] } {
+  if (state.layer !== 'collisions') return { under: [], over: [] }
+  const colors = collisionColors(state.basemap)
+  const filter = collisionFilter(state.collisions)
+  const bySeverity = (values: Record<Severity, number | string>) =>
+    [
+      'match',
+      ['get', 'severity'],
+      ...SEVERITIES.flatMap((s) => [s, values[s]]),
+      values.none,
+    ] as unknown as ExpressionSpecification
+  const pale = state.basemap === 'light' || state.basemap === 'grey'
+  return {
+    under: [
+      {
+        id: 'collisions-heat',
+        type: 'heatmap',
+        source: COLLISIONS_SOURCE,
+        maxzoom: COLLISION_POINTS_FROM + 1,
+        filter,
+        paint: {
+          // Worse collisions weigh more.
+          'heatmap-weight': bySeverity({ none: 0.15, minimal: 0.3, minor: 0.45, major: 0.8, fatal: 1 }),
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 6, 12, 14, 13.5, 22],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 13, 1.2],
+          'heatmap-color': [
+            'interpolate',
+            ['linear'],
+            ['heatmap-density'],
+            0,
+            'rgba(0, 0, 0, 0)',
+            0.15,
+            pale ? 'rgba(242, 148, 112, 0.45)' : 'rgba(122, 59, 46, 0.5)',
+            0.4,
+            colors.minor,
+            0.7,
+            colors.major,
+            1,
+            colors.fatal,
+          ],
+          'heatmap-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            COLLISION_POINTS_FROM,
+            0.85,
+            COLLISION_POINTS_FROM + 1,
+            0,
+          ],
+        },
+      },
+    ],
+    over: [
+      {
+        id: 'collisions-point',
+        type: 'circle',
+        source: COLLISIONS_SOURCE,
+        minzoom: COLLISION_POINTS_FROM,
+        filter,
+        paint: {
+          'circle-color': bySeverity(colors),
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            COLLISION_POINTS_FROM,
+            bySeverity({ none: 2.5, minimal: 3, minor: 3.5, major: 5, fatal: 6 }),
+            17,
+            bySeverity({ none: 5, minimal: 6, minor: 7, major: 9, fatal: 11 }),
+          ],
+          'circle-stroke-color': pale ? '#ffffff' : '#111417',
+          'circle-stroke-width': 1,
+          'circle-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            COLLISION_POINTS_FROM,
+            0,
+            COLLISION_POINTS_FROM + 0.7,
+            1,
+          ],
+          'circle-stroke-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            COLLISION_POINTS_FROM,
+            0,
+            COLLISION_POINTS_FROM + 0.7,
+            1,
+          ],
+        },
+      },
+    ],
+  }
+}
+
 function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
   return {
     id: 'places-icon',
@@ -550,8 +663,13 @@ function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
  * The whole map style as a function of app state. MapLibre diffs successive
  * styles, so switching layer, language or selection only touches what changed.
  */
-export function buildStyle(state: StyleState, assetsBase: string): StyleSpecification {
+/**
+ * `dataBase` is where the app's own data files are served (public/data); the
+ * tiles may come from a CDN (`assetsBase`) instead.
+ */
+export function buildStyle(state: StyleState, assetsBase: string, dataBase = assetsBase): StyleSpecification {
   const night = state.layer === 'night'
+  const collisions = collisionLayers(state.reach ? { ...state, layer: 'places' } : state)
   const theme = night && state.basemap === 'dark' ? NIGHT_THEME : THEMES[state.basemap]
   const drawn = basemapLayers('basemap', theme.flavor, { lang: state.lang, labelsOnly: theme.imagery })
   const base: LayerSpecification[] = theme.imagery
@@ -581,15 +699,25 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       route: { type: 'geojson', data: routeData(state.route) },
       'route-stops': { type: 'geojson', data: stopsData(state.route) },
       ...(state.reach && { [REACH_SOURCE]: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }),
+      // Loaded only while the collisions layer is on.
+      ...(collisions.over.length && {
+        [COLLISIONS_SOURCE]: {
+          type: 'geojson',
+          data: `${dataBase}/data/collisions.geojson`,
+          attribution: COLLISIONS_ATTRIBUTION,
+        },
+      }),
     },
     layers: [
       ...base.slice(0, at),
       ...overlayLayers(state, theme),
       ...(night && !state.reach ? nightLayers(theme) : []),
       ...reachLayers(state.reach, state.basemap),
+      ...collisions.under,
       ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
       placesLayer(state, theme),
+      ...collisions.over,
     ],
   }
 }

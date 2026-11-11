@@ -36,6 +36,16 @@ function LayerIcon({ layer }: { layer: LayerId }) {
       </svg>
     )
   }
+  if (layer === 'collisions') {
+    // A warning sign in the colours of the injuries.
+    return (
+      <svg aria-hidden="true" {...common}>
+        <path d="M12 3 2.5 20h19Z" fill="#E2603A" stroke="#BC2F1F" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M12 9.5v5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+        <circle cx="12" cy="17.3" r="1.2" fill="#fff" />
+      </svg>
+    )
+  }
   if (layer === 'night') {
     return (
       <svg aria-hidden="true" {...common}>

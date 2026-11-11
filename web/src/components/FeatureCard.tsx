@@ -43,12 +43,13 @@ function formatValue(key: string, value: unknown, t: Translate): string {
   return text.replaceAll('_', ' ').replaceAll(';', ', ')
 }
 
-function osmPath(selected: Selected): string {
+function osmPath(selected: Props['selected']): string {
   return selected.kind === 'way' ? `way/${selected.id}` : selected.osm
 }
 
 interface Props {
-  selected: Selected
+  /** A street, path or place; collisions have a card of their own. */
+  selected: Exclude<Selected, { kind: 'collision' }>
   onClose: () => void
 }
 

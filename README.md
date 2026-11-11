@@ -1,6 +1,6 @@
 # Bike Ottawa Maps
 
-Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, places such as bike parking, repair stations and water, a night map of lit streets and street lights, a route planner for riding or walking, and a map of how far you get in 10 to 30 minutes. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
+Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, places such as bike parking, repair stations and water, a night map of lit streets and street lights, a map of collisions involving cyclists and pedestrians, a route planner for riding or walking, and a map of how far you get in 10 to 30 minutes. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
 
 No map vendor or API keys: the basemap and data layers are static [PMTiles](https://docs.protomaps.com/pmtiles/) files rendered with [MapLibre](https://maplibre.org). The light, grey and dark map styles are the same basemap tiles restyled in the browser; only the satellite style loads from elsewhere (Esri World Imagery, no key).
 
@@ -33,6 +33,10 @@ Tiles land in `web/public/tiles` and are not committed.
 The first run downloads the Ontario and Quebec extracts from Geofabrik (2.2 GB) and cuts the area out. After that it only fetches OpenStreetMap's hourly change files, applies them and trims the result back to the area, so the data is about an hour behind OSM and a day's update is around 100 MB.
 
 `region.json` has two boxes: `bbox` is what the map shows, `routingBbox` is the wider area routes can cross.
+
+## Collisions
+
+The collisions layer shows the City of Ottawa's reported traffic collisions that involve a cyclist or a pedestrian ([open data](https://open.ottawa.ca/), Open Government Licence – Ottawa). They are kept in the repository as `web/public/data/collisions.geojson`, about 3,500 points. The city publishes a new year each summer; `npm run collisions` downloads the data again. 2023 is missing from the city's data.
 
 ## Route planner
 
@@ -72,6 +76,7 @@ docker compose up -d    # http://localhost:8080
 - `npm run lint` / `npm run format`: check or fix with Biome
 - `npm run tiles` / `npm run basemap`: rebuild the tiles
 - `npm run osm`: bring the OSM data up to date without rebuilding anything
+- `npm run collisions`: download the city's collision data again
 - `npm run router:build` / `npm run router`: build and run the local router
 
 ## Roadmap

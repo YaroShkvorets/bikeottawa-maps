@@ -16,7 +16,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { BasemapSwitch } from '../components/BasemapSwitch'
-import { ASSETS_BASE, REGION } from '../config'
+import { ASSETS_BASE, DATA_BASE, REGION } from '../config'
 import type { BasemapId } from '../layers'
 import { isPlaceKind, placeImageId } from '../places'
 import { comfortKeyOf, type LngLat, type RouteHighlight } from '../route/brouter'
@@ -122,7 +122,7 @@ export function MapView({ state, onSelect, onBasemapChange, popup, reach, routin
     const [west, south, east, north] = REGION.bbox
     const map = new MapLibreMap({
       container: container.current,
-      style: buildStyle(state, ASSETS_BASE),
+      style: buildStyle(state, ASSETS_BASE, DATA_BASE),
       center: REGION.center,
       zoom: 12.5,
       minZoom: 9,
@@ -171,6 +171,10 @@ export function MapView({ state, onSelect, onBasemapChange, popup, reach, routin
         { layers },
       )
       if (!feature) return null
+      if (feature.layer.id === 'collisions-point') {
+        const at = feature.geometry.type === 'Point' ? (feature.geometry.coordinates as [number, number]) : null
+        return { kind: 'collision', props: feature.properties, at: at ?? [lngLat.lng, lngLat.lat] }
+      }
       if (feature.sourceLayer === 'places') {
         // A place is anchored at its own position, a street where it was clicked.
         const at = feature.geometry.type === 'Point' ? (feature.geometry.coordinates as [number, number]) : null
@@ -236,7 +240,7 @@ export function MapView({ state, onSelect, onBasemapChange, popup, reach, routin
     // A style can only be diffed once the current one has loaded; until then wait
     // rather than restart loading from scratch.
     const apply = () => {
-      map.setStyle(buildStyle(latest.current.state, ASSETS_BASE))
+      map.setStyle(buildStyle(latest.current.state, ASSETS_BASE, DATA_BASE))
       // The style diff also empties the reach source (its data is not in the style), so fill it again.
       reachShown.current = { source: null, data: null }
       showReach(map, latest.current.reach, reachShown)

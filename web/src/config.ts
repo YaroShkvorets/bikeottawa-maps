@@ -20,6 +20,9 @@ export const ASSETS_BASE: string = new URL(
  */
 export const MAPILLARY_TOKEN: string | null = import.meta.env.VITE_MAPILLARY_TOKEN || null
 
+/** Where the app's own data files (public/data) are served: always next to the app. */
+export const DATA_BASE: string = new URL(import.meta.env.BASE_URL, window.location.href).href.replace(/\/$/, '')
+
 /** BRouter endpoint for the route planner; the planner is hidden when unset. */
 export const ROUTER_URL: string | null = import.meta.env.VITE_ROUTER_URL
   ? new URL(import.meta.env.VITE_ROUTER_URL, window.location.href).href

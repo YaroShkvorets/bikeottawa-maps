@@ -1,17 +1,28 @@
+import type { CollisionFilters } from '../collisions'
 import { useI18n } from '../i18n'
 import { type BasemapId, type LayerId, LTS_COLORS, lampColor, WINTER_COLORS } from '../layers'
 import { kindsInGroup, PLACE_GROUP_IDS, type PlaceKind } from '../places'
+import { CollisionLegend } from './CollisionLegend'
 import { PlaceIcon } from './PlaceIcon'
 
 interface Props {
   layer: LayerId
+  collisionFilters: CollisionFilters
+  onCollisionFiltersChange: (filters: CollisionFilters) => void
   /** The night layer's colours depend on the ground they are drawn on. */
   basemap: BasemapId
   placeKinds: readonly PlaceKind[]
   onTogglePlaceKind: (kind: PlaceKind) => void
 }
 
-export function Legend({ layer, basemap, placeKinds, onTogglePlaceKind }: Props) {
+export function Legend({
+  layer,
+  basemap,
+  placeKinds,
+  onTogglePlaceKind,
+  collisionFilters,
+  onCollisionFiltersChange,
+}: Props) {
   const { t } = useI18n()
   const lamp = lampColor(basemap)
   return (
@@ -54,6 +65,9 @@ export function Legend({ layer, basemap, placeKinds, onTogglePlaceKind }: Props)
             {t('night.lamp')}
           </li>
         </ul>
+      )}
+      {layer === 'collisions' && (
+        <CollisionLegend filters={collisionFilters} onChange={onCollisionFiltersChange} basemap={basemap} />
       )}
       {layer === 'places' &&
         PLACE_GROUP_IDS.map((group) => (

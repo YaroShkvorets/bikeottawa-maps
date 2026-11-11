@@ -1,6 +1,6 @@
 /** The switchable data layers and their colours. Shared by the map style and the legend. */
 
-export const LAYER_IDS = ['places', 'comfort', 'winter', 'night'] as const
+export const LAYER_IDS = ['places', 'comfort', 'winter', 'night', 'collisions'] as const
 export type LayerId = (typeof LAYER_IDS)[number]
 
 export const BASEMAP_IDS = ['light', 'grey', 'dark', 'satellite'] as const
@@ -31,6 +31,18 @@ export const REACH_RAMP_ON_DARK = ['#CDE2FB', '#9EC5F4', '#6DA7EC', '#3987E5', '
 
 export function reachRamp(basemap: BasemapId): readonly string[] {
   return basemap === 'light' || basemap === 'grey' ? REACH_RAMP_ON_PALE : REACH_RAMP_ON_DARK
+}
+
+/**
+ * Collisions by worst injury, none to fatal. Damage only is grey; injuries run
+ * through one red, the worst standing out most: darkest on pale ground,
+ * brightest on dark ground. Size carries severity too.
+ */
+const COLLISIONS_ON_PALE = { none: '#9AA1A6', minimal: '#F29470', minor: '#E2603A', major: '#BC2F1F', fatal: '#741012' }
+const COLLISIONS_ON_DARK = { none: '#6F777B', minimal: '#7A3B2E', minor: '#B5442C', major: '#EE6A45', fatal: '#FFB199' }
+
+export function collisionColors(basemap: BasemapId): Record<'none' | 'minimal' | 'minor' | 'major' | 'fatal', string> {
+  return basemap === 'light' || basemap === 'grey' ? COLLISIONS_ON_PALE : COLLISIONS_ON_DARK
 }
 
 export const WINTER_COLORS = { yes: '#1B5FAE', no: '#E07B1A', unknown: '#6F7B80' } as const
