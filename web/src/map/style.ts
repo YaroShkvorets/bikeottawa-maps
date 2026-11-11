@@ -2,7 +2,7 @@ import { layers as basemapLayers, type Flavor, namedFlavor } from '@protomaps/ba
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import type { Lang } from '../i18n'
-import { type BasemapId, INK, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_COLORS } from '../layers'
+import { type BasemapId, INK, LAMP_COLOR, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_COLORS } from '../layers'
 import { type PlaceKind, placeImageId } from '../places'
 import { comfortKeyOf, type Route, type RouteHighlight } from '../route/brouter'
 
@@ -29,6 +29,7 @@ export const INTERACTIVE_LAYERS: Record<LayerId, string[]> = {
   comfort: ['comfort-line'],
   winter: ['winter-line', 'winter-unknown'],
   places: ['places-icon'],
+  night: [],
 }
 
 const ATTRIBUTION =
@@ -103,6 +104,21 @@ const THEMES: Record<BasemapId, Theme> = {
     halo: '#101010',
     imagery: true,
   },
+}
+
+/** The night layer brings its own ground: near black, so the street lights carry the picture. */
+const NIGHT_THEME: Theme = {
+  flavor: plain({
+    ...namedFlavor('black'),
+    background: '#05070A',
+    earth: '#0A0D11',
+    water: '#03050A',
+    buildings: '#10141A',
+  }),
+  sprite: 'dark',
+  casing: '#0E1316',
+  contrast: '#FFFFFF',
+  halo: '#05070A',
 }
 
 const IMAGERY_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -306,6 +322,87 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
   ]
 }
 
+/** Lit streets as a soft line with a brighter core. */
+const GLOW_COLOR = '#FFB24D'
+/** Lit streets hand over to the individual lamps between these zooms. */
+const STREETS_UNTIL = 14.5
+const LAMPS_FROM = 12.5
+
+/**
+ * The city by its street lights. Zoomed out, streets with lamps along them glow
+ * as lines; zooming in, the lines fade and the lamps themselves take over, first
+ * as a blur and from zoom 14 as dots too.
+ */
+const nightLayers: LayerSpecification[] = [
+  {
+    id: 'night-streets-glow',
+    type: 'line',
+    source: 'night',
+    'source-layer': 'streets',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': GLOW_COLOR,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 3, 12, 6, 14, 11],
+      'line-blur': ['interpolate', ['linear'], ['zoom'], 9, 3, 12, 5, 14, 9],
+      'line-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 12, 0.5, 13, 0.4, STREETS_UNTIL, 0],
+    },
+  },
+  {
+    id: 'night-streets',
+    type: 'line',
+    source: 'night',
+    'source-layer': 'streets',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': LAMP_COLOR,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 12, 1.2, 14, 2],
+      'line-blur': 0.6,
+      'line-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.95, 13, 0.85, STREETS_UNTIL, 0],
+    },
+  },
+  {
+    id: 'night-glow',
+    type: 'heatmap',
+    source: 'night',
+    'source-layer': 'lamps',
+    minzoom: 12,
+    paint: {
+      // Per-lamp brightness, raised as the map zooms in and lamps spread apart.
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 12, 0.12, 13, 0.3, 14, 0.45, 16, 0.6],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 12, 6, 13, 9, 14, 12, 16, 26, 18, 50],
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        'rgba(255, 170, 60, 0)',
+        0.08,
+        'rgba(255, 160, 50, 0.25)',
+        0.35,
+        'rgba(255, 190, 80, 0.7)',
+        0.7,
+        'rgba(255, 220, 140, 0.92)',
+        1,
+        'rgba(255, 246, 220, 1)',
+      ],
+      'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], LAMPS_FROM, 0, 13.5, 1, 15, 1, 18, 0.6],
+    },
+  },
+  {
+    id: 'night-lamps',
+    type: 'circle',
+    source: 'night',
+    'source-layer': 'lamps',
+    minzoom: 14,
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 1.2, 16, 2.4, 18, 4.5],
+      'circle-color': LAMP_COLOR,
+      'circle-blur': 0.3,
+      'circle-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 16, 1],
+    },
+  },
+]
+
 /** Zoom from which places show their name beside the marker. */
 const PLACE_LABEL_ZOOM = 15
 
@@ -351,7 +448,8 @@ function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
  * styles, so switching layer, language or selection only touches what changed.
  */
 export function buildStyle(state: StyleState, assetsBase: string): StyleSpecification {
-  const theme = THEMES[state.basemap]
+  const night = state.layer === 'night'
+  const theme = night ? NIGHT_THEME : THEMES[state.basemap]
   const drawn = basemapLayers('basemap', theme.flavor, { lang: state.lang, labelsOnly: theme.imagery })
   const base: LayerSpecification[] = theme.imagery
     ? [{ id: 'imagery', type: 'raster', source: 'imagery' }, ...drawn]
@@ -375,12 +473,15 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
         },
       }),
       overlays: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
+      // Loaded only while the night layer is on.
+      ...(night && { night: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/night.pmtiles` } }),
       route: { type: 'geojson', data: routeData(state.route) },
       'route-stops': { type: 'geojson', data: stopsData(state.route) },
     },
     layers: [
       ...base.slice(0, at),
       ...overlayLayers(state, theme),
+      ...(night ? nightLayers : []),
       ...routeLayers(theme, state.routeHighlight),
       ...base.slice(at),
       placesLayer(state, theme),

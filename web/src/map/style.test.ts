@@ -118,6 +118,25 @@ describe('buildStyle', () => {
     expect(layer(picked, 'route-highlight').filter).toEqual(['==', ['get', 'part'], 'light'])
   })
 
+  it('lights the street lamps on its own dark ground for the night layer', () => {
+    const night = build({ layer: 'night', basemap: 'light' })
+    expect(night.sources.night).toMatchObject({ type: 'vector' })
+    expect(night.layers.find((l) => l.id === 'night-glow')).toMatchObject({ type: 'heatmap', 'source-layer': 'lamps' })
+    expect(night.layers.find((l) => l.id === 'night-streets')).toMatchObject({
+      type: 'line',
+      source: 'night',
+      'source-layer': 'streets',
+    })
+    expect(night.layers.find((l) => l.id === 'night-lamps')).toMatchObject({ type: 'circle', minzoom: 14 })
+    // The chosen basemap is set aside while it is night.
+    expect(night.sprite).toMatch(/dark$/)
+    expect(night.sources.imagery).toBeUndefined()
+    // Other layers neither load the lamps nor draw them.
+    const day = build({ layer: 'comfort' })
+    expect(day.sources.night).toBeUndefined()
+    expect(day.layers.some((l) => l.id.startsWith('night-'))).toBe(false)
+  })
+
   it('restyles the same tiles for each drawn basemap', () => {
     for (const basemap of ['light', 'grey', 'dark'] as const) {
       const style = build({ basemap })

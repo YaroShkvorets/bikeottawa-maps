@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { centreOf, classifyPlace, classifyWay, middleOf, parseOsmId, placeFilters } from './classify.mjs'
+import { centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId, placeFilters } from './classify.mjs'
 
 test('cycleways are low-stress paths shown from far out', () => {
   const { props, minzoom } = classifyWay({ highway: 'cycleway', surface: 'asphalt', winter_service: 'yes' })
@@ -158,6 +158,12 @@ test('the osmium filter covers every place kind, grouped by key', () => {
   assert.ok(filters.some((f) => f.startsWith('nw/barrier=') && f.includes('cycle_barrier')))
   assert.ok(filters.includes('nw/leisure=picnic_table,splash_pad,swimming_area'))
   assert.ok(filters.some((f) => f.startsWith('nw/amenity=') && f.includes('bench') && f.includes('bicycle_parking')))
+})
+
+test('street lamps are recognised and are not places', () => {
+  assert.equal(isStreetLamp({ highway: 'street_lamp', lamp_type: 'led' }), true)
+  assert.equal(isStreetLamp({ highway: 'crossing' }), false)
+  assert.equal(classifyPlace({ highway: 'street_lamp' }), null)
 })
 
 test('osmium ids map back to OSM types', () => {

@@ -1,6 +1,6 @@
 # Bike Ottawa Maps
 
-Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, places such as bike parking, repair stations and water, and a route planner with riding styles. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
+Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, places such as bike parking, repair stations and water, a night map of lit streets and street lights, and a route planner with riding styles. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
 
 No map vendor or API keys: the basemap and data layers are static [PMTiles](https://docs.protomaps.com/pmtiles/) files rendered with [MapLibre](https://maplibre.org). The light, grey and dark map styles are the same basemap tiles restyled in the browser; only the satellite style loads from elsewhere (Esri World Imagery, no key).
 

@@ -36,6 +36,14 @@ function LayerIcon({ layer }: { layer: LayerId }) {
       </svg>
     )
   }
+  if (layer === 'night') {
+    return (
+      <svg aria-hidden="true" {...common}>
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="#E3A72F" />
+        <path d="m17 3 .7 1.8 1.8.7-1.8.7L17 8l-.7-1.8-1.8-.7 1.8-.7Z" fill="#E3A72F" />
+      </svg>
+    )
+  }
   return (
     <svg
       aria-hidden="true"

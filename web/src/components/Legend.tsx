@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n'
-import { type LayerId, LTS_COLORS, WINTER_COLORS } from '../layers'
+import { LAMP_COLOR, type LayerId, LTS_COLORS, WINTER_COLORS } from '../layers'
 import { kindsInGroup, PLACE_GROUP_IDS, type PlaceKind } from '../places'
 import { PlaceIcon } from './PlaceIcon'
 
@@ -38,6 +38,18 @@ export function Legend({ layer, placeKinds, onTogglePlaceKind }: Props) {
               {t(`winter.${value}`)}
             </li>
           ))}
+        </ul>
+      )}
+      {layer === 'night' && (
+        <ul>
+          <li>
+            <span className="swatch line glow" style={{ background: LAMP_COLOR, color: LAMP_COLOR }} />
+            {t('night.street')}
+          </li>
+          <li>
+            <span className="swatch lamp" style={{ background: LAMP_COLOR, color: LAMP_COLOR }} />
+            {t('night.lamp')}
+          </li>
         </ul>
       )}
       {layer === 'places' &&

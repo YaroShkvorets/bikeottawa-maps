@@ -259,6 +259,19 @@ a {
   border-radius: 0;
 }
 
+.swatch.line.glow {
+  height: 3px;
+  box-shadow: 0 0 6px 2px currentcolor;
+}
+
+.swatch.lamp {
+  width: 10px;
+  height: 10px;
+  margin: 0 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px 3px currentcolor;
+}
+
 .swatch.dot {
   width: 14px;
   height: 14px;
@@ -1034,13 +1047,20 @@ a {
     display: none;
   }
 
+  /* Four layers side by side: the icon sits above a small label. */
   .layer-button {
     flex: 1;
-    min-height: 44px;
+    min-width: 0;
+    min-height: 48px;
+    flex-direction: column;
     justify-content: center;
-    gap: 6px;
-    padding: 0 6px;
+    gap: 1px;
+    padding: 4px 2px;
     border-radius: 10px;
+  }
+
+  .layer-label {
+    font-size: 12px;
   }
 
   .layer-icon,

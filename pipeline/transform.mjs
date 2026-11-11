@@ -1,12 +1,14 @@
 // Reads `osmium export` output (one GeoJSON feature per line) and writes
-// ways.geojsonseq and places.geojsonseq ready for tippecanoe.
+// ways, places, lamps and lit (lit ways, for the night layer) .geojsonseq files
+// ready for tippecanoe.
 // Usage: node pipeline/transform.mjs <input.geojsonseq> <output-dir>
 
 import { once } from 'node:events'
 import { createReadStream, createWriteStream } from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
-import { centreOf, classifyPlace, classifyWay, middleOf, parseOsmId } from './classify.mjs'
+import { centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId } from './classify.mjs'
+import { isLit, lampIndex } from './lamps.mjs'
 
 const [input, outDir] = process.argv.slice(2)
 if (!input || !outDir) {
@@ -16,13 +18,30 @@ if (!input || !outDir) {
 
 const ways = createWriteStream(path.join(outDir, 'ways.geojsonseq'))
 const places = createWriteStream(path.join(outDir, 'places.geojsonseq'))
-const counts = { ways: 0, places: 0, byLts: [0, 0, 0, 0, 0] }
+const lamps = createWriteStream(path.join(outDir, 'lamps.geojsonseq'))
+const lit = createWriteStream(path.join(outDir, 'lit.geojsonseq'))
+const counts = { ways: 0, lit: 0, places: 0, lamps: 0, byLts: [0, 0, 0, 0, 0] }
 
 async function write(stream, feature) {
   if (!stream.write(`${JSON.stringify(feature)}\n`)) await once(stream, 'drain')
 }
 
-for await (const line of createInterface({ input: createReadStream(input), crlfDelay: Infinity })) {
+/** Further out than this the night layer shows lit streets, not single lamps. */
+const LAMPS_MINZOOM = 12
+
+const lines = () => createInterface({ input: createReadStream(input), crlfDelay: Infinity })
+
+// First pass: where the street lamps are, so that ways can be told whether they are lit.
+const lampPositions = []
+for await (const line of lines()) {
+  if (!line.includes('"street_lamp"')) continue
+  const feature = JSON.parse(line)
+  if (feature.geometry.type === 'Point' && isStreetLamp(feature.properties))
+    lampPositions.push(feature.geometry.coordinates)
+}
+const { litShare } = lampIndex(lampPositions)
+
+for await (const line of lines()) {
   if (!line) continue
   const feature = JSON.parse(line)
   const { type, id } = parseOsmId(feature.id)
@@ -45,11 +64,25 @@ for await (const line of createInterface({ input: createReadStream(input), crlfD
     if (!way) continue
     counts.ways++
     counts.byLts[way.props.lts]++
+    // Lit ways glow on the night layer. They go in a file of their own, bare, so
+    // that all of them can show however far out the map is zoomed.
+    if (isLit(tags, litShare(feature.geometry.coordinates))) {
+      counts.lit++
+      await write(lit, { type: 'Feature', properties: {}, geometry: feature.geometry })
+    }
     await write(ways, {
       type: 'Feature',
       id,
       tippecanoe: { minzoom: way.minzoom },
       properties: way.props,
+      geometry: feature.geometry,
+    })
+  } else if (geomType === 'Point' && isStreetLamp(tags)) {
+    counts.lamps++
+    await write(lamps, {
+      type: 'Feature',
+      tippecanoe: { minzoom: LAMPS_MINZOOM },
+      properties: {},
       geometry: feature.geometry,
     })
   } else if (geomType === 'Point' || geomType === 'Polygon' || geomType === 'MultiPolygon') {
@@ -69,7 +102,9 @@ for await (const line of createInterface({ input: createReadStream(input), crlfD
 
 ways.end()
 places.end()
-await Promise.all([once(ways, 'finish'), once(places, 'finish')])
+lamps.end()
+lit.end()
+await Promise.all([ways, places, lamps, lit].map((stream) => once(stream, 'finish')))
 console.log(
-  `ways: ${counts.ways} (LTS 1-4: ${counts.byLts.slice(1).join(', ')}; paths closed to bikes: ${counts.byLts[0]}), places: ${counts.places}`,
+  `ways: ${counts.ways} (LTS 1-4: ${counts.byLts.slice(1).join(', ')}; paths closed to bikes: ${counts.byLts[0]}; lit: ${counts.lit}), places: ${counts.places}, street lamps: ${counts.lamps}`,
 )

@@ -190,6 +190,11 @@ export function middleOf(coordinates) {
   return coordinates[Math.floor((coordinates.length - 1) / 2)]
 }
 
+/** Street lamps light the night layer; they carry no details of their own. */
+export function isStreetLamp(tags) {
+  return tags.highway === 'street_lamp'
+}
+
 /** The `osmium tags-filter` expressions that select every place kind. */
 export function placeFilters() {
   const byKey = new Map()
