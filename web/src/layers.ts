@@ -1,6 +1,6 @@
 /** The switchable data layers and their colours. Shared by the map style and the legend. */
 
-export const LAYER_IDS = ['comfort', 'winter', 'places', 'night'] as const
+export const LAYER_IDS = ['places', 'comfort', 'winter', 'night'] as const
 export type LayerId = (typeof LAYER_IDS)[number]
 
 export const BASEMAP_IDS = ['light', 'grey', 'dark', 'satellite'] as const

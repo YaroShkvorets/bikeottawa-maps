@@ -35,7 +35,7 @@ import {
 } from './route/styles'
 import { useRoute, visibleRoute } from './route/useRoute'
 
-const DEFAULT_LAYER: LayerId = 'comfort'
+const DEFAULT_LAYER: LayerId = 'places'
 const PHONE_LAYOUT = '(max-width: 720px)'
 const ignoreSelection = () => {}
 
