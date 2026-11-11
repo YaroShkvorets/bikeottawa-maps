@@ -1,6 +1,9 @@
 {
   "name": "Ottawa–Gatineau",
-  "bbox": [-75.95, 45.21, -75.4, 45.532],
+  "bbox": [-76.4, 44.95, -75.2, 45.65],
   "center": [-75.6972, 45.4215],
-  "osmPbfUrl": "https://download.bbbike.org/osm/bbbike/Ottawa/Ottawa.osm.pbf"
+  "osmPbfUrls": [
+    "https://download.geofabrik.de/north-america/canada/ontario-latest.osm.pbf",
+    "https://download.geofabrik.de/north-america/canada/quebec-latest.osm.pbf"
+  ]
 }
