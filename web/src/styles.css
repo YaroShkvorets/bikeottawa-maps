@@ -1325,19 +1325,73 @@ a {
   gap: 18px;
 }
 
-.collision-years {
+.year-range {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   font-size: 14px;
 }
 
-.collision-years select {
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  font: inherit;
+/* Two range inputs on one track; only their handles take the pointer. */
+.year-range-track {
+  position: relative;
+  height: 24px;
+}
+
+.year-range-track::before,
+.year-range-span {
+  content: "";
+  position: absolute;
+  top: 10px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.year-range-track::before {
+  left: 0;
+  right: 0;
+  background: var(--border);
+}
+
+.year-range-span {
+  background: var(--accent);
+}
+
+.year-range-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  appearance: none;
+}
+
+.year-range-input::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 3px rgb(22 36 43 / 35%);
+  pointer-events: auto;
+  cursor: pointer;
+  appearance: none;
+}
+
+.year-range-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 3px rgb(22 36 43 / 35%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.year-range-input::-moz-range-track {
+  background: none;
 }
 
 .legend .collision-severities {

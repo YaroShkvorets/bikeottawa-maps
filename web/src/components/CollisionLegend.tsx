@@ -31,10 +31,47 @@ function SpotDot({ count, color }: { count: number; color: string }) {
   )
 }
 
-const YEARS = Array.from(
-  { length: COLLISION_YEARS.last - COLLISION_YEARS.first + 1 },
-  (_, i) => COLLISION_YEARS.first + i,
-).filter((y) => !(COLLISION_YEARS.missing as readonly number[]).includes(y))
+/**
+ * Years as one slider with two handles: two range inputs on one track, only
+ * their handles taking the pointer, the span between them highlighted.
+ */
+function YearRange({ from, to, onChange }: { from: number; to: number; onChange: (from: number, to: number) => void }) {
+  const { t } = useI18n()
+  const { first, last } = COLLISION_YEARS
+  const at = (year: number) => `${((year - first) / (last - first)) * 100}%`
+  return (
+    <div className="year-range">
+      <span>
+        {t('crash.years')}: {from === to ? from : `${from} – ${to}`}
+      </span>
+      <div className="year-range-track">
+        <span className="year-range-span" style={{ left: at(from), right: `calc(100% - ${at(to)})` }} />
+        <input
+          className="year-range-input"
+          type="range"
+          min={first}
+          max={last}
+          step={1}
+          value={from}
+          aria-label={t('crash.yearFrom')}
+          // Both handles at the far right: the left one must stay reachable.
+          style={{ zIndex: from === last ? 2 : 1 }}
+          onChange={(e) => onChange(Math.min(Number(e.target.value), to), to)}
+        />
+        <input
+          className="year-range-input"
+          type="range"
+          min={first}
+          max={last}
+          step={1}
+          value={to}
+          aria-label={t('crash.yearUntil')}
+          onChange={(e) => onChange(from, Math.max(Number(e.target.value), from))}
+        />
+      </div>
+    </div>
+  )
+}
 
 /** Who, which years and which injuries the collisions layer shows, with how many of each. */
 export function CollisionLegend({ spots, busiestSpot, filters, onChange, basemap }: Props) {
@@ -67,34 +104,7 @@ export function CollisionLegend({ spots, busiestSpot, filters, onChange, basemap
           </label>
         ))}
       </div>
-      <div className="collision-years">
-        <span>{t('crash.years')}</span>
-        <select
-          aria-label={t('crash.years')}
-          value={filters.from}
-          onChange={(e) => {
-            const from = Number(e.target.value)
-            onChange({ ...filters, from, to: Math.max(from, filters.to) })
-          }}
-        >
-          {YEARS.map((y) => (
-            <option key={y}>{y}</option>
-          ))}
-        </select>
-        <span>{t('crash.yearTo')}</span>
-        <select
-          aria-label={`${t('crash.years')} ${t('crash.yearTo')}`}
-          value={filters.to}
-          onChange={(e) => {
-            const to = Number(e.target.value)
-            onChange({ ...filters, to, from: Math.min(to, filters.from) })
-          }}
-        >
-          {YEARS.map((y) => (
-            <option key={y}>{y}</option>
-          ))}
-        </select>
-      </div>
+      <YearRange from={filters.from} to={filters.to} onChange={(from, to) => onChange({ ...filters, from, to })} />
       <ul className="collision-severities">
         {[...SEVERITIES].reverse().map((severity: Severity) => (
           <li key={severity}>
