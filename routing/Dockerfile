@@ -1,24 +1,10 @@
 # BRouter with the ottbike profile and routing data for the region baked in.
 # Run routing/prepare-data.sh first, then: docker build -t bikeottawa-router routing
-ARG BROUTER_IMAGE=ghcr.io/abrensch/brouter:master@sha256:1e73860a13994eb49871bd35e20e955ab3d3b3cde0f26575a9cf2a69a72495ae
-# The server jar comes from the bikeottawa branch of our fork: BROUTER_IMAGE's
-# commit plus isochrones (engineMode=5: how far you get in a given time) and
+#
+# The base is our fork's image (bikeottawa branch, commit 4748cb1): upstream
+# BRouter plus isochrones (engineMode=5: how far you get in a given time) and
 # time lost at stop signs and signals (the profile's stopdelay).
-ARG BROUTER_REPO=https://github.com/YaroShkvorets/brouter.git
-ARG BROUTER_COMMIT=4748cb153dba0b2efa8d60454b0a274542d1d533
-
-FROM alpine/git:v2.49.1 AS source
-ARG BROUTER_REPO
-ARG BROUTER_COMMIT
-WORKDIR /brouter
-RUN git init -q && git remote add origin "$BROUTER_REPO" \
-    && git fetch -q --depth 1 origin "$BROUTER_COMMIT" && git checkout -q FETCH_HEAD
-
-FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-jammy AS jar
-COPY --from=source /brouter /brouter
-WORKDIR /brouter
-RUN --mount=type=cache,target=/root/.gradle \
-    sed -i 's/\r$//' gradlew && chmod +x gradlew && ./gradlew --no-daemon -q :brouter-server:fatJar
+ARG BROUTER_IMAGE=ghcr.io/yaroshkvorets/brouter:bikeottawa@sha256:a8473e412a93167c3f5079b60d642e956d6e3e2ebafe598e0758f68c15b7e9a9
 
 FROM ${BROUTER_IMAGE} AS base
 USER root
@@ -36,7 +22,6 @@ COPY data/ /data/
 RUN build-segments.sh /data/region.osm.pbf /data/elevation /segments4
 
 FROM base
-COPY --from=jar /brouter/brouter-server/build/libs/brouter-*-all.jar /app/brouter.jar
 COPY --from=segments /segments4 /segments4
 USER brouter
 ENV MAXTHREADS=4 \
