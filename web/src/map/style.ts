@@ -42,8 +42,10 @@ interface Theme {
   sprite: string
   /** Outline that separates data lines from the ground. */
   casing: string
-  /** Strong outline for the selection and the planned route. */
+  /** Strong outline for the selection and the planned route; also the colour of our own labels. */
   contrast: string
+  /** Outline that keeps our labels readable over the ground. */
+  halo: string
   /** Aerial imagery under the labels instead of the drawn map. */
   imagery?: boolean
 }
@@ -67,10 +69,17 @@ const THEMES: Record<BasemapId, Theme> = {
     sprite: 'light',
     casing: '#FFFFFF',
     contrast: INK,
+    halo: '#FFFFFF',
   },
-  grey: { flavor: plain(namedFlavor('grayscale')), sprite: 'grayscale', casing: '#FFFFFF', contrast: INK },
+  grey: {
+    flavor: plain(namedFlavor('grayscale')),
+    sprite: 'grayscale',
+    casing: '#FFFFFF',
+    contrast: INK,
+    halo: '#FFFFFF',
+  },
   // A pale outline keeps the darkest data colour visible on the dark ground.
-  dark: { flavor: plain(namedFlavor('dark')), sprite: 'dark', casing: '#AEBBC4', contrast: '#FFFFFF' },
+  dark: { flavor: plain(namedFlavor('dark')), sprite: 'dark', casing: '#AEBBC4', contrast: '#FFFFFF', halo: '#14191C' },
   // Only the labels are drawn, so they are brightened to read over photos.
   satellite: {
     flavor: plain({
@@ -90,6 +99,7 @@ const THEMES: Record<BasemapId, Theme> = {
     sprite: 'dark',
     casing: '#0E1316',
     contrast: '#FFFFFF',
+    halo: '#101010',
     imagery: true,
   },
 }
@@ -291,22 +301,47 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
         'circle-opacity': 0.35,
       },
     },
-    {
-      id: 'places-icon',
-      type: 'symbol',
-      source: 'overlays',
-      'source-layer': 'places',
-      filter: ['in', ['get', 'kind'], ['literal', [...state.placeKinds]]],
-      layout: {
-        ...show('places'),
-        // Drawn on demand by the map view, one image per kind.
-        'icon-image': ['concat', placeImageId(''), ['get', 'kind']],
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 0.85, 17, 1.1],
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
-      },
-    },
   ]
+}
+
+/** Zoom from which places show their name beside the marker. */
+const PLACE_LABEL_ZOOM = 15
+
+/**
+ * Markers for the places layer, named when zoomed in. Kept apart from the other
+ * data layers because it sits above the basemap's labels: MapLibre gives the
+ * topmost labels first pick, and here a shop's name matters more than the street's.
+ */
+function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
+  return {
+    id: 'places-icon',
+    type: 'symbol',
+    source: 'overlays',
+    'source-layer': 'places',
+    filter: ['in', ['get', 'kind'], ['literal', [...state.placeKinds]]],
+    layout: {
+      visibility: state.layer === 'places' ? 'visible' : 'none',
+      // Drawn on demand by the map view, one image per kind.
+      'icon-image': ['concat', placeImageId(''), ['get', 'kind']],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 0.85, 17, 1.1],
+      // Every marker shows, and names steer clear of them.
+      'icon-allow-overlap': true,
+      // Names never push a marker off the map; where they would collide they are left out.
+      'text-field': ['step', ['zoom'], '', PLACE_LABEL_ZOOM, ['coalesce', ['get', 'name'], '']],
+      'text-optional': true,
+      'text-font': ['Noto Sans Medium'],
+      'text-size': 12,
+      'text-max-width': 8,
+      'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+      'text-radial-offset': 1.25,
+      'text-justify': 'auto',
+    },
+    paint: {
+      'text-color': theme.contrast,
+      'text-halo-color': theme.halo,
+      'text-halo-width': 1.5,
+    },
+  }
 }
 
 /**
@@ -346,6 +381,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...overlayLayers(state, theme),
       ...routeLayers(theme, state.routeHighlight),
       ...base.slice(at),
+      placesLayer(state, theme),
     ],
   }
 }

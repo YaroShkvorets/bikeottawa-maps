@@ -34,12 +34,26 @@ describe('buildStyle', () => {
     }
   })
 
-  it('draws data below the basemap labels', () => {
+  it('draws lines below the basemap labels and place markers above them', () => {
     const { layers } = build()
-    const firstSymbol = layers.findIndex((l) => l.type === 'symbol' && l.source === 'basemap')
-    const lastOverlay = layers.findLastIndex((l) => 'source' in l && (l.source === 'overlays' || l.source === 'route'))
-    expect(firstSymbol).toBeGreaterThan(-1)
-    expect(lastOverlay).toBeLessThan(firstSymbol)
+    const firstLabel = layers.findIndex((l) => l.type === 'symbol' && l.source === 'basemap')
+    const lastLabel = layers.findLastIndex((l) => l.type === 'symbol' && l.source === 'basemap')
+    const lines = layers.flatMap((l, i) => (l.type === 'line' && l.source !== 'basemap' ? [i] : []))
+    expect(firstLabel).toBeGreaterThan(-1)
+    expect(Math.max(...lines)).toBeLessThan(firstLabel)
+    expect(layers.findIndex((l) => l.id === 'places-icon')).toBeGreaterThan(lastLabel)
+  })
+
+  it('names places from zoom 15, in a colour that suits the basemap', () => {
+    const places = (basemap: 'light' | 'dark') =>
+      build({ basemap }).layers.find((l) => l.id === 'places-icon') as {
+        layout: Record<string, unknown>
+        paint: Record<string, unknown>
+      }
+    expect(places('light').layout['text-field']).toEqual(['step', ['zoom'], '', 15, ['coalesce', ['get', 'name'], '']])
+    expect(places('light').layout['text-optional']).toBe(true)
+    expect(places('light').paint['text-color']).not.toBe(places('dark').paint['text-color'])
+    expect(places('dark').paint['text-color']).toBe('#FFFFFF')
   })
 
   it('filters the selection and the place kinds', () => {
