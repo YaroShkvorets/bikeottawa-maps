@@ -38,6 +38,11 @@ test('streets get a stress level and no winter property', () => {
   assert.equal(minzoom, 9)
 })
 
+test('ways keep the sub-type that names them', () => {
+  assert.equal(classifyWay({ highway: 'service', service: 'driveway' }).props.service, 'driveway')
+  assert.equal(classifyWay({ highway: 'footway', footway: 'sidewalk', bicycle: 'yes' }).props.footway, 'sidewalk')
+})
+
 test('ways closed to bikes are dropped unless they are off-street paths', () => {
   assert.equal(classifyWay({ highway: 'motorway' }), null)
   assert.equal(classifyWay({ highway: 'residential', bicycle: 'no' }), null)

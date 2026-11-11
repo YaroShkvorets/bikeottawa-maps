@@ -4,6 +4,7 @@ import { isMessageKey, type MessageKey, type Translate, useI18n } from '../i18n'
 import { LTS_COLORS, WINTER_COLORS } from '../layers'
 import type { Selected } from '../map/style'
 import { isPlaceKind } from '../places'
+import { wayType } from '../wayType'
 import { PlaceIcon } from './PlaceIcon'
 
 const WAY_FACTS = ['surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'] as const
@@ -53,7 +54,7 @@ export function FeatureCard({ selected, onClose }: Props) {
   const { t, lang } = useI18n()
   const { props } = selected
   const kindKey = `${selected.kind === 'way' ? 'kind' : 'place'}.${props.kind}`
-  const kindLabel = isMessageKey(kindKey) ? t(kindKey) : ''
+  const kindLabel = (selected.kind === 'way' && wayType(props, t)) || (isMessageKey(kindKey) ? t(kindKey) : '')
   const name = typeof props.name === 'string' ? props.name : null
   const [type, id] = osmPath(selected).split('/')
 

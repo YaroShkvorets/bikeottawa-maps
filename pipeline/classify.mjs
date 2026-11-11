@@ -68,7 +68,7 @@ export function classifyWay(tags) {
   if (lts === 0 && (!isPath || isSidewalk)) return null
 
   const props = { lts, kind: isPath ? 'path' : 'street', highway }
-  pick(tags, ['name', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
+  pick(tags, ['name', 'service', 'footway', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
   // Indoor walkways have no snow to plow, so they carry no winter status and
   // stay off the winter layer.
   const isIndoor = tags.indoor !== undefined && tags.indoor !== 'no'
