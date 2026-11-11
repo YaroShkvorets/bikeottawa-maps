@@ -15,8 +15,8 @@ assign  plowPen = 0.0        # Plow penalty
 assign  stopSignPen = 0.1    # Stop signs and Traffic lights penalty
 
 # 1 => the bike is never pushed or carried (cargo bikes, trailers): no steps,
-# no foot-only or dismount sections, no pushing against one-ways, and
-# sidewalks only as a last resort
+# no foot-only or dismount sections, no pushing against one-ways, and no
+# sidewalks unless they are open to bikes
 assign  noWalk = 0
 
 assign totalPenalty = 1                # use for turncost
@@ -294,7 +294,8 @@ assign sidewalkpenalty =
       if footway=sidewalk then
         add multiply sidewalkPen 3                         # add 0-3 for sidewalks
             if bicycle=yes|designated|permissive then 0
-            else multiply noWalk 20                        # last resort when the bike can't be walked
+            else multiply noWalk 10000                     # walk-only: ruled out when the bike can't be walked,
+                                                           # which also keeps start and end points off it
       else multiply sidewalkPen 0.5                        # add 0-0.5 for footways
     else 0
 

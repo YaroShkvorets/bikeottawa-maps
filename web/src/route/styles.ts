@@ -7,8 +7,8 @@
 export const WEIGHT_KEYS = ['roadsPen', 'sidewalkPen', 'surfacePen', 'plowPen', 'litPen', 'stopSignPen'] as const
 /**
  * Every profile parameter. `noWalk` is a switch (0 or 1): the bike is never
- * pushed or carried, so no stairs, no dismount sections, and sidewalks only as
- * a last resort.
+ * pushed or carried, so no stairs, no dismount sections and no sidewalks that
+ * are closed to bikes. Start and end points do not snap to those either.
  */
 export const PARAM_KEYS = [...WEIGHT_KEYS, 'noWalk'] as const
 export type ParamKey = (typeof PARAM_KEYS)[number]
