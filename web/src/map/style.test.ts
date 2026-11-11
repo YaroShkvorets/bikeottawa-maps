@@ -1,6 +1,7 @@
 import type { FeatureCollection } from 'geojson'
 import { describe, expect, it } from 'vitest'
-import { BASEMAP_IDS, LAYER_IDS, PLACE_KINDS } from '../layers'
+import { BASEMAP_IDS, LAYER_IDS } from '../layers'
+import { PLACE_KINDS } from '../places'
 import { buildStyle, INTERACTIVE_LAYERS, type StyleState } from './style'
 
 const state: StyleState = {
@@ -34,7 +35,7 @@ describe('buildStyle', () => {
 
   it('draws data below the basemap labels', () => {
     const { layers } = build()
-    const firstSymbol = layers.findIndex((l) => l.type === 'symbol')
+    const firstSymbol = layers.findIndex((l) => l.type === 'symbol' && l.source === 'basemap')
     const lastOverlay = layers.findLastIndex((l) => 'source' in l && (l.source === 'overlays' || l.source === 'route'))
     expect(firstSymbol).toBeGreaterThan(-1)
     expect(lastOverlay).toBeLessThan(firstSymbol)
@@ -44,7 +45,7 @@ describe('buildStyle', () => {
     const style = build({ layer: 'places', placeKinds: ['water'], selected: { kind: 'way', id: 42, props: {} } })
     expect(layer(style, 'selected-way').filter).toEqual(['==', ['id'], 42])
     expect(layer(style, 'selected-place').filter).toEqual(['==', ['get', 'osm'], ''])
-    expect(layer(style, 'places-circle').filter).toEqual(['in', ['get', 'kind'], ['literal', ['water']]])
+    expect(layer(style, 'places-icon').filter).toEqual(['in', ['get', 'kind'], ['literal', ['water']]])
   })
 
   it('draws the planned route as one line per segment with its stress level', () => {

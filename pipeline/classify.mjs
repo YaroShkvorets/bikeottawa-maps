@@ -61,12 +61,54 @@ export function classifyWay(tags) {
   return { props, minzoom }
 }
 
+/** [OSM key, value, our kind, zoom from which it shows]. Dense kinds appear later. */
 const PLACE_KINDS = [
-  ['amenity', 'bicycle_parking', 'parking'],
-  ['amenity', 'bicycle_repair_station', 'repair'],
-  ['shop', 'bicycle', 'shop'],
-  ['amenity', 'drinking_water', 'water'],
-  ['amenity', 'toilets', 'toilets'],
+  ['amenity', 'bicycle_parking', 'parking', 13],
+  ['shop', 'bicycle', 'shop', 10],
+  ['amenity', 'bicycle_repair_station', 'repair', 10],
+  ['amenity', 'compressed_air', 'air', 10],
+  ['amenity', 'drinking_water', 'water', 11],
+  ['amenity', 'toilets', 'toilets', 11],
+  ['amenity', 'shelter', 'shelter', 12],
+  ['amenity', 'telephone', 'telephone', 12],
+  ['tourism', 'information', 'information', 13],
+  ['amenity', 'bench', 'bench', 14],
+  ['leisure', 'picnic_table', 'picnic', 13],
+  ['amenity', 'bbq', 'bbq', 12],
+  ['tourism', 'viewpoint', 'viewpoint', 11],
+  ['playground', 'splash_pad', 'splash', 11],
+  ['leisure', 'splash_pad', 'splash', 11],
+  ['amenity', 'cafe', 'cafe', 12],
+  ['amenity', 'restaurant', 'restaurant', 13],
+  ['amenity', 'fast_food', 'fast_food', 13],
+  ['amenity', 'ice_cream', 'ice_cream', 11],
+  ['amenity', 'pub', 'pub', 11],
+  ['craft', 'brewery', 'brewery', 10],
+]
+
+const PLACE_TAGS = [
+  'name',
+  'description',
+  'bicycle_parking',
+  'capacity',
+  'covered',
+  'service:bicycle:repair',
+  'service:bicycle:pump',
+  'service:bicycle:chain_tool',
+  'information',
+  'indoor',
+  'bottle',
+  'backrest',
+  'material',
+  'fuel',
+  'cuisine',
+  'outdoor_seating',
+  'takeaway',
+  'fee',
+  'seasonal',
+  'opening_hours',
+  'phone',
+  'website',
 ]
 
 /**
@@ -77,9 +119,15 @@ export function classifyPlace(tags) {
   const match = PLACE_KINDS.find(([key, value]) => tags[key] === value)
   if (!match) return null
   if (tags.access === 'private' || tags.access === 'no') return null
-  const props = { kind: match[2] }
-  pick(tags, ['name', 'capacity', 'covered', 'bicycle_parking', 'opening_hours', 'website', 'fee', 'seasonal'], props)
-  return { props, minzoom: match[2] === 'shop' ? 10 : 12 }
+  const [, , kind, minzoom] = match
+  return { props: pick(tags, PLACE_TAGS, { kind }), minzoom }
+}
+
+/** The `osmium tags-filter` expressions that select every place kind. */
+export function placeFilters() {
+  const byKey = new Map()
+  for (const [key, value] of PLACE_KINDS) byKey.set(key, [...(byKey.get(key) ?? []), value])
+  return [...byKey].map(([key, values]) => `nw/${key}=${values.join(',')}`)
 }
 
 /**

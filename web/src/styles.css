@@ -228,11 +228,44 @@ a {
   box-shadow: 0 0 0 1px var(--border);
 }
 
+.place-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+}
+
+.place-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.place-group legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .footnote {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
   color: var(--muted);
+}
+
+.places-hint {
+  margin-top: 8px;
 }
 
 .feature-card {

@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 URLS="${OSM_PBF_URLS:-$(node -p "require('./region.json').osmPbfUrls.join(' ')")}"
 BBOX="$(node -p "require('./region.json').bbox.join(',')")"
 WORK="${WORK_DIR:-.cache/pipeline}"
+# Which places to keep is defined once, in classify.mjs.
+PLACE_FILTERS="$(node -e "import('./pipeline/classify.mjs').then((m) => console.log(m.placeFilters().join(' ')))")"
 OUT=web/public/tiles
 mkdir -p "$WORK" "$OUT"
 
@@ -23,11 +25,8 @@ for url in $URLS; do
     curl -fsSL --retry 3 -o "$src" "$url"
   fi
   echo "Filtering $(basename "$src")"
-  osmium tags-filter "$src" \
-    w/highway \
-    nw/amenity=bicycle_parking,bicycle_repair_station,drinking_water,toilets \
-    nw/shop=bicycle \
-    --overwrite -o "$src.filtered.osm.pbf"
+  # shellcheck disable=SC2086 # one filter expression per word
+  osmium tags-filter "$src" w/highway $PLACE_FILTERS --overwrite -o "$src.filtered.osm.pbf"
   osmium extract --bbox "$BBOX" "$src.filtered.osm.pbf" --overwrite -o "$src.clipped.osm.pbf"
   parts+=("$src.clipped.osm.pbf")
   timestamps+=("$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$src" 2>/dev/null || true)")

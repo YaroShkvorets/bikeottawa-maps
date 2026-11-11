@@ -2,16 +2,8 @@ import { layers as basemapLayers, type Flavor, namedFlavor } from '@protomaps/ba
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import type { Lang } from '../i18n'
-import {
-  type BasemapId,
-  INK,
-  type LayerId,
-  LTS_COLORS,
-  NO_BIKES_COLOR,
-  PLACE_COLORS,
-  type PlaceKind,
-  WINTER_COLORS,
-} from '../layers'
+import { type BasemapId, INK, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_COLORS } from '../layers'
+import { type PlaceKind, placeImageId } from '../places'
 import type { Route } from '../route/brouter'
 
 export type Selected =
@@ -33,7 +25,7 @@ export interface StyleState {
 export const INTERACTIVE_LAYERS: Record<LayerId, string[]> = {
   comfort: ['comfort-line'],
   winter: ['winter-line', 'winter-unknown'],
-  places: ['places-circle'],
+  places: ['places-icon'],
 }
 
 const ATTRIBUTION =
@@ -106,20 +98,6 @@ const IMAGERY_ATTRIBUTION = 'Imagery © Esri, Maxar, Earthstar Geographics'
 function lineWidth(extra = 0): ExpressionSpecification {
   return ['interpolate', ['exponential', 1.5], ['zoom'], 9, 0.8 + extra, 13, 2.2 + extra, 16, 5 + extra, 19, 12 + extra]
 }
-
-const placeColor: ExpressionSpecification = [
-  'match',
-  ['get', 'kind'],
-  'parking',
-  PLACE_COLORS.parking,
-  'repair',
-  PLACE_COLORS.repair,
-  'shop',
-  PLACE_COLORS.shop,
-  'water',
-  PLACE_COLORS.water,
-  PLACE_COLORS.toilets,
-]
 
 function routeData(route: Route | null): FeatureCollection {
   return {
@@ -245,21 +223,24 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
       id: 'selected-place',
       filter: selectedPlace,
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 8, 14, 12, 17, 16],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 12, 14, 16, 17, 20],
         'circle-color': theme.contrast,
-        'circle-opacity': 0.3,
+        'circle-opacity': 0.35,
       },
     },
     {
-      ...place,
-      id: 'places-circle',
+      id: 'places-icon',
+      type: 'symbol',
+      source: 'overlays',
+      'source-layer': 'places',
       filter: ['in', ['get', 'kind'], ['literal', [...state.placeKinds]]],
-      layout: show('places'),
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 6, 17, 9],
-        'circle-color': placeColor,
-        'circle-stroke-color': '#FFFFFF',
-        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 14, 2],
+      layout: {
+        ...show('places'),
+        // Drawn on demand by the map view, one image per kind.
+        'icon-image': ['concat', placeImageId(''), ['get', 'kind']],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 0.85, 17, 1.1],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
       },
     },
   ]

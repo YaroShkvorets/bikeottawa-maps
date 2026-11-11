@@ -8,9 +8,10 @@ import { RouteResult } from './components/RouteResult'
 import { ASSETS_BASE, ROUTER_URL } from './config'
 import { parseHash, withHashParam } from './hash'
 import { initialLang, type Lang, LangContext, rememberLang, translator } from './i18n'
-import { type BasemapId, isBasemapId, isLayerId, type LayerId, PLACE_KINDS, type PlaceKind } from './layers'
+import { type BasemapId, isBasemapId, isLayerId, type LayerId } from './layers'
 import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
+import { isPlaceKind, type PlaceKind } from './places'
 import type { LngLat } from './route/brouter'
 import { formatParams, formatPoints, parseParams, parsePoints, type RoutePoint, type RoutePoints } from './route/state'
 import {
@@ -29,6 +30,8 @@ const DEFAULT_LAYER: LayerId = 'comfort'
 /** Everything the URL hash carries besides the map position. */
 interface UrlState {
   layer: LayerId
+  /** Place kinds switched on in the Places layer; none to start with. */
+  placeKinds: readonly PlaceKind[]
   mode: Mode
   points: RoutePoints
   style: StyleId
@@ -39,6 +42,7 @@ function readUrl(): UrlState {
   const hash = parseHash(window.location.hash)
   return {
     layer: isLayerId(hash.layer) ? hash.layer : DEFAULT_LAYER,
+    placeKinds: (hash.places ?? '').split(',').filter(isPlaceKind),
     mode: ROUTER_URL && hash.mode === 'route' ? 'route' : 'explore',
     points: parsePoints(hash.route),
     style: isStyleId(hash.style) ? hash.style : DEFAULT_STYLE,
@@ -50,6 +54,7 @@ function writeUrl(state: UrlState): void {
   const routing = state.mode === 'route'
   const entries: [string, string | null][] = [
     ['layer', state.layer === DEFAULT_LAYER ? null : state.layer],
+    ['places', state.placeKinds.length ? state.placeKinds.join(',') : null],
     ['mode', routing ? 'route' : null],
     ['route', routing ? formatPoints(state.points) : null],
     ['style', routing && state.style !== DEFAULT_STYLE ? state.style : null],
@@ -92,13 +97,12 @@ export function App() {
   const [lang, setLang] = useState<Lang>(initialLang)
   const [url, setUrl] = useState<UrlState>(readUrl)
   const [basemap, setBasemap] = useState<BasemapId>(initialBasemap)
-  const [placeKinds, setPlaceKinds] = useState<readonly PlaceKind[]>(PLACE_KINDS)
   const [selected, setSelected] = useState<Selected | null>(null)
   const sheet = useRef<HTMLDivElement>(null)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
-  const { layer, mode, points, style, custom } = url
+  const { layer, placeKinds, mode, points, style, custom } = url
   const routing = mode === 'route'
   const routeState = useRoute(ROUTER_URL, points, paramsFor(style, custom), routing)
   const route = routing ? visibleRoute(routeState) : null
@@ -158,7 +162,10 @@ export function App() {
   )
 
   const togglePlaceKind = useCallback((kind: PlaceKind) => {
-    setPlaceKinds((kinds) => (kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind]))
+    setUrl((current) => {
+      const kinds = current.placeKinds
+      return { ...current, placeKinds: kinds.includes(kind) ? kinds.filter((k) => k !== kind) : [...kinds, kind] }
+    })
     setSelected(null)
   }, [])
 

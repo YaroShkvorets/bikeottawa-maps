@@ -1,5 +1,7 @@
 import { useI18n } from '../i18n'
-import { type LayerId, LTS_COLORS, PLACE_COLORS, PLACE_KINDS, type PlaceKind, WINTER_COLORS } from '../layers'
+import { type LayerId, LTS_COLORS, WINTER_COLORS } from '../layers'
+import { kindsInGroup, PLACE_GROUP_IDS, type PlaceKind } from '../places'
+import { PlaceIcon } from './PlaceIcon'
 
 interface Props {
   layer: LayerId
@@ -39,17 +41,21 @@ export function Legend({ layer, placeKinds, onTogglePlaceKind }: Props) {
         </ul>
       )}
       {layer === 'places' && (
-        <ul>
-          {PLACE_KINDS.map((kind) => (
-            <li key={kind}>
-              <label className="check">
-                <input type="checkbox" checked={placeKinds.includes(kind)} onChange={() => onTogglePlaceKind(kind)} />
-                <span className="swatch dot" style={{ background: PLACE_COLORS[kind] }} />
-                {t(`place.${kind}`)}
-              </label>
-            </li>
+        <>
+          <p className="footnote places-hint">{t('placesHint')}</p>
+          {PLACE_GROUP_IDS.map((group) => (
+            <fieldset key={group} className="place-group">
+              <legend>{t(`group.${group}`)}</legend>
+              {kindsInGroup(group).map((kind) => (
+                <label key={kind} className="check">
+                  <input type="checkbox" checked={placeKinds.includes(kind)} onChange={() => onTogglePlaceKind(kind)} />
+                  <PlaceIcon kind={kind} />
+                  {t(`place.${kind}`)}
+                </label>
+              ))}
+            </fieldset>
           ))}
-        </ul>
+        </>
       )}
     </section>
   )

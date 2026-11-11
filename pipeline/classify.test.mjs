@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { centreOf, classifyPlace, classifyWay, parseOsmId } from './classify.mjs'
+import { centreOf, classifyPlace, classifyWay, parseOsmId, placeFilters } from './classify.mjs'
 
 test('cycleways are low-stress paths shown from far out', () => {
   const { props, minzoom } = classifyWay({ highway: 'cycleway', surface: 'asphalt', winter_service: 'yes' })
@@ -49,7 +49,38 @@ test('places are recognised by kind and private ones skipped', () => {
   })
   assert.equal(classifyPlace({ shop: 'bicycle', name: 'Shop' }).props.kind, 'shop')
   assert.equal(classifyPlace({ amenity: 'bicycle_parking', access: 'private' }), null)
-  assert.equal(classifyPlace({ amenity: 'cafe' }), null)
+  assert.equal(classifyPlace({ amenity: 'bank' }), null)
+})
+
+test('every place kind from the original amenities map is recognised', () => {
+  const cases = [
+    [{ amenity: 'compressed_air' }, 'air'],
+    [{ amenity: 'shelter' }, 'shelter'],
+    [{ amenity: 'telephone' }, 'telephone'],
+    [{ leisure: 'picnic_table' }, 'picnic'],
+    [{ amenity: 'bench', backrest: 'yes' }, 'bench'],
+    [{ amenity: 'bbq' }, 'bbq'],
+    [{ amenity: 'pub' }, 'pub'],
+    [{ craft: 'brewery' }, 'brewery'],
+    [{ amenity: 'restaurant', cuisine: 'thai' }, 'restaurant'],
+    [{ amenity: 'fast_food' }, 'fast_food'],
+    [{ amenity: 'cafe' }, 'cafe'],
+    [{ amenity: 'ice_cream' }, 'ice_cream'],
+    [{ leisure: 'playground', playground: 'splash_pad' }, 'splash'],
+    [{ leisure: 'splash_pad' }, 'splash'],
+    [{ tourism: 'information', information: 'map' }, 'information'],
+    [{ tourism: 'viewpoint' }, 'viewpoint'],
+  ]
+  for (const [tags, kind] of cases) assert.equal(classifyPlace(tags)?.props.kind, kind, JSON.stringify(tags))
+  assert.equal(classifyPlace({ amenity: 'restaurant', cuisine: 'thai' }).props.cuisine, 'thai')
+})
+
+test('the osmium filter covers every place kind, grouped by key', () => {
+  const filters = placeFilters()
+  assert.ok(filters.includes('nw/shop=bicycle'))
+  assert.ok(filters.includes('nw/craft=brewery'))
+  assert.ok(filters.some((f) => f.startsWith('nw/amenity=') && f.includes('bench') && f.includes('bicycle_parking')))
+  assert.ok(filters.includes('nw/leisure=picnic_table,splash_pad'))
 })
 
 test('osmium ids map back to OSM types', () => {

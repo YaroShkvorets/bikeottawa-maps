@@ -1,9 +1,32 @@
 import { isMessageKey, type MessageKey, type Translate, useI18n } from '../i18n'
-import { LTS_COLORS, PLACE_COLORS, type PlaceKind, WINTER_COLORS } from '../layers'
+import { LTS_COLORS, WINTER_COLORS } from '../layers'
 import type { Selected } from '../map/style'
+import { isPlaceKind } from '../places'
+import { PlaceIcon } from './PlaceIcon'
 
 const WAY_FACTS = ['surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'] as const
-const PLACE_FACTS = ['bicycle_parking', 'capacity', 'covered', 'fee', 'opening_hours', 'seasonal'] as const
+const PLACE_FACTS = [
+  'description',
+  'bicycle_parking',
+  'capacity',
+  'covered',
+  'service:bicycle:repair',
+  'service:bicycle:pump',
+  'service:bicycle:chain_tool',
+  'information',
+  'indoor',
+  'bottle',
+  'backrest',
+  'material',
+  'fuel',
+  'cuisine',
+  'outdoor_seating',
+  'takeaway',
+  'fee',
+  'seasonal',
+  'opening_hours',
+  'phone',
+] as const
 
 /** Shows an OSM tag value in plain words: yes/no translated, units added, underscores removed. */
 function formatValue(key: string, value: unknown, t: Translate): string {
@@ -11,7 +34,7 @@ function formatValue(key: string, value: unknown, t: Translate): string {
   if (text === 'yes' || text === 'no') return t(text)
   if (key === 'width' && /^[\d.]+$/.test(text)) return `${text} m`
   if (key === 'maxspeed' && /^\d+$/.test(text)) return `${text} km/h`
-  return text.replaceAll('_', ' ')
+  return text.replaceAll('_', ' ').replaceAll(';', ', ')
 }
 
 function osmPath(selected: Selected): string {
@@ -54,9 +77,7 @@ export function FeatureCard({ selected, onClose }: Props) {
       <header>
         <div>
           <p className="eyebrow">
-            {selected.kind === 'place' && (
-              <span className="swatch dot" style={{ background: PLACE_COLORS[props.kind as PlaceKind] }} />
-            )}
+            {selected.kind === 'place' && isPlaceKind(props.kind) && <PlaceIcon kind={props.kind} />}
             {kindLabel}
           </p>
           <h2>{name ?? kindLabel}</h2>

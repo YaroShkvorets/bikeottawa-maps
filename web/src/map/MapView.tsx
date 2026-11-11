@@ -16,8 +16,10 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { BasemapSwitch } from '../components/BasemapSwitch'
 import { ASSETS_BASE, REGION } from '../config'
 import type { BasemapId } from '../layers'
+import { isPlaceKind, placeImageId } from '../places'
 import type { LngLat } from '../route/brouter'
 import type { RoutePoints } from '../route/state'
+import { renderPlaceImage } from './placeImage'
 import { buildStyle, INTERACTIVE_LAYERS, type Selected, type StyleState } from './style'
 
 // MapLibre finds its worker relative to its own file, which bundling breaks, so point it at the bundled copy.
@@ -98,6 +100,15 @@ export function MapView({ state, onSelect, onBasemapChange, routing }: Props) {
     map.addControl({ onAdd: () => switcher, onRemove: () => switcher.remove() }, 'top-right')
     setStyleControl(switcher)
     map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right')
+
+    // Place markers are drawn the first time a style asks for them; a style
+    // rebuilt from scratch (new basemap) simply asks again.
+    map.setMissingStyleImageResolver((id) => {
+      const kind = id.slice(placeImageId('').length)
+      if (!id.startsWith(placeImageId('')) || !isPlaceKind(kind) || map.hasImage(id)) return
+      const marker = renderPlaceImage(kind)
+      if (marker) map.addImage(id, marker.image, { pixelRatio: marker.pixelRatio })
+    })
 
     const featureAt = (point: { x: number; y: number }): Selected | null => {
       const layers = INTERACTIVE_LAYERS[latest.current.state.layer].filter((id) => map.getLayer(id))
