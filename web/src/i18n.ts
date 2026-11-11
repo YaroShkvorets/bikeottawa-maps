@@ -138,8 +138,7 @@ const en = {
   reachHint: 'Click the map or search to pick where you start from.',
   reachLoading: 'Working out how far you get…',
   reachError: 'Could not work out how far you get from here. Try a point closer to a street or path.',
-  reachAbout:
-    'Every street and path you can get to in that time, along the routes the chosen style would take.',
+  reachAbout: 'Every street and path you can get to in that time, along the routes the chosen style would take.',
   from: 'From',
   to: 'To',
   searchPlaceholder: 'Search, or click the map',
