@@ -17,12 +17,22 @@ No map vendor or API keys: the basemap and data layers are static [PMTiles](http
 ```sh
 brew install osmium-tool tippecanoe pmtiles
 npm install
-npm run basemap   # once: basemap extract, fonts and icons (~55 MB)
-npm run tiles     # data layers from the latest OSM extract (~15 s)
+npm run basemap   # once: basemap extract, fonts and icons
+npm run tiles     # data layers from the latest OSM extracts
 npm run dev
 ```
 
+`npm run tiles` downloads the Ontario and Quebec extracts from Geofabrik (2.2 GB) the first time and again only when they change. For a quick start covering just the urban area, use the 50 MB BBBike extract:
+
+```sh
+OSM_PBF_URLS=https://download.bbbike.org/osm/bbbike/Ottawa/Ottawa.osm.pbf npm run tiles
+```
+
 Tiles land in `web/public/tiles` and are not committed.
+
+## Deployment
+
+The `Deploy` workflow rebuilds the tiles and the app and publishes them to GitHub Pages on every push to `main` and once a night.
 
 ## Scripts
 
@@ -33,7 +43,6 @@ Tiles land in `web/public/tiles` and are not committed.
 
 ## Roadmap
 
-1. Nightly tile build and hosting
-2. Editing from the map (plowed or not, parking details) saved to OpenStreetMap
-3. Route planner with riding styles, backed by BRouter
-4. Collisions layer, search, offline use
+1. Editing from the map (plowed or not, parking details) saved to OpenStreetMap
+2. Route planner with riding styles, backed by BRouter
+3. Collisions layer, search, offline use
