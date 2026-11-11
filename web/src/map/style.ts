@@ -10,6 +10,7 @@ import {
   type LayerId,
   LTS_COLORS,
   NO_BIKES_COLOR,
+  reachRamp,
   WINTER_COLORS,
 } from '../layers'
 import { type PlaceKind, placeImageId } from '../places'
@@ -31,6 +32,12 @@ export interface StyleState {
   route: Route | null
   /** Legend item to pick out on the route, the rest of it stepping back. */
   routeHighlight: RouteHighlight | null
+  /**
+   * Showing how far you get in this many minutes. The lines themselves are too
+   * many to diff with every style change, so the map view sets them on the
+   * source directly.
+   */
+  reach: { minutes: number } | null
 }
 
 /** Layers a click can hit, per data layer. */
@@ -291,10 +298,44 @@ function routeLayers(theme: Theme, highlight: RouteHighlight | null): LayerSpeci
   ]
 }
 
+/** Source of the reach lines, filled in by the map view. */
+export const REACH_SOURCE = 'reach'
+
+function reachLayers(reach: StyleState['reach'], basemap: BasemapId): LayerSpecification[] {
+  if (!reach) return []
+  const ramp = reachRamp(basemap)
+  const last = ramp.length - 1
+  return [
+    {
+      id: 'reach-line',
+      type: 'line',
+      source: REACH_SOURCE,
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        // The closest minutes are drawn on top.
+        'line-sort-key': ['-', ['get', 'minutes']],
+      },
+      paint: {
+        'line-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'minutes'],
+          ...ramp.flatMap((color, i) => [1 + ((reach.minutes - 1) * i) / last, color]),
+        ] as ExpressionSpecification,
+        'line-width': lineWidth(),
+      },
+    },
+  ]
+}
+
 function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
   // The data steps back when a planned route is drawn over it.
   const fade = state.route ? 0.35 : 1
-  const show = (layer: LayerId) => ({ visibility: state.layer === layer ? ('visible' as const) : ('none' as const) })
+  // The reach map has the street lines to itself; the data lines share its blues.
+  const show = (layer: LayerId) => ({
+    visibility: state.layer === layer && !state.reach ? ('visible' as const) : ('none' as const),
+  })
   const round = { 'line-cap': 'round' as const, 'line-join': 'round' as const }
   const bikeable: FilterSpecification = ['>', ['get', 'lts'], 0]
   // Paths with a winter status; indoor walkways have none and are left out.
@@ -532,11 +573,13 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...(night && { night: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/night.pmtiles` } }),
       route: { type: 'geojson', data: routeData(state.route) },
       'route-stops': { type: 'geojson', data: stopsData(state.route) },
+      ...(state.reach && { [REACH_SOURCE]: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }),
     },
     layers: [
       ...base.slice(0, at),
       ...overlayLayers(state, theme),
-      ...(night ? nightLayers(theme) : []),
+      ...(night && !state.reach ? nightLayers(theme) : []),
+      ...reachLayers(state.reach, state.basemap),
       ...routeLayers(theme, state.routeHighlight),
       ...base.slice(at),
       placesLayer(state, theme),

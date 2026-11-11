@@ -133,6 +133,13 @@ const en = {
   updated: 'Updated',
   'mode.explore': 'Explore',
   'mode.route': 'Plan a route',
+  'mode.reach': 'How far',
+  reachTime: 'Riding time',
+  reachHint: 'Click the map or search to pick where you start from.',
+  reachLoading: 'Working out how far you get…',
+  reachError: 'Could not work out how far you get from here. Try a point closer to a street or path.',
+  reachAbout:
+    'Every street and path you can get to in that time, along the routes the riding style would take. Colours show minutes of riding from the start.',
   from: 'From',
   to: 'To',
   searchPlaceholder: 'Search, or click the map',
@@ -321,6 +328,14 @@ const fr: Record<keyof typeof en, string> = {
   updated: 'Mis à jour le',
   'mode.explore': 'Explorer',
   'mode.route': 'Planifier un trajet',
+  'mode.reach': 'Jusqu’où',
+  reachTime: 'Temps à vélo',
+  reachHint: 'Cliquez sur la carte ou cherchez pour choisir le point de départ.',
+  reachLoading: 'Calcul de la distance atteignable…',
+  reachError:
+    'Impossible de calculer la distance atteignable d’ici. Essayez un point plus près d’une rue ou d’un sentier.',
+  reachAbout:
+    'Toutes les rues et tous les sentiers que vous pouvez atteindre dans ce temps, par les trajets que choisirait ce style. Les couleurs indiquent les minutes à vélo depuis le départ.',
   from: 'Départ',
   to: 'Arrivée',
   searchPlaceholder: 'Cherchez ou cliquez sur la carte',

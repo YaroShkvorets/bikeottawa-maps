@@ -1,5 +1,6 @@
 import {
   addProtocol,
+  type GeoJSONSource,
   GeolocateControl,
   LngLatBounds,
   Map as MapLibreMap,
@@ -20,10 +21,11 @@ import type { BasemapId } from '../layers'
 import { isPlaceKind, placeImageId } from '../places'
 import { comfortKeyOf, type LngLat, type RouteHighlight } from '../route/brouter'
 import { nearestOnRoute, pointAtDistance, routeProfile } from '../route/profile'
+import type { Reach } from '../route/reach'
 import type { RoutePoints } from '../route/state'
 import { renderPlaceImage } from './placeImage'
 import { renderStopImage } from './stopImage'
-import { buildStyle, INTERACTIVE_LAYERS, type Selected, type StyleState, stopImageId } from './style'
+import { buildStyle, INTERACTIVE_LAYERS, REACH_SOURCE, type Selected, type StyleState, stopImageId } from './style'
 
 // MapLibre finds its worker relative to its own file, which bundling breaks, so point it at the bundled copy.
 setWorkerUrl(workerUrl)
@@ -43,6 +45,8 @@ interface Props {
   onBasemapChange: (basemap: BasemapId) => void
   /** Details of the selection, shown in a popup beside it. Null where they go elsewhere (phones). */
   popup: ReactNode | null
+  /** How far you get, drawn when the style has a reach source. */
+  reach: Reach | null
   /** When set, clicks place route points instead of selecting features. */
   routing: {
     points: RoutePoints
@@ -77,7 +81,21 @@ function panelPadding() {
   return { top: 50, bottom: 50, left: 420, right: 70 }
 }
 
-export function MapView({ state, onSelect, onBasemapChange, popup, routing }: Props) {
+/** The reach data last handed to the map, and the source object it went to. */
+interface ReachShown {
+  source: unknown
+  data: Reach | null
+}
+
+/** Puts the reach lines on the map's reach source, if it has one and they are not there yet. */
+function showReach(map: MapLibreMap, data: Reach | null, shown: { current: ReachShown }) {
+  const source = map.getSource<GeoJSONSource>(REACH_SOURCE)
+  if (!source || (shown.current.source === source && shown.current.data === data)) return
+  source.setData(data ?? { type: 'FeatureCollection', features: [] })
+  shown.current = { source, data }
+}
+
+export function MapView({ state, onSelect, onBasemapChange, popup, reach, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
@@ -91,9 +109,10 @@ export function MapView({ state, onSelect, onBasemapChange, popup, routing }: Pr
   // The popup's content element lives as long as the map view; React renders into it.
   const popupElement = useMemo(() => document.createElement('div'), [])
   const popupRef = useRef<Popup | null>(null)
-  const latest = useRef({ state, onSelect, routing, profile })
+  const latest = useRef({ state, onSelect, routing, profile, reach })
   const applied = useRef(state)
-  latest.current = { state, onSelect, routing, profile }
+  latest.current = { state, onSelect, routing, profile, reach }
+  const reachShown = useRef<ReachShown>({ source: null, data: null })
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the map is created once; later state goes through setStyle below
   useEffect(() => {
@@ -188,6 +207,9 @@ export function MapView({ state, onSelect, onBasemapChange, popup, routing }: Pr
       if (!dragging.current && !ontoDot) latest.current.routing?.onHover(null)
     })
 
+    // A rebuilt style brings an empty reach source; fill it again.
+    map.on('styledata', () => showReach(map, latest.current.reach, reachShown))
+
     mapRef.current = map
     applied.current = state
     return () => {
@@ -211,7 +233,12 @@ export function MapView({ state, onSelect, onBasemapChange, popup, routing }: Pr
     applied.current = state
     // A style can only be diffed once the current one has loaded; until then wait
     // rather than restart loading from scratch.
-    const apply = () => map.setStyle(buildStyle(latest.current.state, ASSETS_BASE))
+    const apply = () => {
+      map.setStyle(buildStyle(latest.current.state, ASSETS_BASE))
+      // The style diff also empties the reach source (its data is not in the style), so fill it again.
+      reachShown.current = { source: null, data: null }
+      showReach(map, latest.current.reach, reachShown)
+    }
     if (map.isStyleLoaded()) apply()
     else map.once('idle', apply)
 
@@ -228,6 +255,18 @@ export function MapView({ state, onSelect, onBasemapChange, popup, routing }: Pr
       if (!visible) map.fitBounds(bounds, { padding, maxZoom: 16, duration: 600 })
     }
   }, [state])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    // While a style is still loading its source may not exist yet; try again once it settles.
+    showReach(map, reach, reachShown)
+    const retry = () => showReach(map, reach, reachShown)
+    map.once('idle', retry)
+    return () => {
+      map.off('idle', retry)
+    }
+  }, [reach])
 
   // Draggable A and B markers follow the route points.
   const points = routing?.points

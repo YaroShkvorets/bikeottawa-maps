@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n'
 
-export type Mode = 'explore' | 'route'
+export type Mode = 'explore' | 'route' | 'reach'
 
 interface Props {
   mode: Mode
@@ -11,7 +11,7 @@ export function ModeSwitch({ mode, onChange }: Props) {
   const { t } = useI18n()
   return (
     <div className="mode-switch">
-      {(['explore', 'route'] as const).map((id) => (
+      {(['explore', 'route', 'reach'] as const).map((id) => (
         <button key={id} type="button" aria-pressed={id === mode} onClick={() => onChange(id)}>
           {t(`mode.${id}`)}
         </button>

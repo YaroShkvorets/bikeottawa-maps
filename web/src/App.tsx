@@ -3,6 +3,8 @@ import { FeatureCard } from './components/FeatureCard'
 import { LayerPicker } from './components/LayerPicker'
 import { Legend } from './components/Legend'
 import { type Mode, ModeSwitch } from './components/ModeSwitch'
+import { ReachForm } from './components/ReachForm'
+import { ReachResult } from './components/ReachResult'
 import { RouteForm } from './components/RouteForm'
 import { RouteResult } from './components/RouteResult'
 import { ASSETS_BASE, ROUTER_URL } from './config'
@@ -14,6 +16,7 @@ import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, type PlaceKind } from './places'
 import type { LngLat, RouteHighlight } from './route/brouter'
 import { reverseLabel } from './route/geocode'
+import { DEFAULT_REACH_MINUTES, isReachMinutes, type ReachMinutes } from './route/reach'
 import {
   formatParams,
   formatPoints,
@@ -33,11 +36,13 @@ import {
   type RouteParams,
   type StyleId,
 } from './route/styles'
+import { useReach, visibleReach } from './route/useReach'
 import { useRoute, visibleRoute } from './route/useRoute'
 
 const DEFAULT_LAYER: LayerId = 'places'
 const PHONE_LAYOUT = '(max-width: 720px)'
 const ignoreSelection = () => {}
+const ignore = () => {}
 
 function followMap(event: { currentTarget: HTMLAnchorElement }) {
   event.currentTarget.href = osmViewUrl(window.location.hash)
@@ -54,6 +59,8 @@ interface UrlState {
   vias: readonly LngLat[]
   style: StyleId
   custom: RouteParams
+  /** Riding time shown in the How far mode. */
+  minutes: ReachMinutes
 }
 
 function readUrl(): UrlState {
@@ -61,24 +68,29 @@ function readUrl(): UrlState {
   return {
     layer: isLayerId(hash.layer) ? hash.layer : DEFAULT_LAYER,
     placeKinds: (hash.places ?? '').split(',').filter(isPlaceKind),
-    mode: hash.mode === 'route' ? 'route' : 'explore',
+    mode: hash.mode === 'route' || hash.mode === 'reach' ? hash.mode : 'explore',
     points: parsePoints(hash.route),
     vias: parseVias(hash.via),
     style: isStyleId(hash.style) ? hash.style : DEFAULT_STYLE,
     custom: parseParams(hash.custom, PRESETS.balanced),
+    minutes: isReachMinutes(hash.minutes) ? (Number(hash.minutes) as ReachMinutes) : DEFAULT_REACH_MINUTES,
   }
 }
 
 function writeUrl(state: UrlState): void {
   const routing = state.mode === 'route'
+  const reaching = state.mode === 'reach'
+  const riding = routing || reaching
   const entries: [string, string | null][] = [
     ['layer', state.layer === DEFAULT_LAYER ? null : state.layer],
     ['places', state.placeKinds.length ? state.placeKinds.join(',') : null],
-    ['mode', routing ? 'route' : null],
-    ['route', routing ? formatPoints(state.points) : null],
+    ['mode', riding ? state.mode : null],
+    // How far starts from the route's start, so the two modes share it.
+    ['route', routing ? formatPoints(state.points) : reaching ? formatPoints([state.points[0], null]) : null],
     ['via', routing ? formatVias(state.vias) : null],
-    ['style', routing && state.style !== DEFAULT_STYLE ? state.style : null],
-    ['custom', routing && state.style === 'custom' ? formatParams(state.custom) : null],
+    ['minutes', reaching && state.minutes !== DEFAULT_REACH_MINUTES ? String(state.minutes) : null],
+    ['style', riding && state.style !== DEFAULT_STYLE ? state.style : null],
+    ['custom', riding && state.style === 'custom' ? formatParams(state.custom) : null],
   ]
   // MapLibre keeps its own `map=` entry in the hash; only ours are touched.
   const hash = entries.reduce((h, [key, value]) => withHashParam(h, key, value), window.location.hash)
@@ -174,14 +186,18 @@ export function App() {
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
-  const { layer, placeKinds, mode, points, vias, style, custom } = url
+  const { layer, placeKinds, mode, points, vias, style, custom, minutes } = url
   const basemap = layer === 'night' ? nightBasemap : dayBasemap
-  const routing = mode === 'route'
-  // Planning needs a router; without one the route page only says so.
-  const planning = routing && ROUTER_URL !== null
+  // Not exploring: planning a route, or seeing how far you get.
+  const routing = mode !== 'explore'
+  // Both need a router; without one their page only says so.
+  const planning = mode === 'route' && ROUTER_URL !== null
+  const reaching = mode === 'reach' && ROUTER_URL !== null
   const routeHighlight = planning ? (pointedPart ?? pinnedPart) : null
   const routeState = useRoute(ROUTER_URL, points, vias, paramsFor(style, custom), planning)
   const route = planning ? visibleRoute(routeState) : null
+  const reachState = useReach(ROUTER_URL, points[0]?.lngLat ?? null, minutes, paramsFor(style, custom), reaching)
+  const reach = reaching ? visibleReach(reachState) : null
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -299,10 +315,14 @@ export function App() {
   }, [])
   const labelStart = useCallback((lngLat: LngLat, label: string) => labelPoint(0, lngLat, label), [labelPoint])
   const labelEnd = useCallback((lngLat: LngLat, label: string) => labelPoint(1, lngLat, label), [labelPoint])
-  useAddressLabel(points[0], lang, planning, labelStart)
+  useAddressLabel(points[0], lang, planning || reaching, labelStart)
   useAddressLabel(points[1], lang, planning, labelEnd)
 
   const movePoint = useCallback((index: 0 | 1, lngLat: LngLat) => setPoint(index, { lngLat }), [setPoint])
+  // How far has only a start, and a click moves it.
+  const placeStart = useCallback((lngLat: LngLat) => setPoint(0, { lngLat }), [setPoint])
+  const setStart = useCallback((point: RoutePoint | null) => setPoint(0, point), [setPoint])
+  const changeMinutes = useCallback((next: ReachMinutes) => update({ minutes: next }), [update])
 
   const changeParam = useCallback((key: ParamKey, value: number) => {
     setUrl((current) => ({ ...current, custom: { ...current.custom, [key]: value } }))
@@ -317,9 +337,10 @@ export function App() {
     }))
   }, [])
 
+  const reachStyle = useMemo(() => (reaching ? { minutes } : null), [reaching, minutes])
   const styleState = useMemo<StyleState>(
-    () => ({ lang, basemap, layer, placeKinds, selected, route, routeHighlight }),
-    [lang, basemap, layer, placeKinds, selected, route, routeHighlight],
+    () => ({ lang, basemap, layer, placeKinds, selected, route, routeHighlight, reach: reachStyle }),
+    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, reachStyle],
   )
   const mapRouting = useMemo(
     () =>
@@ -336,8 +357,34 @@ export function App() {
             onHover: setRouteHover,
             zoomTo: pinnedPart,
           }
-        : null,
-    [planning, points, vias, placePoint, movePoint, addVia, moveVia, removeVia, routeHover, pinnedPart],
+        : reaching
+          ? {
+              points: [points[0], null] as RoutePoints,
+              vias: [],
+              onMapClick: placeStart,
+              onMovePoint: movePoint,
+              onAddVia: ignore,
+              onMoveVia: ignore,
+              onRemoveVia: ignore,
+              hover: null,
+              onHover: ignore,
+              zoomTo: null,
+            }
+          : null,
+    [
+      planning,
+      reaching,
+      points,
+      vias,
+      placePoint,
+      placeStart,
+      movePoint,
+      addVia,
+      moveVia,
+      removeVia,
+      routeHover,
+      pinnedPart,
+    ],
   )
 
   // A spot pointed at on the old route means nothing on a new one.
@@ -347,12 +394,14 @@ export function App() {
     setPointedPart(null)
     setPinnedPart(null)
   }, [route])
-  const hasResult = planning && routeState.status !== 'idle'
+  const hasResult = (planning && routeState.status !== 'idle') || (reaching && reachState.status !== 'idle')
   // What the folded sheet says it holds.
   const sheetSummary = route
     ? `${(route.distance / 1000).toFixed(1)} km · ${Math.max(1, Math.round(route.time / 60))} min`
     : routing
-      ? t('mode.route')
+      ? reaching && points[0]
+        ? `${t('mode.reach')} · ${minutes} min`
+        : t(`mode.${mode}`)
       : t('legend')
 
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
@@ -366,6 +415,7 @@ export function App() {
         popup={details && !phone ? details : null}
         onBasemapChange={layer === 'night' ? setNightBasemap : setDayBasemap}
         routing={mapRouting}
+        reach={reach}
       />
       <div className="sidebar">
         <div className="card topbar" ref={topbar}>
@@ -400,8 +450,19 @@ export function App() {
           </div>
           {!routing ? (
             <LayerPicker active={layer} onChange={changeLayer} />
-          ) : !planning ? (
+          ) : !planning && !reaching ? (
             <p className="route-message">{t('noRouter')}</p>
+          ) : reaching ? (
+            <ReachForm
+              start={points[0]}
+              minutes={minutes}
+              style={style}
+              params={paramsFor(style, custom)}
+              onStartChange={setStart}
+              onMinutesChange={changeMinutes}
+              onStyleChange={changeStyle}
+              onParamChange={changeParam}
+            />
           ) : (
             <RouteForm
               points={points}
@@ -417,7 +478,7 @@ export function App() {
           )}
         </div>
         <div
-          className={`card sheet ${sheetOpen ? '' : 'collapsed'} ${routing && !planning ? 'empty' : ''}`}
+          className={`card sheet ${sheetOpen ? '' : 'collapsed'} ${routing && !planning && !reaching ? 'empty' : ''}`}
           ref={sheet}
         >
           <button
@@ -455,6 +516,7 @@ export function App() {
                 onPinPart={setPinnedPart}
               />
             )}
+            {reaching && <ReachResult state={reachState} minutes={minutes} basemap={basemap} />}
             {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && (

@@ -1,6 +1,6 @@
 # Bike Ottawa Maps
 
-Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, places such as bike parking, repair stations and water, a night map of lit streets and street lights, and a route planner with riding styles. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
+Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level of traffic stress), winter-maintained pathways, places such as bike parking, repair stations and water, a night map of lit streets and street lights, a route planner with riding styles, and a map of how far you get by bike in 10 to 30 minutes. Successor to [maps.bikeottawa.ca](https://maps.bikeottawa.ca).
 
 No map vendor or API keys: the basemap and data layers are static [PMTiles](https://docs.protomaps.com/pmtiles/) files rendered with [MapLibre](https://maplibre.org). The light, grey and dark map styles are the same basemap tiles restyled in the browser; only the satellite style loads from elsewhere (Esri World Imagery, no key).
 
@@ -37,6 +37,8 @@ The first run downloads the Ontario and Quebec extracts from Geofabrik (2.2 GB) 
 ## Route planner
 
 The planner asks a BRouter server for routes. Riding styles are sets of weights for the `ottbike` profile in `routing/profiles` (how hard to avoid busy roads, sidewalks, rough surfaces, unplowed paths, unlit sections and stops); they live in `web/src/route/styles.ts`.
+
+"How far" uses the same router and riding styles: BRouter has no isochrones of its own, so the image rebuilds its server from the pinned upstream commit with `routing/brouter/isochrone.patch`. That adds `engineMode=5` with `isochroneTime=<seconds>` (up to 1800): it spreads out from one point along the cheapest paths of the profile and returns every way reached as GeoJSON, one MultiLineString per minute of riding. When moving `BROUTER_IMAGE` in `routing/Dockerfile`, move `BROUTER_COMMIT` with it.
 
 The router image builds its own routing data from the same OSM file, because it needs tags that stock BRouter data leaves out (`winter_service`, `width`, lane counts, `crossing:signals`). To run it locally:
 

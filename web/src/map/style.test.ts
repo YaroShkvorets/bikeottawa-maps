@@ -12,6 +12,7 @@ const state: StyleState = {
   selected: null,
   route: null,
   routeHighlight: null,
+  reach: null,
 }
 const build = (patch: Partial<StyleState> = {}) => buildStyle({ ...state, ...patch }, 'https://example.test')
 const layer = (style: ReturnType<typeof build>, id: string) => {
@@ -21,6 +22,14 @@ const layer = (style: ReturnType<typeof build>, id: string) => {
 }
 
 describe('buildStyle', () => {
+  it('gives the reach map the street lines to itself', () => {
+    const style = build({ layer: 'comfort', reach: { minutes: 15 } })
+    expect(style.sources.reach).toBeDefined()
+    expect(layer(style, 'reach-line')).toBeDefined()
+    expect(layer(style, 'comfort-line').layout?.visibility).toBe('none')
+    expect(build().sources.reach).toBeUndefined()
+  })
+
   it('shows only the active data layer', () => {
     for (const active of LAYER_IDS) {
       const style = build({ layer: active })

@@ -1,7 +1,8 @@
 import { useI18n } from '../i18n'
 import type { RoutePoint, RoutePoints } from '../route/state'
-import { type ParamKey, type RouteParams, STYLE_IDS, type StyleId, WEIGHT_KEYS } from '../route/styles'
+import type { ParamKey, RouteParams, StyleId } from '../route/styles'
 import { PlaceInput } from './PlaceInput'
+import { StylePicker } from './StylePicker'
 
 interface Props {
   points: RoutePoints
@@ -77,43 +78,7 @@ export function RouteForm({
           </button>
         </p>
       )}
-      <fieldset className="style-picker">
-        <legend className="eyebrow">{t('ridingStyle')}</legend>
-        <div className="style-buttons">
-          {STYLE_IDS.map((id) => (
-            <button key={id} type="button" aria-pressed={id === style} onClick={() => onStyleChange(id)}>
-              {t(`style.${id}`)}
-            </button>
-          ))}
-        </div>
-        <p className="footnote style-desc">{t(`style.${style}.desc`)}</p>
-      </fieldset>
-      {style === 'custom' && (
-        <fieldset className="param-sliders">
-          <legend className="eyebrow">{t('avoid')}</legend>
-          {WEIGHT_KEYS.map((key) => (
-            <label key={key}>
-              <span>{t(`param.${key}`)}</span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={params[key]}
-                onChange={(e) => onParamChange(key, Number(e.target.value))}
-              />
-            </label>
-          ))}
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={params.noWalk === 1}
-              onChange={(e) => onParamChange('noWalk', e.target.checked ? 1 : 0)}
-            />
-            {t('param.noWalk')}
-          </label>
-        </fieldset>
-      )}
+      <StylePicker style={style} params={params} onStyleChange={onStyleChange} onParamChange={onParamChange} />
     </div>
   )
 }
