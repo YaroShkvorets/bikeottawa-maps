@@ -2,7 +2,16 @@ import { layers as basemapLayers, type Flavor, namedFlavor } from '@protomaps/ba
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import type { Lang } from '../i18n'
-import { type BasemapId, INK, LAMP_COLOR, type LayerId, LTS_COLORS, NO_BIKES_COLOR, WINTER_COLORS } from '../layers'
+import {
+  type BasemapId,
+  INK,
+  LAMP_COLOR,
+  LAMP_COLOR_ON_PALE,
+  type LayerId,
+  LTS_COLORS,
+  NO_BIKES_COLOR,
+  WINTER_COLORS,
+} from '../layers'
 import { type PlaceKind, placeImageId } from '../places'
 import { comfortKeyOf, type Route, type RouteHighlight } from '../route/brouter'
 
@@ -50,6 +59,43 @@ interface Theme {
   halo: string
   /** Aerial imagery under the labels instead of the drawn map. */
   imagery?: boolean
+  /** Colours of the night layer on this ground. */
+  lights: Lights
+}
+
+interface Lights {
+  /** Core of a lit street, and the lamp dots. */
+  lamp: string
+  /** Soft line around a lit street. */
+  glow: string
+  /** Blur around the lamps, from its faint edge to its brightest middle. */
+  heat: [string, string, string, string, string]
+}
+
+/** Warm light, for dark ground. */
+const LIGHTS_ON_DARK: Lights = {
+  lamp: LAMP_COLOR,
+  glow: '#FFB24D',
+  heat: [
+    'rgba(255, 170, 60, 0)',
+    'rgba(255, 160, 50, 0.25)',
+    'rgba(255, 190, 80, 0.7)',
+    'rgba(255, 220, 140, 0.92)',
+    'rgba(255, 246, 220, 1)',
+  ],
+}
+
+/** Pale ground would swallow that, so there the light is a deeper amber. */
+const LIGHTS_ON_PALE: Lights = {
+  lamp: LAMP_COLOR_ON_PALE,
+  glow: '#F2A33A',
+  heat: [
+    'rgba(242, 163, 58, 0)',
+    'rgba(242, 163, 58, 0.3)',
+    'rgba(232, 135, 20, 0.65)',
+    'rgba(217, 115, 13, 0.85)',
+    'rgba(190, 90, 5, 0.95)',
+  ],
 }
 
 const THEMES: Record<BasemapId, Theme> = {
@@ -72,6 +118,7 @@ const THEMES: Record<BasemapId, Theme> = {
     casing: '#FFFFFF',
     contrast: INK,
     halo: '#FFFFFF',
+    lights: LIGHTS_ON_PALE,
   },
   grey: {
     flavor: plain(namedFlavor('grayscale')),
@@ -79,9 +126,17 @@ const THEMES: Record<BasemapId, Theme> = {
     casing: '#FFFFFF',
     contrast: INK,
     halo: '#FFFFFF',
+    lights: LIGHTS_ON_PALE,
   },
   // A pale outline keeps the darkest data colour visible on the dark ground.
-  dark: { flavor: plain(namedFlavor('dark')), sprite: 'dark', casing: '#AEBBC4', contrast: '#FFFFFF', halo: '#14191C' },
+  dark: {
+    flavor: plain(namedFlavor('dark')),
+    sprite: 'dark',
+    casing: '#AEBBC4',
+    contrast: '#FFFFFF',
+    halo: '#14191C',
+    lights: LIGHTS_ON_DARK,
+  },
   // Only the labels are drawn, so they are brightened to read over photos.
   satellite: {
     flavor: plain({
@@ -103,10 +158,11 @@ const THEMES: Record<BasemapId, Theme> = {
     contrast: '#FFFFFF',
     halo: '#101010',
     imagery: true,
+    lights: LIGHTS_ON_DARK,
   },
 }
 
-/** The night layer brings its own ground: near black, so the street lights carry the picture. */
+/** The dark map as the night layer shows it: near black, so the street lights carry the picture. */
 const NIGHT_THEME: Theme = {
   flavor: plain({
     ...namedFlavor('black'),
@@ -119,6 +175,7 @@ const NIGHT_THEME: Theme = {
   casing: '#0E1316',
   contrast: '#FFFFFF',
   halo: '#05070A',
+  lights: LIGHTS_ON_DARK,
 }
 
 const IMAGERY_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -322,8 +379,6 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
   ]
 }
 
-/** Lit streets as a soft line with a brighter core. */
-const GLOW_COLOR = '#FFB24D'
 /** Lit streets hand over to the individual lamps between these zooms. */
 const STREETS_UNTIL = 14.5
 const LAMPS_FROM = 12.5
@@ -333,7 +388,7 @@ const LAMPS_FROM = 12.5
  * as lines; zooming in, the lines fade and the lamps themselves take over, first
  * as a blur and from zoom 14 as dots too.
  */
-const nightLayers: LayerSpecification[] = [
+const nightLayers = ({ lights }: Theme): LayerSpecification[] => [
   {
     id: 'night-streets-glow',
     type: 'line',
@@ -341,7 +396,7 @@ const nightLayers: LayerSpecification[] = [
     'source-layer': 'streets',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': GLOW_COLOR,
+      'line-color': lights.glow,
       'line-width': ['interpolate', ['linear'], ['zoom'], 9, 3, 12, 6, 14, 11],
       'line-blur': ['interpolate', ['linear'], ['zoom'], 9, 3, 12, 5, 14, 9],
       'line-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 12, 0.5, 13, 0.4, STREETS_UNTIL, 0],
@@ -354,7 +409,7 @@ const nightLayers: LayerSpecification[] = [
     'source-layer': 'streets',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': LAMP_COLOR,
+      'line-color': lights.lamp,
       'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 12, 1.2, 14, 2],
       'line-blur': 0.6,
       'line-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.95, 13, 0.85, STREETS_UNTIL, 0],
@@ -375,15 +430,15 @@ const nightLayers: LayerSpecification[] = [
         ['linear'],
         ['heatmap-density'],
         0,
-        'rgba(255, 170, 60, 0)',
+        lights.heat[0],
         0.08,
-        'rgba(255, 160, 50, 0.25)',
+        lights.heat[1],
         0.35,
-        'rgba(255, 190, 80, 0.7)',
+        lights.heat[2],
         0.7,
-        'rgba(255, 220, 140, 0.92)',
+        lights.heat[3],
         1,
-        'rgba(255, 246, 220, 1)',
+        lights.heat[4],
       ],
       'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], LAMPS_FROM, 0, 13.5, 1, 15, 1, 18, 0.6],
     },
@@ -396,7 +451,7 @@ const nightLayers: LayerSpecification[] = [
     minzoom: 14,
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 1.2, 16, 2.4, 18, 4.5],
-      'circle-color': LAMP_COLOR,
+      'circle-color': lights.lamp,
       'circle-blur': 0.3,
       'circle-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 16, 1],
     },
@@ -449,7 +504,7 @@ function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
  */
 export function buildStyle(state: StyleState, assetsBase: string): StyleSpecification {
   const night = state.layer === 'night'
-  const theme = night ? NIGHT_THEME : THEMES[state.basemap]
+  const theme = night && state.basemap === 'dark' ? NIGHT_THEME : THEMES[state.basemap]
   const drawn = basemapLayers('basemap', theme.flavor, { lang: state.lang, labelsOnly: theme.imagery })
   const base: LayerSpecification[] = theme.imagery
     ? [{ id: 'imagery', type: 'raster', source: 'imagery' }, ...drawn]
@@ -481,7 +536,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
     layers: [
       ...base.slice(0, at),
       ...overlayLayers(state, theme),
-      ...(night ? nightLayers : []),
+      ...(night ? nightLayers(theme) : []),
       ...routeLayers(theme, state.routeHighlight),
       ...base.slice(at),
       placesLayer(state, theme),

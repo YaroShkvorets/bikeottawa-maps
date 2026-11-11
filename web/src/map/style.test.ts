@@ -118,8 +118,8 @@ describe('buildStyle', () => {
     expect(layer(picked, 'route-highlight').filter).toEqual(['==', ['get', 'part'], 'light'])
   })
 
-  it('lights the street lamps on its own dark ground for the night layer', () => {
-    const night = build({ layer: 'night', basemap: 'light' })
+  it('lights the street lamps for the night layer', () => {
+    const night = build({ layer: 'night', basemap: 'dark' })
     expect(night.sources.night).toMatchObject({ type: 'vector' })
     expect(night.layers.find((l) => l.id === 'night-glow')).toMatchObject({ type: 'heatmap', 'source-layer': 'lamps' })
     expect(night.layers.find((l) => l.id === 'night-streets')).toMatchObject({
@@ -128,13 +128,26 @@ describe('buildStyle', () => {
       'source-layer': 'streets',
     })
     expect(night.layers.find((l) => l.id === 'night-lamps')).toMatchObject({ type: 'circle', minzoom: 14 })
-    // The chosen basemap is set aside while it is night.
-    expect(night.sprite).toMatch(/dark$/)
-    expect(night.sources.imagery).toBeUndefined()
     // Other layers neither load the lamps nor draw them.
     const day = build({ layer: 'comfort' })
     expect(day.sources.night).toBeUndefined()
     expect(day.layers.some((l) => l.id.startsWith('night-'))).toBe(false)
+  })
+
+  it('draws the night layer on whichever basemap is chosen', () => {
+    const colorOf = (basemap: 'light' | 'dark' | 'satellite') => {
+      const style = build({ layer: 'night', basemap })
+      const streets = style.layers.find((l) => l.id === 'night-streets')
+      return { style, color: streets?.type === 'line' ? streets.paint?.['line-color'] : undefined }
+    }
+    const dark = colorOf('dark')
+    const light = colorOf('light')
+    expect(light.style.sprite).toMatch(/light$/)
+    // Pale ground gets a deeper light than dark ground.
+    expect(light.color).not.toBe(dark.color)
+    // Dark is darker still at night than by day.
+    expect(dark.style.layers[0]).not.toEqual(build({ layer: 'comfort', basemap: 'dark' }).layers[0])
+    expect(colorOf('satellite').style.sources.imagery).toBeDefined()
   })
 
   it('restyles the same tiles for each drawn basemap', () => {

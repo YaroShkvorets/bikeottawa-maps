@@ -84,16 +84,25 @@ function writeUrl(state: UrlState): void {
 }
 
 const BASEMAP_KEY = 'basemap'
+const NIGHT_BASEMAP_KEY = 'basemap-night'
 
 /** The map style is a personal preference, so it is remembered per browser rather than put in links. */
-function initialBasemap(): BasemapId {
+function storedBasemap(key: string, fallback: BasemapId): BasemapId {
   try {
-    const stored = localStorage.getItem(BASEMAP_KEY)
+    const stored = localStorage.getItem(key)
     if (isBasemapId(stored)) return stored
   } catch {
     // Storage can be blocked; use the default.
   }
-  return 'light'
+  return fallback
+}
+
+function rememberBasemap(key: string, basemap: BasemapId) {
+  try {
+    localStorage.setItem(key, basemap)
+  } catch {
+    // Not remembered when storage is blocked.
+  }
 }
 
 /** Whether the phone layout is in effect, kept current as the window is resized or rotated. */
@@ -144,7 +153,9 @@ function useAddressLabel(
 export function App() {
   const [lang, setLang] = useState<Lang>(initialLang)
   const [url, setUrl] = useState<UrlState>(readUrl)
-  const [basemap, setBasemap] = useState<BasemapId>(initialBasemap)
+  const [dayBasemap, setDayBasemap] = useState<BasemapId>(() => storedBasemap(BASEMAP_KEY, 'light'))
+  // The night layer keeps a map style of its own: dark unless another is picked while it is on.
+  const [nightBasemap, setNightBasemap] = useState<BasemapId>(() => storedBasemap(NIGHT_BASEMAP_KEY, 'dark'))
   const [selected, setSelected] = useState<Selected | null>(null)
   // Metres along the route under the pointer, shared by the map and the elevation chart.
   const [routeHover, setRouteHover] = useState<number | null>(null)
@@ -160,6 +171,7 @@ export function App() {
   const { t } = i18n
   const dataDate = useDataDate(lang)
   const { layer, placeKinds, mode, points, vias, style, custom } = url
+  const basemap = layer === 'night' ? nightBasemap : dayBasemap
   const routing = mode === 'route'
   // Planning needs a router; without one the route page only says so.
   const planning = routing && ROUTER_URL !== null
@@ -175,13 +187,8 @@ export function App() {
 
   useEffect(() => writeUrl(url), [url])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(BASEMAP_KEY, basemap)
-    } catch {
-      // Not remembered when storage is blocked.
-    }
-  }, [basemap])
+  useEffect(() => rememberBasemap(BASEMAP_KEY, dayBasemap), [dayBasemap])
+  useEffect(() => rememberBasemap(NIGHT_BASEMAP_KEY, nightBasemap), [nightBasemap])
 
   // Back/forward and pasted links change the hash without going through React.
   useEffect(() => {
@@ -353,7 +360,7 @@ export function App() {
         state={styleState}
         onSelect={routing ? ignoreSelection : setSelected}
         popup={details && !phone ? details : null}
-        onBasemapChange={setBasemap}
+        onBasemapChange={layer === 'night' ? setNightBasemap : setDayBasemap}
         routing={mapRouting}
       />
       <div className="sidebar">
@@ -446,7 +453,9 @@ export function App() {
             )}
             {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
-              {!routing && <Legend layer={layer} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />}
+              {!routing && (
+                <Legend layer={layer} basemap={basemap} placeKinds={placeKinds} onTogglePlaceKind={togglePlaceKind} />
+              )}
               {dataDate && (
                 <p className="footnote">
                   {t('updated')} {dataDate}.

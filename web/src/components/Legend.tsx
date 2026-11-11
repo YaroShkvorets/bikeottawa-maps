@@ -1,16 +1,19 @@
 import { useI18n } from '../i18n'
-import { LAMP_COLOR, type LayerId, LTS_COLORS, WINTER_COLORS } from '../layers'
+import { type BasemapId, type LayerId, LTS_COLORS, lampColor, WINTER_COLORS } from '../layers'
 import { kindsInGroup, PLACE_GROUP_IDS, type PlaceKind } from '../places'
 import { PlaceIcon } from './PlaceIcon'
 
 interface Props {
   layer: LayerId
+  /** The night layer's colours depend on the ground they are drawn on. */
+  basemap: BasemapId
   placeKinds: readonly PlaceKind[]
   onTogglePlaceKind: (kind: PlaceKind) => void
 }
 
-export function Legend({ layer, placeKinds, onTogglePlaceKind }: Props) {
+export function Legend({ layer, basemap, placeKinds, onTogglePlaceKind }: Props) {
   const { t } = useI18n()
+  const lamp = lampColor(basemap)
   return (
     <section className="legend" aria-label={t('legend')}>
       <h2 className="eyebrow">{t('legend')}</h2>
@@ -43,11 +46,11 @@ export function Legend({ layer, placeKinds, onTogglePlaceKind }: Props) {
       {layer === 'night' && (
         <ul>
           <li>
-            <span className="swatch line glow" style={{ background: LAMP_COLOR, color: LAMP_COLOR }} />
+            <span className="swatch line glow" style={{ background: lamp, color: lamp }} />
             {t('night.street')}
           </li>
           <li>
-            <span className="swatch lamp" style={{ background: LAMP_COLOR, color: LAMP_COLOR }} />
+            <span className="swatch lamp" style={{ background: lamp, color: lamp }} />
             {t('night.lamp')}
           </li>
         </ul>

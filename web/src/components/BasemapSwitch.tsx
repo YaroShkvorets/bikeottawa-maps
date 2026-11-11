@@ -1,6 +1,13 @@
 import { useState } from 'react'
+import dark from '../assets/basemaps/dark.webp'
+import grey from '../assets/basemaps/grey.webp'
+import light from '../assets/basemaps/light.webp'
+import satellite from '../assets/basemaps/satellite.webp'
 import { useI18n } from '../i18n'
 import { BASEMAP_IDS, type BasemapId } from '../layers'
+
+/** A small picture of each map style, taken from the map itself. */
+const PREVIEWS: Record<BasemapId, string> = { light, grey, dark, satellite }
 
 interface Props {
   basemap: BasemapId
@@ -46,6 +53,7 @@ export function BasemapSwitch({ basemap, onChange }: Props) {
                 setOpen(false)
               }}
             >
+              <img src={PREVIEWS[id]} alt="" width="40" height="40" />
               {t(`basemap.${id}`)}
             </button>
           ))}
