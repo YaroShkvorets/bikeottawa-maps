@@ -49,4 +49,8 @@ describe('custom weights in the URL', () => {
     expect(parseParams(undefined, PRESETS.fast)).toEqual(PRESETS.fast)
     expect(parseParams('0.5,7,x', PRESETS.fast)).toEqual({ ...PRESETS.fast, roadsPen: 0.5 })
   })
+  it('keeps the no-walk switch, and defaults it for links made before it existed', () => {
+    expect(parseParams(formatParams(PRESETS.cargo), PRESETS.balanced).noWalk).toBe(1)
+    expect(parseParams('0.5,0.5,0.5,0,0,0.1', PRESETS.balanced).noWalk).toBe(0)
+  })
 })

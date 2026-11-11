@@ -18,6 +18,17 @@ describe('routeUrl', () => {
     expect(url).toContain('profile:plowPen=1')
     expect(url).toContain('profile:roadsPen=0.4')
     expect(url).toContain('format=geojson')
+    expect(url).toContain('profile:noWalk=0')
+    expect(
+      routeUrl(
+        'https://router.test/brouter',
+        [
+          [-75.7, 45.41],
+          [-75.66, 45.43],
+        ],
+        PRESETS.cargo,
+      ),
+    ).toContain('profile:noWalk=1')
   })
 })
 

@@ -39,9 +39,11 @@ The router image builds its own routing data, because the profile uses tags that
 
 ```sh
 npm run router:build   # OSM clip, elevation tiles and the image; about 5 minutes
-npm run router         # BRouter on localhost:17777
+npm run router         # BRouter on localhost:17777, using the profile file from the checkout
 npm run dev            # .env.development points the app at it
 ```
+
+`npm run router` mounts `routing/profiles/ottbike.brf` into the container, so profile edits take effect on the next route request; rebuild the image only for fresh OSM data or new lookup tags.
 
 Without `VITE_ROUTER_URL` the app hides the planner. Place search uses [Photon](https://photon.komoot.io) (override with `VITE_GEOCODER_URL`).
 

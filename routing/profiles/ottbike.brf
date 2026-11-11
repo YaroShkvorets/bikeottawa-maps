@@ -14,6 +14,11 @@ assign  litPen = 0.0         # Lit
 assign  plowPen = 0.0        # Plow penalty
 assign  stopSignPen = 0.1    # Stop signs and Traffic lights penalty
 
+# 1 => the bike is never pushed or carried (cargo bikes, trailers): no steps,
+# no foot-only or dismount sections, no pushing against one-ways, and
+# sidewalks only as a last resort
+assign  noWalk = 0
+
 assign totalPenalty = 1                # use for turncost
 #    add roadsPen
 #    add sidewalkPen
@@ -142,7 +147,7 @@ assign footaccess =
 assign accesspenalty =
        if access=no then 10000
        else if bikeaccess then 0
-       else if footaccess then 4
+       else if footaccess then ( if equal noWalk 1 then 10000 else 4 )
        else 10000
 
 #
@@ -167,6 +172,7 @@ assign onewaypenalty =
          else if ( highway=primary|primary_link              ) then 50
          else if ( highway=secondary|secondary_link          ) then 30
          else if ( highway=tertiary|tertiary_link            ) then 20
+         else if ( equal noWalk 1                            ) then 100
          else 4.0
        )
        else 0.0
@@ -191,7 +197,7 @@ assign lanes =
     else 1  #default - 1/2 lanes
 
 assign stepspenalty =
-    if highway=steps then 60
+    if highway=steps then ( if equal noWalk 1 then 10000 else 60 )
     else 0
 
 assign lanespenalty = multiply lanes 0.5 # between 0 and 2
@@ -285,7 +291,10 @@ assign roadtypepenalty =        # add penalty for dangerous roads
 assign sidewalkpenalty =
 
     if highway=footway then
-      if footway=sidewalk then multiply sidewalkPen 3    # add 0-3 for sidewalks
+      if footway=sidewalk then
+        add multiply sidewalkPen 3                         # add 0-3 for sidewalks
+            if bicycle=yes|designated|permissive then 0
+            else multiply noWalk 20                        # last resort when the bike can't be walked
       else multiply sidewalkPen 0.5                        # add 0-0.5 for footways
     else 0
 
@@ -444,6 +453,6 @@ assign signalspenalty =
 assign initialcost =
       add
         if bikeaccess then 0
-          else ( if footaccess then 100 else 1000000 )
+          else ( if and footaccess not equal noWalk 1 then 100 else 1000000 )
       add stoppenalty
       signalspenalty

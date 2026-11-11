@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n'
 import type { RoutePoint, RoutePoints } from '../route/state'
-import { PARAM_KEYS, type ParamKey, type RouteParams, STYLE_IDS, type StyleId } from '../route/styles'
+import { type ParamKey, type RouteParams, STYLE_IDS, type StyleId, WEIGHT_KEYS } from '../route/styles'
 import { PlaceInput } from './PlaceInput'
 
 interface Props {
@@ -91,7 +91,7 @@ export function RouteForm({
       {style === 'custom' && (
         <fieldset className="param-sliders">
           <legend className="eyebrow">{t('avoid')}</legend>
-          {PARAM_KEYS.map((key) => (
+          {WEIGHT_KEYS.map((key) => (
             <label key={key}>
               <span>{t(`param.${key}`)}</span>
               <input
@@ -104,6 +104,14 @@ export function RouteForm({
               />
             </label>
           ))}
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={params.noWalk === 1}
+              onChange={(e) => onParamChange('noWalk', e.target.checked ? 1 : 0)}
+            />
+            {t('param.noWalk')}
+          </label>
         </fieldset>
       )}
     </div>

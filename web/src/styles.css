@@ -593,6 +593,15 @@ a {
   accent-color: var(--accent);
 }
 
+/* The no-walk switch sits under the sliders as an ordinary checkbox row. */
+.param-sliders label.check {
+  display: flex;
+}
+
+.param-sliders label.check input {
+  width: 18px;
+}
+
 .route-message {
   margin: 0;
   font-size: 14px;

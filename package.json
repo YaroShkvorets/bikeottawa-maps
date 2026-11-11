@@ -15,7 +15,7 @@
     "format": "biome check --write",
     "tiles": "pipeline/build-overlays.sh",
     "basemap": "pipeline/build-basemap.sh",
-    "router": "docker run --rm -p 17777:17777 bikeottawa-router",
+    "router": "docker run --rm -p 17777:17777 -v \"$PWD/routing/profiles/ottbike.brf:/profiles2/ottbike.brf:ro\" bikeottawa-router",
     "router:build": "routing/prepare-data.sh && docker build -t bikeottawa-router routing"
   },
   "devDependencies": {
