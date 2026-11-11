@@ -5,7 +5,7 @@ ARG BROUTER_IMAGE=ghcr.io/abrensch/brouter:master@sha256:1e73860a13994eb49871bd3
 # commit plus isochrones (engineMode=5: how far you get in a given time) and
 # time lost at stop signs and signals (the profile's stopdelay).
 ARG BROUTER_REPO=https://github.com/YaroShkvorets/brouter.git
-ARG BROUTER_COMMIT=0ec411870c88693564c6e49b8cf0812e8fee25e0
+ARG BROUTER_COMMIT=4748cb153dba0b2efa8d60454b0a274542d1d533
 
 FROM alpine/git:v2.49.1 AS source
 ARG BROUTER_REPO
