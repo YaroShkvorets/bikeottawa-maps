@@ -1,36 +1,42 @@
 import { useMemo, useState } from 'react'
 import { type MessageKey, useI18n } from '../i18n'
 import { LTS_COLORS, NO_BIKES_COLOR } from '../layers'
-import { distanceByLts, type Route } from '../route/brouter'
+import { COMFORT_KEYS, type ComfortKey, distanceByComfort, type Route } from '../route/brouter'
 import { downloadText, toGpx } from '../route/gpx'
 import { routeProfile } from '../route/profile'
 import type { RouteState } from '../route/useRoute'
 import { visibleRoute } from '../route/useRoute'
 import { ElevationChart } from './ElevationChart'
 
-const LEVEL_COLORS = [NO_BIKES_COLOR, ...LTS_COLORS]
-/** Most comfortable first, walking stretches last. */
-const LEVEL_ORDER = [1, 2, 3, 4, 0]
+const COMFORT: Record<ComfortKey, { color: string; label: MessageKey }> = {
+  lts1: { color: LTS_COLORS[0], label: 'lts.1' },
+  lts2: { color: LTS_COLORS[1], label: 'lts.2' },
+  lts3: { color: LTS_COLORS[2], label: 'lts.3' },
+  lts4: { color: LTS_COLORS[3], label: 'lts.4' },
+  sidewalk: { color: NO_BIKES_COLOR, label: 'sidewalk' },
+  stairs: { color: NO_BIKES_COLOR, label: 'stairs' },
+  other: { color: NO_BIKES_COLOR, label: 'walk' },
+}
 
 function ComfortBar({ route }: { route: Route }) {
   const { t } = useI18n()
-  const totals = distanceByLts(route)
-  const sum = totals.reduce((a, b) => a + b, 0) || 1
-  const levels = LEVEL_ORDER.filter((level) => totals[level] > 0)
+  const totals = distanceByComfort(route)
+  const sum = Object.values(totals).reduce((a, b) => a + b, 0) || 1
+  const parts = COMFORT_KEYS.filter((key) => totals[key] > 0)
   return (
     <div className="comfort">
       <p className="footnote">{t('comfortAlong')}</p>
       <div className="comfort-bar" aria-hidden="true">
-        {levels.map((level) => (
-          <span key={level} style={{ flexGrow: totals[level], background: LEVEL_COLORS[level] }} />
+        {parts.map((key) => (
+          <span key={key} style={{ flexGrow: totals[key], background: COMFORT[key].color }} />
         ))}
       </div>
       <ul>
-        {levels.map((level) => (
-          <li key={level}>
-            <span className="swatch line" style={{ background: LEVEL_COLORS[level] }} />
-            <span>{level === 0 ? t('walk') : t(`lts.${level}` as MessageKey)}</span>
-            <span className="share">{Math.max(1, Math.round((totals[level] / sum) * 100))}%</span>
+        {parts.map((key) => (
+          <li key={key}>
+            <span className="swatch line" style={{ background: COMFORT[key].color }} />
+            <span>{t(COMFORT[key].label)}</span>
+            <span className="share">{Math.max(1, Math.round((totals[key] / sum) * 100))}%</span>
           </li>
         ))}
       </ul>

@@ -4,12 +4,17 @@ import { PARAM_KEYS, type RouteParams } from './styles'
 export type LngLat = [lon: number, lat: number]
 
 /** A stretch of the route along one kind of way. */
+/** Why a stretch is walked: a sidewalk closed to bikes, stairs, or anything else (dismount signs, no-bike paths). */
+export type WalkKind = 'sidewalk' | 'stairs' | 'other'
+
 export interface RouteSegment {
   coords: [number, number][]
   /** Metres. */
   distance: number
-  /** Level of traffic stress 1-4, or 0 where cycling is not permitted. */
+  /** Level of traffic stress 1-4, or 0 where the bike is walked. */
   lts: number
+  /** What kind of walking a level-0 stretch is. */
+  walk: WalkKind | null
   tags: Record<string, string>
 }
 
@@ -46,12 +51,16 @@ function parseTags(text: string): Record<string, string> {
 }
 
 /**
- * Stress level of a stretch of route, 0 meaning the bike is walked. The stress
- * model rates stairs and dismount sections as paths, so those are caught here.
+ * Stress level of a stretch of route (0 = the bike is walked) and, for walked
+ * stretches, why. The stress model rates stairs and dismount sections as
+ * paths, so those are caught here.
  */
-export function comfortLevel(tags: Record<string, string>): number {
-  if (tags.highway === 'steps' || tags.bicycle === 'dismount') return 0
-  return stressmodel.evaluateLTS({ tags }).lts
+export function rateStretch(tags: Record<string, string>): { lts: number; walk: WalkKind | null } {
+  if (tags.highway === 'steps') return { lts: 0, walk: 'stairs' }
+  if (tags.bicycle === 'dismount') return { lts: 0, walk: 'other' }
+  const lts = stressmodel.evaluateLTS({ tags }).lts
+  if (lts > 0) return { lts, walk: null }
+  return { lts, walk: tags.footway === 'sidewalk' ? 'sidewalk' : 'other' }
 }
 
 /** Turns BRouter's GeoJSON answer into a route split into segments by way. */
@@ -86,7 +95,7 @@ export function parseRoute(geojson: unknown): Route {
     segments.push({
       coords: coords.slice(start, end + 1).map(([x, y]) => [x, y]),
       distance: Number(row[iDist]),
-      lts: comfortLevel(tags),
+      ...rateStretch(tags),
       tags,
     })
     start = end
@@ -118,9 +127,15 @@ export async function fetchRoute(
   }
 }
 
-/** Metres of the route at each stress level, index 0 being "not for bikes". */
-export function distanceByLts(route: Route): number[] {
-  const totals = [0, 0, 0, 0, 0]
-  for (const segment of route.segments) totals[segment.lts] += segment.distance
+/** The parts of the comfort breakdown, most comfortable first. */
+export const COMFORT_KEYS = ['lts1', 'lts2', 'lts3', 'lts4', 'sidewalk', 'stairs', 'other'] as const
+export type ComfortKey = (typeof COMFORT_KEYS)[number]
+
+/** Metres of the route in each part of the comfort breakdown. */
+export function distanceByComfort(route: Route): Record<ComfortKey, number> {
+  const totals: Record<ComfortKey, number> = { lts1: 0, lts2: 0, lts3: 0, lts4: 0, sidewalk: 0, stairs: 0, other: 0 }
+  for (const segment of route.segments) {
+    totals[segment.walk ?? (`lts${segment.lts}` as ComfortKey)] += segment.distance
+  }
   return totals
 }

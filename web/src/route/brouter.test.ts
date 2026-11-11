@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comfortLevel, distanceByLts, parseRoute, RouteError, routeUrl } from './brouter'
+import { distanceByComfort, parseRoute, RouteError, rateStretch, routeUrl } from './brouter'
 import fixture from './fixture.route.json'
 import { PRESETS } from './styles'
 
@@ -32,17 +32,17 @@ describe('routeUrl', () => {
   })
 })
 
-describe('comfortLevel', () => {
-  it('counts sidewalks, stairs, dismount sections and no-bike ways as walking', () => {
-    expect(comfortLevel({ highway: 'footway', footway: 'sidewalk' })).toBe(0)
-    expect(comfortLevel({ highway: 'steps' })).toBe(0)
-    expect(comfortLevel({ highway: 'footway', bicycle: 'dismount' })).toBe(0)
-    expect(comfortLevel({ highway: 'path', bicycle: 'no' })).toBe(0)
+describe('rateStretch', () => {
+  it('tells sidewalks, stairs and other walking apart', () => {
+    expect(rateStretch({ highway: 'footway', footway: 'sidewalk' })).toEqual({ lts: 0, walk: 'sidewalk' })
+    expect(rateStretch({ highway: 'steps' })).toEqual({ lts: 0, walk: 'stairs' })
+    expect(rateStretch({ highway: 'footway', bicycle: 'dismount' })).toEqual({ lts: 0, walk: 'other' })
+    expect(rateStretch({ highway: 'path', bicycle: 'no' })).toEqual({ lts: 0, walk: 'other' })
   })
   it('rates rideable ways with the stress model', () => {
-    expect(comfortLevel({ highway: 'cycleway' })).toBe(1)
-    expect(comfortLevel({ highway: 'footway', footway: 'sidewalk', bicycle: 'yes' })).toBe(1)
-    expect(comfortLevel({ highway: 'primary', maxspeed: '60', lanes: '4' })).toBe(4)
+    expect(rateStretch({ highway: 'cycleway' })).toEqual({ lts: 1, walk: null })
+    expect(rateStretch({ highway: 'footway', footway: 'sidewalk', bicycle: 'yes' })).toEqual({ lts: 1, walk: null })
+    expect(rateStretch({ highway: 'primary', maxspeed: '60', lanes: '4' }).lts).toBe(4)
   })
 })
 
@@ -72,7 +72,7 @@ describe('parseRoute', () => {
       expect(segment.tags.highway).toBeTruthy()
       expect(segment.tags.reversedirection).toBeUndefined()
     }
-    const total = distanceByLts(route).reduce((a, b) => a + b, 0)
+    const total = Object.values(distanceByComfort(route)).reduce((a, b) => a + b, 0)
     expect(Math.abs(total - route.distance)).toBeLessThan(route.distance * 0.05)
   })
 

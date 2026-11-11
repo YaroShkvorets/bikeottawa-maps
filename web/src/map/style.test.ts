@@ -62,6 +62,7 @@ describe('buildStyle', () => {
           ] as [number, number][],
           distance: 10,
           lts: 3,
+          walk: null,
           tags: {},
         },
       ],
