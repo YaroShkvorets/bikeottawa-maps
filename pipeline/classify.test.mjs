@@ -262,12 +262,15 @@ test('bike lanes: dedicated ways, painted lanes and shared lanes', () => {
   ]
   for (const [tags, kind] of cases) assert.equal(bikeway(tags), kind, JSON.stringify(tags))
   assert.equal(classifyWay({ highway: 'tertiary', cycleway: 'lane' }).props.bikeway, 'lane')
-  // Sides that differ are both kept, to be drawn side by side.
+  // Each side of a street is kept, to be drawn down that side.
   const mixed = classifyWay({ highway: 'residential', 'cycleway:right': 'lane', 'cycleway:left': 'shared_lane' }).props
   assert.deepEqual([mixed.bikeway, mixed.bikeway_left, mixed.bikeway_right], ['lane', 'shared', 'lane'])
   const oneSide = classifyWay({ highway: 'residential', 'cycleway:right': 'lane', 'cycleway:left': 'no' }).props
   assert.equal('bikeway_left' in oneSide, false)
-  assert.equal('bikeway_left' in classifyWay({ highway: 'residential', 'cycleway:both': 'lane' }).props, false)
+  const both = classifyWay({ highway: 'residential', 'cycleway:both': 'lane' }).props
+  assert.deepEqual([both.bikeway_left, both.bikeway_right], ['lane', 'lane'])
+  // Paths are one line.
+  assert.equal('bikeway_left' in classifyWay({ highway: 'cycleway' }).props, false)
   // One-way streets: each lane on its own side; a plain tag with the traffic, a contraflow lane against it.
   const sides = (tags) => {
     const p = classifyWay({ highway: 'secondary', ...tags }).props

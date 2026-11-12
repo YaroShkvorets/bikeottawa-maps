@@ -483,8 +483,8 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   const width = scaled('bikeway_width')
   const whole: FilterSpecification = ['all', ['!', ['has', 'bikeway_left']], ['!', ['has', 'bikeway_right']]]
   const solid = ['dedicated', 'lane']
-  // A one-way street, or one with a painted lane one way and a shared lane the
-  // other: a line down each side that has one, left and right as the way is drawn.
+  // Streets: a line down each side that has a bike lane, left and right as the
+  // way is drawn. Paths, which have no sides, are one line down the middle.
   const sideLayers = (['left', 'right'] as const).flatMap((side): LayerSpecification[] => {
     const kind = ['get', `bikeway_${side}`] as ExpressionSpecification
     const sideWidth = scaled(`bikeway_${side}_width`)

@@ -94,10 +94,9 @@ const TWO_WAY_WIDTH = 3
 const LANE_WIDTH = 1.5
 
 /**
- * The way's `bikeway` (the best on either side), and `bikeway_left` and
- * `bikeway_right` too where each side is drawn on its own: on one-way streets,
- * and where the two sides of a street differ (a painted lane one way, a shared
- * lane the other). On a one-way street a plain `cycleway` tag is the side
+ * The way's `bikeway` (the best on either side), and on streets `bikeway_left`
+ * and `bikeway_right` for the sides that have one, each drawn down its own side
+ * of the street. On a one-way street a plain `cycleway` tag is the side
  * traffic keeps to, or the other side for a contraflow (`opposite_*`) lane.
  * Each comes with its width in metres (`bikeway_width`, `bikeway_left_width`,
  * `bikeway_right_width`), from the tags or a default for its kind; a street's
@@ -135,7 +134,6 @@ export function bikewayProps(tags, { ignoreTrack = false } = {}) {
   if (!best) return {}
   const [leftWidth, rightWidth] = [sideWidth('left', left), sideWidth('right', right)]
   const whole = { bikeway: best, bikeway_width: leftWidth + rightWidth }
-  if (!trafficSide && !(left && right && left !== right)) return whole
   return {
     ...whole,
     ...(left && { bikeway_left: left, bikeway_left_width: leftWidth }),
