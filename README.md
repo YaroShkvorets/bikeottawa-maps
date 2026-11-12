@@ -6,12 +6,12 @@ No map vendor or API keys: the basemap and data layers are static [PMTiles](http
 
 ## Layout
 
-| Path          | What                                                                                                                                   |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `web/`        | The app: React, TypeScript, Vite, MapLibre                                                                                             |
-| `pipeline/`   | Builds the map tiles from OSM extracts (osmium, [stressmodel](https://github.com/BikeOttawa/stressmodel), tippecanoe)                  |
+| Path          | What                                                                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/`        | The app: React, TypeScript, Vite, MapLibre                                                                                                            |
+| `pipeline/`   | Builds the map tiles from OSM extracts (osmium, [stressmodel](https://github.com/BikeOttawa/stressmodel), tippecanoe)                                 |
 | `routing/`    | The route planner's backend: [BRouter](https://github.com/abrensch/brouter) with the `ottbike` and `ottwalk` profiles and routing data for the region |
-| `region.json` | Area covered and the OSM extracts to use                                                                                               |
+| `region.json` | Area covered and the OSM extracts to use                                                                                                              |
 
 ## Getting started
 
