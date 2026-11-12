@@ -624,6 +624,17 @@ a {
   margin: 0;
 }
 
+.place-input .icon-button.locating {
+  color: var(--accent);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+
 .place-results {
   position: absolute;
   z-index: 5;

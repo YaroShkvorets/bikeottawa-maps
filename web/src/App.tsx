@@ -26,6 +26,7 @@ import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, PLACE_KINDS, type PlaceKind } from './places'
 import type { LngLat, RouteHighlight } from './route/brouter'
 import { reverseLabel } from './route/geocode'
+import { locate } from './route/locate'
 import { DEFAULT_REACH_MINUTES, isReachMinutes, type ReachMinutes, reachCover } from './route/reach'
 import { useReachPlaces } from './route/reachPlaces'
 import {
@@ -440,17 +441,15 @@ export function App() {
   const setStart = useCallback((point: RoutePoint | null) => setPoint(0, point), [setPoint])
   // Where the device is, as the start, unless a start was set meanwhile.
   const locateStart = useCallback(() => {
-    navigator.geolocation?.getCurrentPosition(
-      ({ coords }) =>
+    locate()
+      .then((lngLat) =>
         setUrl((current) => {
           if (current.points[0]) return current
-          const here: RoutePoint = { lngLat: [coords.longitude, coords.latitude], label: t('myLocation') }
-          return { ...current, points: [here, current.points[1]] }
+          return { ...current, points: [{ lngLat, label: t('myLocation') }, current.points[1]] }
         }),
+      )
       // Without the location the start stays empty, for a click or a search.
-      () => {},
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
-    )
+      .catch(() => {})
   }, [t])
 
   // A route to a place picked on the map: from the start already set while

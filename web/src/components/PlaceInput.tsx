@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
 import { type Place, searchPlaces } from '../route/geocode'
+import { locate } from '../route/locate'
 import type { RoutePoint } from '../route/state'
 
 interface Props {
@@ -22,6 +23,9 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
   const [query, setQuery] = useState<string | null>(null)
   const [results, setResults] = useState<Place[]>([])
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // Finding where the device is, and whether that last failed.
+  const [locating, setLocating] = useState(false)
+  const [noLocation, setNoLocation] = useState(false)
 
   useEffect(() => {
     if (query === null || query.trim().length < MIN_QUERY_LENGTH) {
@@ -39,6 +43,15 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
       controller.abort()
     }
   }, [query, lang])
+
+  const locateHere = () => {
+    setLocating(true)
+    setNoLocation(false)
+    locate()
+      .then((lngLat) => onChange({ lngLat, label: t('myLocation') }))
+      .catch(() => setNoLocation(true))
+      .finally(() => setLocating(false))
+  }
 
   const pick = (place: Place) => {
     onChange({ lngLat: place.lngLat, label: place.label })
@@ -63,9 +76,12 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
         id={id}
         type="text"
         autoComplete="off"
-        placeholder={`${label}${t('colon')}${t('searchPlaceholder')}`}
+        placeholder={noLocation ? t('noLocation') : `${label}${t('colon')}${t('searchPlaceholder')}`}
         value={shown}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setNoLocation(false)
+        }}
         onFocus={(e) => e.target.select()}
         onBlur={() => {
           // Leave time for a click on a result before closing the list.
@@ -94,6 +110,32 @@ export function PlaceInput({ id, label, marker, point, onChange }: Props) {
             strokeLinecap="round"
           >
             <path d="M4 4l10 10M14 4L4 14" />
+          </svg>
+        </button>
+      )}
+      {/* An empty field offers where the device is, in the place of the clear button. */}
+      {!point && !query && marker !== 'via' && (
+        <button
+          type="button"
+          className={`icon-button small ${locating ? 'locating' : ''}`}
+          aria-label={`${t('myLocation')}${t('colon')}${label}`}
+          title={t('myLocation')}
+          disabled={locating}
+          onClick={locateHere}
+        >
+          <svg
+            aria-hidden="true"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
           </svg>
         </button>
       )}
