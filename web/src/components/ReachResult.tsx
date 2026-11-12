@@ -1,7 +1,9 @@
 import { useI18n } from '../i18n'
 import { type BasemapId, reachRamp } from '../layers'
+import type { PlaceCount } from '../route/reachPlaces'
 import type { ReachState } from '../route/useReach'
 import { visibleReach } from '../route/useReach'
+import { PlaceIcon } from './PlaceIcon'
 
 interface Props {
   state: ReachState
@@ -9,6 +11,10 @@ interface Props {
   basemap: BasemapId
   /** Square metres covered, for the reach shown. */
   area: number
+  /** The places picked on the Places layer within reach; null while counted, or none picked. */
+  places: PlaceCount[] | null
+  /** Whether any places are picked on the Places layer. */
+  picked: boolean
 }
 
 /** Square kilometres: one decimal below ten. */
@@ -18,7 +24,7 @@ export function formatArea(area: number, lang: string): string {
 }
 
 /** Status of the reach map and the key to its colours. */
-export function ReachResult({ state, minutes, basemap, area }: Props) {
+export function ReachResult({ state, minutes, basemap, area, places, picked }: Props) {
   const { t, lang } = useI18n()
   if (state.status === 'error') return <p className="route-message error">{t('reachError')}</p>
   const reach = visibleReach(state)
@@ -32,6 +38,22 @@ export function ReachResult({ state, minutes, basemap, area }: Props) {
           <dt>{t('area')}</dt>
         </div>
       </dl>
+      {places ? (
+        <div className="reach-places">
+          <p className="footnote">{t('reach.placesWithin').replace('{minutes}', String(minutes))}</p>
+          <ul>
+            {places.map(({ kind, count }) => (
+              <li key={kind}>
+                <PlaceIcon kind={kind} />
+                <span>{t(`place.${kind}`)}</span>
+                <span className="share">{count.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        !picked && <p className="footnote">{t('reach.placesHint')}</p>
+      )}
       <div className="reach-key">
         <div
           className="reach-bar"

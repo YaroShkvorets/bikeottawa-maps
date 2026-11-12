@@ -48,6 +48,8 @@ The planner asks a BRouter server for routes. Riding styles are sets of weights 
 
 "How far" uses the same router and riding styles: BRouter has no isochrones of its own, so the router image starts from our fork's image, `ghcr.io/yaroshkvorets/brouter:bikeottawa`, built from the `bikeottawa` branch of [the fork](https://github.com/YaroShkvorets/brouter/tree/bikeottawa): upstream BRouter plus three changes: `engineMode=5` with `isochroneTime=<seconds>` (up to 1800), which spreads out from one point along the cheapest paths of the profile and returns every way reached as GeoJSON, one MultiLineString per minute; the profiles' `stopdelay` (seconds lost at stop signs and signals) added to travel times; and per-way speed limits (`maxspeed`) applied to walking as well as riding. Every push to that branch publishes a new image. To move to a newer BRouter, rebase the branch onto upstream, push, and pin the new image digest as `BROUTER_IMAGE` in `routing/Dockerfile`.
 
+The app works out the area reached on a 25 m grid: the cells the ways pass through plus those they close off from the outside. It counts the places picked on the Places layer that fall within 50 m of that area, from `tiles/places/<kind>.json`, which the pipeline writes as flat `[lon, lat, …]` arrays.
+
 The router image builds its own routing data from the same OSM file, because it needs tags that stock BRouter data leaves out (`winter_service`, `width`, lane counts, `crossing:signals`). To run it locally:
 
 ```sh

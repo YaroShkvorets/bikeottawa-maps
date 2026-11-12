@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isReachMinutes, type Reach, reachArea, reachUrl } from './reach'
+import { countCovered, isReachMinutes, type Reach, reachCover, reachUrl } from './reach'
 import { PRESETS } from './styles'
 
 describe('reachUrl', () => {
@@ -23,7 +23,7 @@ describe('isReachMinutes', () => {
   })
 })
 
-describe('reachArea', () => {
+describe('reachCover', () => {
   const reach = (lines: number[][][]): Reach => ({
     type: 'FeatureCollection',
     features: [
@@ -43,7 +43,12 @@ describe('reachArea', () => {
         [0, 0],
       ],
     ])
-    expect(reachArea(loop) / side ** 2).toBeCloseTo(1, 1)
+    expect(reachCover(loop).area / side ** 2).toBeCloseTo(1, 1)
+    // Inside the loop, just outside one side, and well away.
+    expect(reachCover(loop).covers(0.005, 0.005)).toBe(true)
+    expect(reachCover(loop).covers(0.005, -0.0003)).toBe(true)
+    expect(reachCover(loop).covers(0.005, -0.002)).toBe(false)
+    expect(reachCover(loop).covers(0.5, 0.5)).toBe(false)
   })
 
   it('counts only the ways themselves where nothing is closed off', () => {
@@ -55,12 +60,22 @@ describe('reachArea', () => {
       ],
     ])
     // Two sides about 1.1 km long, each a strip a cell or two (25 m) wide.
-    const area = reachArea(corner)
+    const { area, covers } = reachCover(corner)
+    // The open side of the corner is not covered.
+    expect(covers(0.003, 0.007)).toBe(false)
     expect(area).toBeGreaterThan(2 * side * 20)
     expect(area).toBeLessThan(2 * side * 60)
   })
 
   it('is zero with nothing reached', () => {
-    expect(reachArea({ type: 'FeatureCollection', features: [] })).toBe(0)
+    expect(reachCover({ type: 'FeatureCollection', features: [] }).area).toBe(0)
+  })
+})
+
+describe('countCovered', () => {
+  it('counts the [lon, lat] pairs the reach covers', () => {
+    const cover = { area: 1, covers: (lon: number) => lon < 0 }
+    expect(countCovered([-1, 45, 1, 45, -2, 46], cover)).toBe(2)
+    expect(countCovered([], cover)).toBe(0)
   })
 })

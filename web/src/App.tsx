@@ -23,10 +23,11 @@ import { initialLang, type Lang, LangContext, rememberLang, translator } from '.
 import { type BasemapId, isBasemapId, isLayerId, type LayerId } from './layers'
 import { MapView } from './map/MapView'
 import type { Selected, StyleState } from './map/style'
-import { isPlaceKind, type PlaceKind } from './places'
+import { isPlaceKind, PLACE_KINDS, type PlaceKind } from './places'
 import type { LngLat, RouteHighlight } from './route/brouter'
 import { reverseLabel } from './route/geocode'
-import { DEFAULT_REACH_MINUTES, isReachMinutes, type ReachMinutes, reachArea } from './route/reach'
+import { DEFAULT_REACH_MINUTES, isReachMinutes, type ReachMinutes, reachCover } from './route/reach'
+import { useReachPlaces } from './route/reachPlaces'
 import {
   formatParams,
   formatPoints,
@@ -285,7 +286,11 @@ export function App() {
   const route = planning ? visibleRoute(routeState) : null
   const reachState = useReach(ROUTER_URL, points[0]?.lngLat ?? null, minutes, profile, reaching)
   const reach = reaching ? visibleReach(reachState) : null
-  const area = useMemo(() => (reach ? reachArea(reach) : 0), [reach])
+  const cover = useMemo(() => (reach ? reachCover(reach) : null), [reach])
+  const area = cover?.area ?? 0
+  // The places picked on the Places layer, counted within reach in the layer's order.
+  const pickedKinds = useMemo(() => PLACE_KINDS.filter((kind) => placeKinds.includes(kind)), [placeKinds])
+  const reachPlaces = useReachPlaces(reaching ? cover : null, pickedKinds)
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -698,7 +703,16 @@ export function App() {
                 onPinPart={setPinnedPart}
               />
             )}
-            {reaching && <ReachResult state={reachState} minutes={minutes} basemap={basemap} area={area} />}
+            {reaching && (
+              <ReachResult
+                state={reachState}
+                minutes={minutes}
+                basemap={basemap}
+                area={area}
+                places={reachPlaces}
+                picked={pickedKinds.length > 0}
+              />
+            )}
             {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && (

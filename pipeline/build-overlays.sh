@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Builds web/public/tiles/overlays.pmtiles (streets), places.pmtiles and night.pmtiles
-# (lit ways + street lamps) for the map area in region.json, from OSM data brought up to
-# date by pipeline/update-osm.sh.
+# Builds web/public/tiles/overlays.pmtiles (streets), places.pmtiles, night.pmtiles
+# (lit ways + street lamps) and places/<kind>.json (where each kind of place is) for
+# the map area in region.json, from OSM data brought up to date by pipeline/update-osm.sh.
 # Needs: osmium, tippecanoe, node, and what update-osm.sh needs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -29,6 +29,8 @@ osmium tags-filter "$REGION" r/route=train,light_rail,subway,tram r/public_trans
 osmium cat "$WORK/transit.osm.pbf" -f opl --overwrite -o "$WORK/transit.opl"
 
 node pipeline/transform.mjs "$WORK/filtered.geojsonseq" "$WORK" "$WORK/transit.opl"
+# Where each kind of place is, for counting the places within reach.
+node pipeline/place-points.mjs "$WORK/places.geojsonseq" "$OUT/places"
 
 echo "Building tiles"
 # Streets and places in files of their own, so each loads only for its layer.
