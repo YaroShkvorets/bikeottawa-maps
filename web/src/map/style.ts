@@ -463,23 +463,54 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   if (!showsBikeLanes(state)) return []
   const colors = bikewayColors(state.basemap)
   const way = { type: 'line' as const, source: WAYS_SOURCE, 'source-layer': 'ways' }
-  const width = lineWidth(-0.2)
-  // One-way paths at about 60% of the width, so a pair of them reads as one street's worth.
+  // Line width by zoom, from the full width at each zoom stop.
+  const byZoom = (value: (full: number) => unknown) =>
+    [
+      'interpolate',
+      ['exponential', 1.5],
+      ['zoom'],
+      ...[9, 13, 16, 19].flatMap((zoom, i) => [zoom, value([0.6, 2, 4.8, 11.8][i])]),
+    ] as ExpressionSpecification
+  const width = byZoom((full) => full)
+  // Thinner lines at about 60% of the width: one-way paths, so a pair of them
+  // reads as one street's worth, and each side of a street whose sides differ.
+  const thin = byZoom((full) => full * 0.6)
   const oneway = ['==', ['get', 'oneway'], 'yes'] as ExpressionSpecification
-  const pathWidth: ExpressionSpecification = [
-    'interpolate',
-    ['exponential', 1.5],
-    ['zoom'],
-    ...[9, 13, 16, 19].flatMap((zoom, i) => {
-      const full = [0.6, 2, 4.8, 11.8][i]
-      return [zoom, ['case', oneway, full * 0.6, full]]
-    }),
-  ] as ExpressionSpecification
+  const pathWidth = byZoom((full) => ['case', oneway, full * 0.6, full])
+  const whole: FilterSpecification = ['!', ['has', 'bikeway_left']]
+  const solid = ['dedicated', 'lane']
+  // A street with a painted lane one way and a shared lane the other: a thin line
+  // down each side, left and right as the way is drawn.
+  const sideLayers = (['left', 'right'] as const).flatMap((side): LayerSpecification[] => {
+    const kind = ['get', `bikeway_${side}`] as ExpressionSpecification
+    const offset = byZoom((full) => (side === 'left' ? -0.45 : 0.45) * full)
+    return [
+      {
+        ...way,
+        id: `bike-lanes-${side}`,
+        filter: ['in', kind, ['literal', solid]],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['match', kind, 'dedicated', colors.dedicated, colors.lane],
+          'line-width': thin,
+          'line-offset': offset,
+        },
+      },
+      {
+        ...way,
+        id: `bike-lanes-${side}-shared`,
+        filter: ['==', kind, 'shared'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': colors.shared, 'line-width': thin, 'line-offset': offset, 'line-dasharray': [0, 2] },
+      },
+    ]
+  })
   return [
+    ...sideLayers,
     {
       ...way,
       id: 'bike-lanes',
-      filter: ['in', ['get', 'bikeway'], ['literal', ['dedicated', 'lane']]],
+      filter: ['all', whole, ['in', ['get', 'bikeway'], ['literal', solid]]],
       // Dedicated ways over the lanes where they meet.
       layout: {
         'line-cap': 'round',
@@ -494,7 +525,7 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
     {
       ...way,
       id: 'bike-lanes-shared',
-      filter: ['==', ['get', 'bikeway'], 'shared'],
+      filter: ['all', whole, ['==', ['get', 'bikeway'], 'shared']],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': colors.shared, 'line-width': width, 'line-dasharray': [0, 2] },
     },

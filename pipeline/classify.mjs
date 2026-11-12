@@ -63,7 +63,6 @@ const STREET_BIKEWAYS = {
   opposite_lane: 'lane',
   shared_lane: 'shared',
 }
-const SIDES = ['cycleway', 'cycleway:both', 'cycleway:left', 'cycleway:right']
 
 /**
  * The bike lanes overlay, as on Google Maps: `dedicated` for cycleways and
@@ -74,15 +73,32 @@ const SIDES = ['cycleway', 'cycleway:both', 'cycleway:left', 'cycleway:right']
  * `cycleway=track` whose track is mapped on its own as well.
  * @returns {string | undefined}
  */
-export function bikeway(tags, { ignoreTrack = false } = {}) {
+export function bikeway(tags, options) {
+  return bikewayProps(tags, options).bikeway
+}
+
+/**
+ * The way's `bikeway` (the best on either side), and, where the two sides of a
+ * street differ (a painted lane one way, a shared lane the other),
+ * `bikeway_left` and `bikeway_right` too, so each side can be drawn.
+ * @returns {{bikeway?: string, bikeway_left?: string, bikeway_right?: string}}
+ */
+export function bikewayProps(tags, { ignoreTrack = false } = {}) {
   const { highway } = tags
   if (PATH_HIGHWAYS.has(highway)) {
-    return highway === 'cycleway' || tags.bicycle === 'designated' ? 'dedicated' : undefined
+    return highway === 'cycleway' || tags.bicycle === 'designated' ? { bikeway: 'dedicated' } : {}
   }
-  const found = SIDES.filter((side) => !(ignoreTrack && tags[side] === 'track')).map(
-    (side) => STREET_BIKEWAYS[tags[side]],
-  )
-  return BIKEWAYS.find((kind) => found.includes(kind))
+  const sideKind = (side) => {
+    const value = tags[`cycleway:${side}`] ?? tags['cycleway:both'] ?? tags.cycleway
+    return ignoreTrack && value === 'track' ? undefined : STREET_BIKEWAYS[value]
+  }
+  const left = sideKind('left')
+  const right = sideKind('right')
+  const best = BIKEWAYS.find((kind) => kind === left || kind === right)
+  if (!best) return {}
+  return left && right && left !== right
+    ? { bikeway: best, bikeway_left: left, bikeway_right: right }
+    : { bikeway: best }
 }
 
 /**
@@ -108,8 +124,8 @@ export function classifyWay(tags) {
 
   const props = { lts, kind: isPath ? 'path' : 'street', highway }
   pick(tags, ['name', 'service', 'footway', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
-  const facility = bikeway(tags)
-  if (facility) props.bikeway = facility
+  Object.assign(props, bikewayProps(tags))
+  const facility = props.bikeway
   // One-way bike paths are drawn thinner, as each carries half the traffic of a two-way one.
   if (facility === 'dedicated' && (tags.oneway === 'yes' || tags.oneway === '-1')) props.oneway = 'yes'
   // Indoor walkways have no snow to plow, so they carry no winter status and

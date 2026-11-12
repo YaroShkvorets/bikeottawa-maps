@@ -7,7 +7,7 @@ import { once } from 'node:events'
 import { createReadStream, createWriteStream, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
-import { bikeway, centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId } from './classify.mjs'
+import { bikewayProps, centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId } from './classify.mjs'
 import { isLit, lampIndex } from './lamps.mjs'
 import { sidepathIndex } from './sidepaths.mjs'
 import { stationLines } from './stations.mjs'
@@ -74,9 +74,8 @@ for await (const line of lines()) {
     if (!way) continue
     // A street's track that is also mapped on its own is drawn once, as that way.
     if (way.props.kind === 'street' && way.props.bikeway === 'dedicated' && hasSidepath(feature.geometry.coordinates)) {
-      const rest = bikeway(tags, { ignoreTrack: true })
-      if (rest) way.props.bikeway = rest
-      else delete way.props.bikeway
+      for (const key of ['bikeway', 'bikeway_left', 'bikeway_right']) delete way.props[key]
+      Object.assign(way.props, bikewayProps(tags, { ignoreTrack: true }))
     }
     counts.ways++
     counts.byLts[way.props.lts]++

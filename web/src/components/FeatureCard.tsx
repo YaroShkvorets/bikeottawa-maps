@@ -87,9 +87,14 @@ export function FeatureCard({ selected, onClose }: Props) {
       color: lts > 0 ? LTS_COLORS[lts - 1] : undefined,
     })
     if (isBikewayId(props.bikeway)) {
+      // Sides that differ are both named, the better first.
+      const other = [props.bikeway_left, props.bikeway_right].find((side) => side !== props.bikeway)
       facts.push({
         label: t('fact.bikeway'),
-        value: t(`bikeway.${props.bikeway}`),
+        value: [props.bikeway, other]
+          .filter(isBikewayId)
+          .map((kind) => t(`bikeway.${kind}`))
+          .join(' · '),
         // The card is pale, so the colours drawn on pale ground.
         color: bikewayColors('light')[props.bikeway],
       })
