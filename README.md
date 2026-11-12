@@ -4,6 +4,8 @@ Cycling maps for Ottawa–Gatineau built on OpenStreetMap: street comfort (level
 
 No map vendor or API keys: the basemap and data layers are static [PMTiles](https://docs.protomaps.com/pmtiles/) files rendered with [MapLibre](https://maplibre.org). The light, grey and dark map styles are the same basemap tiles restyled in the browser; only the satellite style loads from elsewhere (Esri World Imagery, no key).
 
+The site installs as an app on phones and desktops (`vite-plugin-pwa` in `web/vite.config.ts`). Its service worker keeps the app's own files, so it opens offline; tiles, routing and search always need the network. A new version takes over once the app has been closed.
+
 ## Layout
 
 | Path          | What                                                                                                                                                  |
