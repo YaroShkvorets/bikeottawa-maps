@@ -1231,8 +1231,28 @@ a {
 
 .place-photo figcaption {
   margin-top: 4px;
+  overflow: hidden;
   font-size: 11px;
   color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.place-photo-open {
+  position: relative;
+}
+
+/* How many more photos the larger view steps through. */
+.place-photo-more {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgb(10 16 20 / 70%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* A place's photo, larger, over the map. A click anywhere or Esc closes it. */

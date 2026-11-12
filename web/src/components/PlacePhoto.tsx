@@ -115,8 +115,9 @@ function PhotoFigure({
     return () => window.removeEventListener('keydown', onKey)
   }, [index === null, count])
 
+  // How far away, when it was taken, then the credit: short enough for one line in a card.
   const captionOf = (p: Photo | null, line?: string) =>
-    [line, p?.credit, p && takenOn(p, lang)].filter(Boolean).join(' · ')
+    [line, p && takenOn(p, lang), p?.credit].filter(Boolean).join(' · ')
   const viewerNote = index ? more.noteFor(more.items[index - 1]) : note
 
   return (
@@ -125,14 +126,16 @@ function PhotoFigure({
         <button type="button" className="place-photo-open" title={t('photoEnlarge')} onClick={() => setIndex(0)}>
           {/* A broken link hides the photo rather than showing a broken image. */}
           <img src={photo.url} alt={t('photoAlt')} onError={onBroken} />
+          {count > 1 && (
+            <span className="place-photo-more" title={t('photoMore').replace('{count}', String(count - 1))}>
+              +{count - 1}
+            </span>
+          )}
         </button>
       ) : (
         <span className="place-photo-loading" />
       )}
-      <figcaption>
-        {captionOf(photo, note)}
-        {photo && count > 1 && ` · ${t('photoMore').replace('{count}', String(count - 1))}`}
-      </figcaption>
+      <figcaption>{captionOf(photo, note)}</figcaption>
       {photo &&
         index !== null &&
         createPortal(
@@ -244,7 +247,7 @@ export function CardPhoto({ at, props }: { at: readonly [number, number]; props?
   if (state === 'none' || (!MAPILLARY_TOKEN && !direct)) return null
   const metres = (distance: number) => String(Math.max(1, Math.round(distance)))
   const note =
-    found?.distance !== undefined ? t('photoNearby').replace('{distance}', metres(found.distance)) : undefined
+    found?.distance !== undefined ? t('photoDistance').replace('{distance}', metres(found.distance)) : undefined
   return (
     <PhotoFigure
       photo={found?.photo ?? null}
