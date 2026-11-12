@@ -43,6 +43,7 @@ interface Props {
   state: StyleState
   onSelect: (selected: Selected | null) => void
   onBasemapChange: (basemap: BasemapId) => void
+  onBikeLanesChange: (on: boolean) => void
   /** Details of the selection, shown in a popup beside it. Null where they go elsewhere (phones). */
   popup: ReactNode | null
   /** How far you get, drawn when the style has a reach source. */
@@ -97,7 +98,7 @@ function showReach(map: MapLibreMap, data: Reach | null, shown: { current: Reach
   shown.current = { source, data }
 }
 
-export function MapView({ state, onSelect, onBasemapChange, popup, reach, routing }: Props) {
+export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, popup, reach, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
@@ -431,7 +432,16 @@ export function MapView({ state, onSelect, onBasemapChange, popup, reach, routin
   return (
     <>
       <div ref={container} className="map" />
-      {styleControl && createPortal(<BasemapSwitch basemap={state.basemap} onChange={onBasemapChange} />, styleControl)}
+      {styleControl &&
+        createPortal(
+          <BasemapSwitch
+            basemap={state.basemap}
+            onChange={onBasemapChange}
+            bikeLanes={Boolean(state.bikeLanes)}
+            onBikeLanesChange={onBikeLanesChange}
+          />,
+          styleControl,
+        )}
       {popup && createPortal(popup, popupElement)}
     </>
   )

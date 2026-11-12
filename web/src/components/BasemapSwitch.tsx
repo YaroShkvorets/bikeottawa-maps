@@ -4,7 +4,7 @@ import grey from '../assets/basemaps/grey.webp'
 import light from '../assets/basemaps/light.webp'
 import satellite from '../assets/basemaps/satellite.webp'
 import { useI18n } from '../i18n'
-import { BASEMAP_IDS, type BasemapId } from '../layers'
+import { BASEMAP_IDS, type BasemapId, BIKEWAY_IDS, bikewayColors } from '../layers'
 
 /** A small picture of each map style, taken from the map itself. */
 const PREVIEWS: Record<BasemapId, string> = { light, grey, dark, satellite }
@@ -12,10 +12,13 @@ const PREVIEWS: Record<BasemapId, string> = { light, grey, dark, satellite }
 interface Props {
   basemap: BasemapId
   onChange: (basemap: BasemapId) => void
+  /** The bike lanes overlay, drawn over any map style. */
+  bikeLanes: boolean
+  onBikeLanesChange: (on: boolean) => void
 }
 
 /** Map control: a button that opens the list of map styles. */
-export function BasemapSwitch({ basemap, onChange }: Props) {
+export function BasemapSwitch({ basemap, onChange, bikeLanes, onBikeLanesChange }: Props) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return (
@@ -57,6 +60,23 @@ export function BasemapSwitch({ basemap, onChange }: Props) {
               {t(`basemap.${id}`)}
             </button>
           ))}
+          <label className="check bike-lanes-toggle">
+            <input type="checkbox" checked={bikeLanes} onChange={(e) => onBikeLanesChange(e.target.checked)} />
+            {t('bikeLanes')}
+          </label>
+          {bikeLanes && (
+            <ul className="bike-lanes-key">
+              {BIKEWAY_IDS.map((id) => (
+                <li key={id}>
+                  <span
+                    className={`swatch line ${id === 'shared' ? 'dotted' : ''}`}
+                    style={{ color: bikewayColors('light')[id] }}
+                  />
+                  {t(`bikeway.${id}`)}
+                </li>
+              ))}
+            </ul>
+          )}
         </fieldset>
       )}
     </>

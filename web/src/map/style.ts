@@ -5,6 +5,7 @@ import { SEVERITIES } from '../collisions'
 import type { Lang } from '../i18n'
 import {
   type BasemapId,
+  bikewayColors,
   collisionColors,
   INK,
   LAMP_COLOR,
@@ -46,6 +47,8 @@ export interface StyleState {
   reach: { minutes: number } | null
   /** The collisions layer's spots, built from the filters; null until loaded. */
   collisions: FeatureCollection | null
+  /** The bike lanes overlay, drawn over any basemap and data layer. */
+  bikeLanes?: boolean
 }
 
 /** Layers a click can hit, per data layer. */
@@ -450,6 +453,47 @@ function showsPlaces(state: StyleState): boolean {
 
 /** Street data and places come in tile sets of their own, so each loads only for its layer. */
 const WAYS_SOURCE = 'overlays'
+
+/**
+ * Bike lanes over the basemap, as on Google Maps: dedicated ways solid dark
+ * green, painted lanes lighter green, shared lanes dotted. Under the data layers
+ * and the street names.
+ */
+function bikeLaneLayers(state: StyleState): LayerSpecification[] {
+  if (!showsBikeLanes(state)) return []
+  const colors = bikewayColors(state.basemap)
+  const way = { type: 'line' as const, source: WAYS_SOURCE, 'source-layer': 'ways' }
+  const width = lineWidth(-0.2)
+  return [
+    {
+      ...way,
+      id: 'bike-lanes',
+      filter: ['in', ['get', 'bikeway'], ['literal', ['dedicated', 'lane']]],
+      // Dedicated ways over the lanes where they meet.
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        'line-sort-key': ['match', ['get', 'bikeway'], 'dedicated', 1, 0],
+      },
+      paint: {
+        'line-color': ['match', ['get', 'bikeway'], 'dedicated', colors.dedicated, colors.lane],
+        'line-width': width,
+      },
+    },
+    {
+      ...way,
+      id: 'bike-lanes-shared',
+      filter: ['==', ['get', 'bikeway'], 'shared'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': colors.shared, 'line-width': width, 'line-dasharray': [0, 2] },
+    },
+  ]
+}
+
+/** Bike lanes step aside for the reach map, which has the street lines to itself. */
+function showsBikeLanes(state: StyleState): boolean {
+  return Boolean(state.bikeLanes) && !state.reach
+}
 const PLACES_SOURCE = 'places'
 
 /** Lit streets hand over to the individual lamps between these zooms. */
@@ -706,7 +750,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
           attribution: IMAGERY_ATTRIBUTION,
         },
       }),
-      ...(showsWays(state) && {
+      ...((showsWays(state) || showsBikeLanes(state)) && {
         [WAYS_SOURCE]: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
       }),
       ...(showsPlaces(state) && {
@@ -732,6 +776,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
     },
     layers: [
       ...base.slice(0, at),
+      ...bikeLaneLayers(state),
       ...overlayLayers(state, theme),
       ...(night && !state.reach ? nightLayers(theme) : []),
       ...reachLayers(state.reach, state.basemap),

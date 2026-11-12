@@ -45,6 +45,23 @@ export function collisionColors(basemap: BasemapId): Record<'none' | 'minimal' |
   return basemap === 'light' || basemap === 'grey' ? COLLISIONS_ON_PALE : COLLISIONS_ON_DARK
 }
 
+/**
+ * The bike lanes overlay, drawn as on Google Maps: dedicated ways dark green,
+ * painted lanes a lighter green, shared lanes dotted. Brighter on dark ground.
+ */
+export const BIKEWAY_IDS = ['dedicated', 'lane', 'shared'] as const
+export type BikewayId = (typeof BIKEWAY_IDS)[number]
+const BIKEWAYS_ON_PALE: Record<BikewayId, string> = { dedicated: '#1E7B34', lane: '#5DBB63', shared: '#1E7B34' }
+const BIKEWAYS_ON_DARK: Record<BikewayId, string> = { dedicated: '#3FB560', lane: '#A3E3A6', shared: '#3FB560' }
+
+export function bikewayColors(basemap: BasemapId): Record<BikewayId, string> {
+  return basemap === 'light' || basemap === 'grey' ? BIKEWAYS_ON_PALE : BIKEWAYS_ON_DARK
+}
+
+export function isBikewayId(value: unknown): value is BikewayId {
+  return BIKEWAY_IDS.includes(value as BikewayId)
+}
+
 export const WINTER_COLORS = { yes: '#1B5FAE', no: '#E07B1A', unknown: '#6F7B80' } as const
 
 export function isBasemapId(value: unknown): value is BasemapId {

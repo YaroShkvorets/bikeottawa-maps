@@ -1,10 +1,26 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId, placeFilters } from './classify.mjs'
+import {
+  bikeway,
+  centreOf,
+  classifyPlace,
+  classifyWay,
+  isStreetLamp,
+  middleOf,
+  parseOsmId,
+  placeFilters,
+} from './classify.mjs'
 
 test('cycleways are low-stress paths shown from far out', () => {
   const { props, minzoom } = classifyWay({ highway: 'cycleway', surface: 'asphalt', winter_service: 'yes' })
-  assert.deepEqual(props, { lts: 1, kind: 'path', highway: 'cycleway', surface: 'asphalt', winter: 'yes' })
+  assert.deepEqual(props, {
+    lts: 1,
+    kind: 'path',
+    highway: 'cycleway',
+    surface: 'asphalt',
+    bikeway: 'dedicated',
+    winter: 'yes',
+  })
   assert.equal(minzoom, 10)
 })
 
@@ -227,4 +243,23 @@ test('centreOf returns the middle of the bounding box', () => {
     }),
     [3, 2],
   )
+})
+
+test('bike lanes: dedicated ways, painted lanes and shared lanes', () => {
+  const cases = [
+    [{ highway: 'cycleway', foot: 'designated', segregated: 'no' }, 'dedicated'],
+    [{ highway: 'cycleway', foot: 'no' }, 'dedicated'],
+    [{ highway: 'path', bicycle: 'designated' }, 'dedicated'],
+    [{ highway: 'path', bicycle: 'yes' }, undefined],
+    [{ highway: 'footway', footway: 'sidewalk' }, undefined],
+    [{ highway: 'secondary', 'cycleway:right': 'lane', 'cycleway:left': 'no' }, 'lane'],
+    [{ highway: 'secondary', 'cycleway:left': 'shared_lane', 'cycleway:right': 'lane' }, 'lane'],
+    [{ highway: 'residential', 'cycleway:both': 'shared_lane' }, 'shared'],
+    [{ highway: 'primary', cycleway: 'track' }, 'dedicated'],
+    [{ highway: 'primary', 'cycleway:both': 'separate' }, undefined],
+    [{ highway: 'tertiary', cycleway: 'shoulder' }, undefined],
+  ]
+  for (const [tags, kind] of cases) assert.equal(bikeway(tags), kind, JSON.stringify(tags))
+  assert.equal(classifyWay({ highway: 'tertiary', cycleway: 'lane' }).props.bikeway, 'lane')
+  assert.equal('bikeway' in classifyWay({ highway: 'residential' }).props, false)
 })

@@ -1073,6 +1073,40 @@ a {
   font-weight: 600;
 }
 
+.bike-lanes-toggle {
+  margin-top: 2px;
+  padding: 10px 12px 6px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.bike-lanes-key {
+  margin: 0;
+  padding: 2px 12px 8px;
+  list-style: none;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.bike-lanes-key li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.bike-lanes-key .swatch.line {
+  width: 20px;
+  height: 3px;
+  background: currentcolor;
+}
+
+.bike-lanes-key .swatch.line.dotted {
+  height: 3px;
+  background: radial-gradient(circle, currentcolor 1.5px, transparent 1.6px) 0 50% / 5px 3px repeat-x;
+}
+
 /* Phones: layer chips across the top, legend and details in a bottom sheet. */
 @media (max-width: 720px) {
   .sidebar {

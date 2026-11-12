@@ -1,7 +1,7 @@
 import { REGION } from '../config'
 import { describeStatus, hoursStatus, parseHours, weekTimeIn } from '../hours'
 import { isMessageKey, type MessageKey, type Translate, useI18n } from '../i18n'
-import { LTS_COLORS, WINTER_COLORS } from '../layers'
+import { bikewayColors, isBikewayId, LTS_COLORS, WINTER_COLORS } from '../layers'
 import type { Selected } from '../map/style'
 import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, streetViewUrl } from '../photos'
 import { isPlaceKind } from '../places'
@@ -86,6 +86,14 @@ export function FeatureCard({ selected, onClose }: Props) {
       value: t(`lts.${lts}` as MessageKey),
       color: lts > 0 ? LTS_COLORS[lts - 1] : undefined,
     })
+    if (isBikewayId(props.bikeway)) {
+      facts.push({
+        label: t('fact.bikeway'),
+        value: t(`bikeway.${props.bikeway}`),
+        // The card is pale, so the colours drawn on pale ground.
+        color: bikewayColors('light')[props.bikeway],
+      })
+    }
     if (props.kind === 'path' && props.winter !== undefined) {
       const winter = String(props.winter) as keyof typeof WINTER_COLORS
       facts.push({ label: t('fact.winter'), value: t(`winter.${winter}`), color: WINTER_COLORS[winter] })

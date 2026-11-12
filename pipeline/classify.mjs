@@ -55,6 +55,33 @@ function pick(tags, keys, out) {
   return out
 }
 
+/** Best first. */
+const BIKEWAYS = ['dedicated', 'lane', 'shared']
+const STREET_BIKEWAYS = {
+  track: 'dedicated',
+  lane: 'lane',
+  opposite_lane: 'lane',
+  shared_lane: 'shared',
+}
+const SIDES = ['cycleway', 'cycleway:both', 'cycleway:left', 'cycleway:right']
+
+/**
+ * The bike lanes overlay, as on Google Maps: `dedicated` for cycleways and
+ * pathways bikes are meant for (and cycle tracks along a street), `lane` for a
+ * painted bike lane, `shared` for a shared-lane marking. A street whose bike
+ * lane is drawn as a way of its own (`cycleway=separate`) gets nothing; that
+ * way is drawn instead.
+ * @returns {string | undefined}
+ */
+export function bikeway(tags) {
+  const { highway } = tags
+  if (PATH_HIGHWAYS.has(highway)) {
+    return highway === 'cycleway' || tags.bicycle === 'designated' ? 'dedicated' : undefined
+  }
+  const found = SIDES.map((side) => STREET_BIKEWAYS[tags[side]])
+  return BIKEWAYS.find((kind) => found.includes(kind))
+}
+
 /**
  * @param {Record<string, string>} tags OSM tags of a way
  * @returns {{props: Record<string, string|number>, minzoom: number} | null} null when the way is not shown
@@ -78,6 +105,8 @@ export function classifyWay(tags) {
 
   const props = { lts, kind: isPath ? 'path' : 'street', highway }
   pick(tags, ['name', 'service', 'footway', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
+  const facility = bikeway(tags)
+  if (facility) props.bikeway = facility
   // Indoor walkways have no snow to plow, so they carry no winter status and
   // stay off the winter layer.
   const isIndoor = tags.indoor !== undefined && tags.indoor !== 'no'

@@ -147,6 +147,26 @@ function rememberBasemap(key: string, basemap: BasemapId) {
   }
 }
 
+const BIKE_LANES_KEY = 'bike-lanes'
+
+/** The bike lanes overlay goes with the map style: remembered per browser. */
+function storedBikeLanes(): boolean {
+  try {
+    return localStorage.getItem(BIKE_LANES_KEY) === 'on'
+  } catch {
+    return false
+  }
+}
+
+function rememberBikeLanes(on: boolean) {
+  try {
+    if (on) localStorage.setItem(BIKE_LANES_KEY, 'on')
+    else localStorage.removeItem(BIKE_LANES_KEY)
+  } catch {
+    // Not remembered when storage is blocked.
+  }
+}
+
 /** Whether the phone layout is in effect, kept current as the window is resized or rotated. */
 function usePhoneLayout(): boolean {
   const [phone, setPhone] = useState(() => window.matchMedia(PHONE_LAYOUT).matches)
@@ -235,6 +255,7 @@ export function App() {
   const [dayBasemap, setDayBasemap] = useState<BasemapId>(() => storedBasemap(BASEMAP_KEY, 'light'))
   // The night layer keeps a map style of its own: dark unless another is picked while it is on.
   const [nightBasemap, setNightBasemap] = useState<BasemapId>(() => storedBasemap(NIGHT_BASEMAP_KEY, 'dark'))
+  const [bikeLanes, setBikeLanes] = useState(storedBikeLanes)
   const [selected, setSelected] = useState<Selected | null>(null)
   // Metres along the route under the pointer, shared by the map and the elevation chart.
   const [routeHover, setRouteHover] = useState<number | null>(null)
@@ -274,6 +295,7 @@ export function App() {
 
   useEffect(() => rememberBasemap(BASEMAP_KEY, dayBasemap), [dayBasemap])
   useEffect(() => rememberBasemap(NIGHT_BASEMAP_KEY, nightBasemap), [nightBasemap])
+  useEffect(() => rememberBikeLanes(bikeLanes), [bikeLanes])
 
   // Back/forward and pasted links change the hash without going through React.
   useEffect(() => {
@@ -464,8 +486,9 @@ export function App() {
       routeOnFoot: travel === 'foot',
       reach: reachStyle,
       collisions: layer === 'collisions' ? collisionGeo : null,
+      bikeLanes,
     }),
-    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle, collisionGeo],
+    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle, collisionGeo, bikeLanes],
   )
   const mapRouting = useMemo(
     () =>
@@ -553,6 +576,7 @@ export function App() {
         onSelect={routing ? ignoreSelection : setSelected}
         popup={details && !phone ? details : null}
         onBasemapChange={layer === 'night' ? setNightBasemap : setDayBasemap}
+        onBikeLanesChange={setBikeLanes}
         routing={mapRouting}
         reach={reach}
       />
