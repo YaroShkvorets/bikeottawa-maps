@@ -1,5 +1,4 @@
 import { useI18n } from '../i18n'
-import { type BasemapId, reachRamp } from '../layers'
 import type { PlaceKind } from '../places'
 import type { PlaceCount } from '../route/reachPlaces'
 import type { ReachState } from '../route/useReach'
@@ -9,7 +8,6 @@ import { PlaceIcon } from './PlaceIcon'
 interface Props {
   state: ReachState
   minutes: number
-  basemap: BasemapId
   /** Square metres covered, for the reach shown. */
   area: number
   /** The places picked on the Places layer within reach; null while counted, or none picked. */
@@ -28,13 +26,13 @@ export function formatArea(area: number, lang: string): string {
   return `${km2.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA', { maximumFractionDigits: km2 < 10 ? 1 : 0 })} km²`
 }
 
-/** Status of the reach map and the key to its colours. */
-export function ReachResult({ state, minutes, basemap, area, places, picked, pinned, onPoint, onPin }: Props) {
+/** Status of the reach map, what it covers and the places within it. */
+export function ReachResult({ state, minutes, area, places, picked, pinned, onPoint, onPin }: Props) {
   const { t, lang } = useI18n()
   if (state.status === 'error') return <p className="route-message error">{t('reachError')}</p>
   const reach = visibleReach(state)
   if (!reach) return <p className="route-message">{state.status === 'loading' ? t('reachLoading') : t('reachHint')}</p>
-  const ramp = reachRamp(basemap)
+  const number = (n: number) => n.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')
   return (
     <section className={`route-result ${state.status === 'loading' ? 'stale' : ''}`} aria-live="polite">
       <dl className="route-stats">
@@ -42,10 +40,19 @@ export function ReachResult({ state, minutes, basemap, area, places, picked, pin
           <dd>{formatArea(area, lang)}</dd>
           <dt>{t('area')}</dt>
         </div>
+        <div className="route-stat">
+          <dd>{minutes} min</dd>
+          <dt>{t('time')}</dt>
+        </div>
+        {places && (
+          <div className="route-stat">
+            <dd>{number(places.reduce((sum, { points }) => sum + points.length, 0))}</dd>
+            <dt>{t('reach.places')}</dt>
+          </div>
+        )}
       </dl>
       {places ? (
         <div className="reach-places">
-          <p className="footnote">{t('reach.placesWithin').replace('{minutes}', String(minutes))}</p>
           <ul>
             {places.map(({ kind, points }) => (
               <li key={kind}>
@@ -68,7 +75,7 @@ export function ReachResult({ state, minutes, basemap, area, places, picked, pin
                 >
                   <PlaceIcon kind={kind} />
                   <span>{t(`place.${kind}`)}</span>
-                  <span className="share">{points.length.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')}</span>
+                  <span className="share">{number(points.length)}</span>
                 </button>
               </li>
             ))}
@@ -77,18 +84,6 @@ export function ReachResult({ state, minutes, basemap, area, places, picked, pin
       ) : (
         !picked && <p className="footnote">{t('reach.placesHint')}</p>
       )}
-      <div className="reach-key">
-        <div
-          className="reach-bar"
-          aria-hidden="true"
-          style={{ background: `linear-gradient(to right, ${ramp.join(', ')})` }}
-        />
-        <div className="reach-ticks">
-          <span>0</span>
-          <span>{(minutes / 2).toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')}</span>
-          <span>{minutes} min</span>
-        </div>
-      </div>
       <p className="footnote">{t('reachAbout')}</p>
     </section>
   )

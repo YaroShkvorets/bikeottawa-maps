@@ -768,7 +768,6 @@ export function App() {
               <ReachResult
                 state={reachState}
                 minutes={minutes}
-                basemap={basemap}
                 area={area}
                 places={reachPlaces}
                 picked={pickedKinds.length > 0}
