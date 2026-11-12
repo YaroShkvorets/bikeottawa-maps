@@ -14,8 +14,8 @@ export const LTS_COLORS = ['#1B5FAE', '#62B0E8', '#F2A33A', '#B5341F'] as const
 /** Where cycling is not permitted, e.g. a sidewalk on a route. */
 export const NO_BIKES_COLOR = '#8A949A'
 
-/** Street light, for the night layer: warm on dark ground, a deeper amber where the ground is pale. */
-export const LAMP_COLOR = '#FFD98A'
+/** Street light, for the night layer: soft warm white (LED) on dark ground, a deeper amber where the ground is pale. */
+export const LAMP_COLOR = '#FFF0D2'
 export const LAMP_COLOR_ON_PALE = '#D9730D'
 
 export function lampColor(basemap: BasemapId): string {

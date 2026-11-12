@@ -88,16 +88,16 @@ interface Lights {
   heat: [string, string, string, string, string]
 }
 
-/** Warm light, for dark ground. */
+/** Soft warm white, like LED street lights, for dark ground. */
 const LIGHTS_ON_DARK: Lights = {
   lamp: LAMP_COLOR,
-  glow: '#FFB24D',
+  glow: '#F2D3A0',
   heat: [
-    'rgba(255, 170, 60, 0)',
-    'rgba(255, 160, 50, 0.25)',
-    'rgba(255, 190, 80, 0.7)',
-    'rgba(255, 220, 140, 0.92)',
-    'rgba(255, 246, 220, 1)',
+    'rgba(250, 210, 155, 0)',
+    'rgba(250, 212, 160, 0.25)',
+    'rgba(252, 226, 190, 0.7)',
+    'rgba(255, 239, 215, 0.92)',
+    'rgba(255, 250, 240, 1)',
   ],
 }
 
