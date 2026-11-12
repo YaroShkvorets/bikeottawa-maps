@@ -665,21 +665,23 @@ export function App() {
                 {dataDate && (
                   <>
                     {t('updated')} {dataDate}
-                    {phone ? '.' : ' · '}
-                    {!phone && (
-                      // The map moves without re-rendering this, so the link is
-                      // pointed at the current view just before it is used.
-                      <a
-                        href="https://www.openstreetmap.org/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onPointerEnter={followMap}
-                        onFocus={followMap}
-                      >
-                        OpenStreetMap
-                      </a>
-                    )}
-                    <br />
+                    {phone ? ' · ' : <br />}
+                  </>
+                )}
+                {!phone && (
+                  <>
+                    {/* The map moves without re-rendering this, so the link is
+                        pointed at the current view just before it is used. */}
+                    <a
+                      href="https://www.openstreetmap.org/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onPointerEnter={followMap}
+                      onFocus={followMap}
+                    >
+                      OpenStreetMap
+                    </a>
+                    {' · '}
                   </>
                 )}
                 <a href="https://bikeottawa.ca/" target="_blank" rel="noopener noreferrer">
