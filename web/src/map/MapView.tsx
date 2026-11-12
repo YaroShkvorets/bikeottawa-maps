@@ -9,7 +9,6 @@ import {
   Popup,
   ScaleControl,
   setWorkerUrl,
-  type TransformStyleFunction,
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { Protocol } from 'pmtiles'
@@ -88,50 +87,28 @@ function panelPadding() {
 /** The reach data last handed to the map, and the source object it went to. */
 interface ReachShown {
   source: unknown
-  data: string | null
+  data: Reach | null
 }
 
-/**
- * The reach lines go to the map as a blob URL, not as data: a style diff then
- * compares two short strings and leaves the source alone, instead of emptying
- * it and making the map cut megabytes of lines into tiles again.
- */
-function useBlobUrl(reach: Reach | null): string | null {
-  const url = useMemo(
-    () => (reach ? URL.createObjectURL(new Blob([JSON.stringify(reach)], { type: 'application/json' })) : null),
-    [reach],
-  )
-  useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url])
-  return url
-}
-
-/** Keeps the reach lines the map already has through a style update. */
-const keepReach: TransformStyleFunction = (previous, next) => {
-  const before = previous?.sources[REACH_SOURCE]
-  const source = next.sources[REACH_SOURCE]
-  const data = before?.type === 'geojson' ? before.data : null
-  if (typeof data !== 'string' || source?.type !== 'geojson') return next
-  return { ...next, sources: { ...next.sources, [REACH_SOURCE]: { ...source, data } } }
-}
+const NO_REACH: Reach = { type: 'FeatureCollection', features: [] }
 
 /** Puts the reach lines on the map's reach source, if it has one and they are not there yet. */
-function showReach(map: MapLibreMap, data: string | null, shown: { current: ReachShown }) {
+function showReach(map: MapLibreMap, data: Reach | null, shown: { current: ReachShown }) {
   const source = map.getSource<GeoJSONSource>(REACH_SOURCE)
   if (!source || (shown.current.source === source && shown.current.data === data)) return
-  source.setData(data ?? { type: 'FeatureCollection', features: [] })
+  if (shown.current.source !== source) {
+    // A style update compares each source as the map reports it with the new
+    // style, where the reach source is always empty: told the lines, it would
+    // empty the source, to be cut into tiles all over again when refilled. So
+    // the source reports itself as the style has it, and is left alone.
+    const serialize = source.serialize.bind(source)
+    source.serialize = () => ({ ...serialize(), data: NO_REACH })
+  }
+  source.setData(data ?? NO_REACH)
   shown.current = { source, data }
 }
 
-export function MapView({
-  state,
-  onSelect,
-  onBasemapChange,
-  onBikeLanesChange,
-  popup,
-  reach: reachData,
-  routing,
-}: Props) {
-  const reach = useBlobUrl(reachData)
+export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, popup, reach, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
@@ -282,7 +259,8 @@ export function MapView({
     // A style can only be diffed once the current one has loaded; until then wait
     // rather than restart loading from scratch.
     const apply = () => {
-      map.setStyle(buildStyle(latest.current.state, ASSETS_BASE), { transformStyle: keepReach })
+      map.setStyle(buildStyle(latest.current.state, ASSETS_BASE))
+      // A style rebuilt from scratch has a new, empty reach source to fill.
       showReach(map, latest.current.reach, reachShown)
     }
     if (map.isStyleLoaded()) apply()
