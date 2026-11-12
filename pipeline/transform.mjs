@@ -7,8 +7,9 @@ import { once } from 'node:events'
 import { createReadStream, createWriteStream, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
-import { centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId } from './classify.mjs'
+import { bikeway, centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId } from './classify.mjs'
 import { isLit, lampIndex } from './lamps.mjs'
+import { sidepathIndex } from './sidepaths.mjs'
 import { stationLines } from './stations.mjs'
 
 const [input, outDir, transit] = process.argv.slice(2)
@@ -34,15 +35,21 @@ const LAMPS_MINZOOM = 12
 
 const lines = () => createInterface({ input: createReadStream(input), crlfDelay: Infinity })
 
-// First pass: where the street lamps are, so that ways can be told whether they are lit.
+// First pass: where the street lamps are, so that ways can be told whether they
+// are lit; and the cycleways, so that streets can be told they have one alongside.
 const lampPositions = []
+const cycleways = []
 for await (const line of lines()) {
-  if (!line.includes('"street_lamp"')) continue
+  const lamp = line.includes('"street_lamp"')
+  if (!lamp && !line.includes('"cycleway"')) continue
   const feature = JSON.parse(line)
-  if (feature.geometry.type === 'Point' && isStreetLamp(feature.properties))
+  if (lamp && feature.geometry.type === 'Point' && isStreetLamp(feature.properties))
     lampPositions.push(feature.geometry.coordinates)
+  else if (feature.properties.highway === 'cycleway' && feature.geometry.type === 'LineString')
+    cycleways.push(feature.geometry.coordinates)
 }
 const { litShare } = lampIndex(lampPositions)
+const hasSidepath = sidepathIndex(cycleways)
 
 for await (const line of lines()) {
   if (!line) continue
@@ -65,6 +72,12 @@ for await (const line of lines()) {
     }
     const way = classifyWay(tags)
     if (!way) continue
+    // A street's track that is also mapped on its own is drawn once, as that way.
+    if (way.props.kind === 'street' && way.props.bikeway === 'dedicated' && hasSidepath(feature.geometry.coordinates)) {
+      const rest = bikeway(tags, { ignoreTrack: true })
+      if (rest) way.props.bikeway = rest
+      else delete way.props.bikeway
+    }
     counts.ways++
     counts.byLts[way.props.lts]++
     // Lit ways glow on the night layer. They go in a file of their own, bare, so

@@ -70,15 +70,18 @@ const SIDES = ['cycleway', 'cycleway:both', 'cycleway:left', 'cycleway:right']
  * pathways bikes are meant for (and cycle tracks along a street), `lane` for a
  * painted bike lane, `shared` for a shared-lane marking. A street whose bike
  * lane is drawn as a way of its own (`cycleway=separate`) gets nothing; that
- * way is drawn instead.
+ * way is drawn instead. `ignoreTrack` does the same for a street tagged
+ * `cycleway=track` whose track is mapped on its own as well.
  * @returns {string | undefined}
  */
-export function bikeway(tags) {
+export function bikeway(tags, { ignoreTrack = false } = {}) {
   const { highway } = tags
   if (PATH_HIGHWAYS.has(highway)) {
     return highway === 'cycleway' || tags.bicycle === 'designated' ? 'dedicated' : undefined
   }
-  const found = SIDES.map((side) => STREET_BIKEWAYS[tags[side]])
+  const found = SIDES.filter((side) => !(ignoreTrack && tags[side] === 'track')).map(
+    (side) => STREET_BIKEWAYS[tags[side]],
+  )
   return BIKEWAYS.find((kind) => found.includes(kind))
 }
 
