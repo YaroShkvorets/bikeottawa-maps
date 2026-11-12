@@ -12,7 +12,7 @@ export type Reach = FeatureCollection<MultiLineString, { minutes: number }>
 /** Riding times on offer, in minutes: the stops of the time slider. The router stops at 30. */
 export const REACH_MINUTES = [5, 10, 15, 20, 30] as const
 export type ReachMinutes = (typeof REACH_MINUTES)[number]
-export const DEFAULT_REACH_MINUTES: ReachMinutes = 20
+export const DEFAULT_REACH_MINUTES: ReachMinutes = 10
 
 export function isReachMinutes(value: unknown): value is ReachMinutes {
   return REACH_MINUTES.includes(Number(value) as ReachMinutes)
