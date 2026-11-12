@@ -58,7 +58,6 @@ import { useCollisionData } from './useCollisions'
 
 const DEFAULT_LAYER: LayerId = 'places'
 const PHONE_LAYOUT = '(max-width: 720px)'
-const ignoreSelection = () => {}
 const ignore = () => {}
 
 function followMap(event: { currentTarget: HTMLAnchorElement }) {
@@ -588,7 +587,7 @@ export function App() {
 
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
   const details =
-    routing || !selected ? null : selected.kind === 'collision' ? (
+    !selected || (routing && selected.kind !== 'place') ? null : selected.kind === 'collision' ? (
       <CollisionCard
         items={spotByKey.get(selected.spot)?.items ?? []}
         at={selected.at}
@@ -603,7 +602,7 @@ export function App() {
     <LangContext.Provider value={i18n}>
       <MapView
         state={styleState}
-        onSelect={routing ? ignoreSelection : setSelected}
+        onSelect={setSelected}
         popup={details && !phone ? details : null}
         onBasemapChange={layer === 'night' ? setNightBasemap : setDayBasemap}
         onBikeLanesChange={setBikeLanes}
@@ -691,6 +690,8 @@ export function App() {
             </svg>
           </button>
           <div className="sheet-body">
+            {/* A place tapped while planning comes first, above the result. */}
+            {phone && details}
             {planning && (
               <RouteResult
                 travel={travel}
@@ -713,7 +714,6 @@ export function App() {
                 picked={pickedKinds.length > 0}
               />
             )}
-            {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && (
                 <Legend

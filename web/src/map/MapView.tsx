@@ -48,7 +48,7 @@ interface Props {
   popup: ReactNode | null
   /** How far you get, drawn when the style has a reach source. */
   reach: Reach | null
-  /** When set, clicks place route points instead of selecting features. */
+  /** When set, clicks place route points instead of selecting features; places can still be picked. */
   routing: {
     points: RoutePoints
     onMapClick: (lngLat: LngLat) => void
@@ -163,7 +163,12 @@ export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, p
     })
 
     const featureAt = (point: { x: number; y: number }, lngLat: { lng: number; lat: number }): Selected | null => {
-      const layers = INTERACTIVE_LAYERS[latest.current.state.layer].filter((id) => map.getLayer(id))
+      // Planning a route or how far, only places are picked; a click anywhere else is a route point.
+      const { routing, state } = latest.current
+      const layers = INTERACTIVE_LAYERS[state.layer].filter(
+        (id) => map.getLayer(id) && (!routing || INTERACTIVE_LAYERS.places.includes(id)),
+      )
+      if (!layers.length) return null
       const hits = map.queryRenderedFeatures(
         [
           [point.x - HIT_RADIUS, point.y - HIT_RADIUS],
@@ -191,17 +196,19 @@ export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, p
     }
     map.on('click', (e) => {
       const { routing, onSelect } = latest.current
-      if (routing) routing.onMapClick([e.lngLat.lng, e.lngLat.lat])
-      else onSelect(featureAt(e.point, e.lngLat))
+      const feature = featureAt(e.point, e.lngLat)
+      onSelect(feature)
+      if (routing && !feature) routing.onMapClick([e.lngLat.lng, e.lngLat.lat])
     })
     map.on('mousemove', (e) => {
       const { routing, profile } = latest.current
+      const overFeature = featureAt(e.point, e.lngLat) !== null
       if (!routing) {
-        map.getCanvas().style.cursor = featureAt(e.point, e.lngLat) ? 'pointer' : ''
+        map.getCanvas().style.cursor = overFeature ? 'pointer' : ''
         return
       }
       if (dragging.current) return
-      map.getCanvas().style.cursor = routing.points.includes(null) ? 'crosshair' : ''
+      map.getCanvas().style.cursor = overFeature ? 'pointer' : routing.points.includes(null) ? 'crosshair' : ''
       // Pointing near the route marks that spot on the elevation chart.
       const hit = nearestOnRoute(profile, [e.lngLat.lng, e.lngLat.lat])
       const metresPerPixel = (40075016.686 * Math.cos((e.lngLat.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom())
