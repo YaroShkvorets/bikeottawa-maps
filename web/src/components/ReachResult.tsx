@@ -16,7 +16,7 @@ interface Props {
   places: PlaceCount[] | null
   /** Whether any places are picked on the Places layer. */
   picked: boolean
-  /** The kind kept picked out on the map. Pointing at a row picks it out; a click keeps it and zooms there. */
+  /** The kind kept picked out on the map. Pointing at a row picks it out; a click keeps it. */
   pinned: PlaceKind | null
   onPoint: (kind: PlaceKind | null) => void
   onPin: (kind: PlaceKind | null) => void

@@ -48,8 +48,6 @@ interface Props {
   popup: ReactNode | null
   /** How far you get, drawn when the style has a reach source. */
   reach: Reach | null
-  /** Places to bring into view when they change, such as a kind picked from the How far list. */
-  fitTo?: readonly LngLat[] | null
   /** When set, clicks place route points instead of selecting features; places can still be picked. */
   routing: {
     points: RoutePoints
@@ -110,16 +108,7 @@ function showReach(map: MapLibreMap, data: Reach | null, shown: { current: Reach
   shown.current = { source, data }
 }
 
-export function MapView({
-  state,
-  onSelect,
-  onBasemapChange,
-  onBikeLanesChange,
-  popup,
-  reach,
-  routing,
-  fitTo = null,
-}: Props) {
+export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, popup, reach, routing }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
@@ -355,14 +344,6 @@ export function MapView({
     }
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: panelPadding(), maxZoom: 17, duration: 600 })
   }, [zoomTo])
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !fitTo?.length) return
-    const bounds = new LngLatBounds()
-    for (const point of fitTo) bounds.extend(point)
-    map.fitBounds(bounds, { padding: panelPadding(), maxZoom: 16, duration: 600 })
-  }, [fitTo])
 
   // The details popup follows the selection. It is shown only when there is content for it.
   const anchor = popup ? (state.selected?.at ?? null) : null

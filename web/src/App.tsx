@@ -306,7 +306,6 @@ export function App() {
     () => (highlightKind && highlightPoints ? { kind: highlightKind, points: highlightPoints } : null),
     [highlightKind, highlightPoints],
   )
-  const pinnedPoints = placesOf(pinnedKind)
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -669,7 +668,6 @@ export function App() {
         onBikeLanesChange={setBikeLanes}
         routing={mapRouting}
         reach={reach}
-        fitTo={pinnedPoints}
       />
       <div className="sidebar">
         <div className={`card topbar ${topOpen ? '' : 'folded'}`} ref={topbar}>
