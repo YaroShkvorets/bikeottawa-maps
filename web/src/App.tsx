@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import bikeOttawaLogo from './assets/bike-ottawa.png'
 import {
   type CollisionFilters,
   collisionSpots,
@@ -556,21 +557,7 @@ export function App() {
       <div className="sidebar">
         <div className="card topbar" ref={topbar}>
           <header className="brand">
-            <svg
-              aria-hidden="true"
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="8" cy="21" r="6" />
-              <circle cx="24" cy="21" r="6" />
-              <path d="M8 21 13 10h8l3 11M13 10l4 11H8M11 6h4" />
-            </svg>
+            <img className="brand-logo" src={bikeOttawaLogo} alt="" width="60" height="28" />
             <h1>{t('title')}</h1>
           </header>
           <div className="topbar-row">

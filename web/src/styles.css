@@ -85,6 +85,13 @@ a {
   padding-right: 52px;
 }
 
+/* The bike from Bike Ottawa's logo (bikeottawa.ca), cut from their 256 px PNG. */
+.brand-logo {
+  flex: none;
+  width: auto;
+  height: 28px;
+}
+
 .brand h1 {
   margin: 0;
   font-size: 20px;
