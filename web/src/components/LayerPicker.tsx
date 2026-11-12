@@ -73,7 +73,7 @@ export function LayerPicker({ active, onChange }: Props) {
   const { t } = useI18n()
   return (
     <fieldset className="layer-picker">
-      <legend className="eyebrow">{t('layers')}</legend>
+      <legend className="visually-hidden">{t('layers')}</legend>
       {LAYER_IDS.map((id) => (
         <button
           key={id}
