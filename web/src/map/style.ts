@@ -362,10 +362,10 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
     ['get', 'osm'],
     state.selected?.kind === 'place' ? state.selected.osm : '',
   ]
-  const way = { type: 'line' as const, source: 'overlays', 'source-layer': 'ways' }
-  const place = { type: 'circle' as const, source: 'overlays', 'source-layer': 'places' }
+  const way = { type: 'line' as const, source: WAYS_SOURCE, 'source-layer': 'ways' }
+  const place = { type: 'circle' as const, source: PLACES_SOURCE, 'source-layer': 'places' }
 
-  return [
+  const wayLayers: LayerSpecification[] = [
     {
       ...way,
       id: 'comfort-casing',
@@ -421,6 +421,8 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
         'line-opacity': fade,
       },
     },
+  ]
+  const placeLayers: LayerSpecification[] = [
     {
       ...place,
       id: 'selected-place',
@@ -432,7 +434,23 @@ function overlayLayers(state: StyleState, theme: Theme): LayerSpecification[] {
       },
     },
   ]
+  // Each tile set is only in the style, and so only downloaded, while it is shown.
+  return [...(showsWays(state) ? wayLayers : []), ...(showsPlaces(state) ? placeLayers : [])]
 }
+
+/** Street data (comfort, winter) is drawn on those two layers, except under the reach map. */
+function showsWays(state: StyleState): boolean {
+  return (state.layer === 'comfort' || state.layer === 'winter') && !state.reach
+}
+
+/** Places are drawn on their layer, once at least one kind is ticked (none is, to begin with). */
+function showsPlaces(state: StyleState): boolean {
+  return state.layer === 'places' && state.placeKinds.length > 0
+}
+
+/** Street data and places come in tile sets of their own, so each loads only for its layer. */
+const WAYS_SOURCE = 'overlays'
+const PLACES_SOURCE = 'places'
 
 /** Lit streets hand over to the individual lamps between these zooms. */
 const STREETS_UNTIL = 14.5
@@ -628,11 +646,10 @@ function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
   return {
     id: 'places-icon',
     type: 'symbol',
-    source: 'overlays',
+    source: PLACES_SOURCE,
     'source-layer': 'places',
     filter: ['in', ['get', 'kind'], ['literal', [...state.placeKinds]]],
     layout: {
-      visibility: state.layer === 'places' ? 'visible' : 'none',
       // Drawn on demand by the map view, one image per kind.
       'icon-image': ['concat', placeImageId(''), ['get', 'kind']],
       'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 0.85, 17, 1.1],
@@ -686,7 +703,12 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
           attribution: IMAGERY_ATTRIBUTION,
         },
       }),
-      overlays: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
+      ...(showsWays(state) && {
+        [WAYS_SOURCE]: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
+      }),
+      ...(showsPlaces(state) && {
+        [PLACES_SOURCE]: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/places.pmtiles` },
+      }),
       // Loaded only while the night layer is on.
       ...(night && { night: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/night.pmtiles` } }),
       route: { type: 'geojson', data: routeData(state.route) },
@@ -709,7 +731,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...collisions.under,
       ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
-      placesLayer(state, theme),
+      ...(showsPlaces(state) ? [placesLayer(state, theme)] : []),
       ...collisions.over,
     ],
   }

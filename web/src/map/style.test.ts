@@ -35,44 +35,52 @@ describe('buildStyle', () => {
     const style = build({ layer: 'comfort', reach: { minutes: 15 } })
     expect(style.sources.reach).toBeDefined()
     expect(layer(style, 'reach-line')).toBeDefined()
-    expect(layer(style, 'comfort-line').layout?.visibility).toBe('none')
+    expect(style.layers.some((l) => l.id === 'comfort-line')).toBe(false)
+    expect(style.sources.overlays).toBeUndefined()
     expect(build().sources.reach).toBeUndefined()
   })
 
-  it('shows only the active data layer', () => {
+  it('draws, and so downloads, only the active data layer', () => {
     for (const active of LAYER_IDS) {
       const style = build({ layer: active })
       for (const id of LAYER_IDS) {
         for (const mapLayer of INTERACTIVE_LAYERS[id]) {
-          // Collisions are only added to the style while they are shown.
-          if (id === 'collisions') {
-            expect(
-              style.layers.some((l) => l.id === mapLayer),
-              `${mapLayer} when ${active}`,
-            ).toBe(id === active)
-            continue
-          }
-          expect(layer(style, mapLayer).layout?.visibility, `${mapLayer} when ${active}`).toBe(
-            id === active ? 'visible' : 'none',
-          )
+          const found = style.layers.find((l) => l.id === mapLayer) as { layout?: { visibility?: string } } | undefined
+          // The active layer is drawn; others are left out, or hidden when they share its tiles.
+          if (id === active) {
+            expect(found, `${mapLayer} when ${active}`).toBeDefined()
+            expect(found?.layout?.visibility ?? 'visible', `${mapLayer} when ${active}`).toBe('visible')
+          } else if (found) expect(found.layout?.visibility, `${mapLayer} when ${active}`).toBe('none')
         }
       }
     }
   })
 
+  it('loads street tiles only for comfort and winter, place tiles only for places', () => {
+    const sources = (layerId: (typeof LAYER_IDS)[number]) => Object.keys(build({ layer: layerId }).sources)
+    expect(sources('comfort')).toContain('overlays')
+    expect(sources('winter')).toContain('overlays')
+    expect(sources('comfort')).not.toContain('places')
+    expect(sources('places')).toContain('places')
+    // With no kind ticked there is nothing to draw, so nothing to load.
+    expect(Object.keys(build({ layer: 'places', placeKinds: [] }).sources)).not.toContain('places')
+    for (const other of ['places', 'night', 'collisions'] as const) expect(sources(other)).not.toContain('overlays')
+  })
+
   it('draws lines below the basemap labels and place markers above them', () => {
     const { layers } = build()
     const firstLabel = layers.findIndex((l) => l.type === 'symbol' && l.source === 'basemap')
-    const lastLabel = layers.findLastIndex((l) => l.type === 'symbol' && l.source === 'basemap')
     const lines = layers.flatMap((l, i) => (l.type === 'line' && l.source !== 'basemap' ? [i] : []))
     expect(firstLabel).toBeGreaterThan(-1)
     expect(Math.max(...lines)).toBeLessThan(firstLabel)
-    expect(layers.findIndex((l) => l.id === 'places-icon')).toBeGreaterThan(lastLabel)
+    const places = build({ layer: 'places' }).layers
+    const lastLabel = places.findLastIndex((l) => l.type === 'symbol' && l.source === 'basemap')
+    expect(places.findIndex((l) => l.id === 'places-icon')).toBeGreaterThan(lastLabel)
   })
 
   it('names places from zoom 15, in a colour that suits the basemap', () => {
     const places = (basemap: 'light' | 'dark') =>
-      build({ basemap }).layers.find((l) => l.id === 'places-icon') as {
+      build({ basemap, layer: 'places' }).layers.find((l) => l.id === 'places-icon') as {
         layout: Record<string, unknown>
         paint: Record<string, unknown>
       }
@@ -83,14 +91,11 @@ describe('buildStyle', () => {
   })
 
   it('filters the selection and the place kinds', () => {
-    const style = build({
-      layer: 'places',
-      placeKinds: ['water'],
-      selected: { kind: 'way', id: 42, props: {}, at: [-75.7, 45.4] },
-    })
-    expect(layer(style, 'selected-way').filter).toEqual(['==', ['id'], 42])
-    expect(layer(style, 'selected-place').filter).toEqual(['==', ['get', 'osm'], ''])
-    expect(layer(style, 'places-icon').filter).toEqual(['in', ['get', 'kind'], ['literal', ['water']]])
+    const streets = build({ layer: 'comfort', selected: { kind: 'way', id: 42, props: {}, at: [-75.7, 45.4] } })
+    expect(layer(streets, 'selected-way').filter).toEqual(['==', ['id'], 42])
+    const places = build({ layer: 'places', placeKinds: ['water'] })
+    expect(layer(places, 'selected-place').filter).toEqual(['==', ['get', 'osm'], ''])
+    expect(layer(places, 'places-icon').filter).toEqual(['in', ['get', 'kind'], ['literal', ['water']]])
   })
 
   it('draws the planned route as one line per segment with its stress level', () => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds web/public/tiles/overlays.pmtiles (ways + places) and night.pmtiles
+# Builds web/public/tiles/overlays.pmtiles (streets), places.pmtiles and night.pmtiles
 # (lit ways + street lamps) for the map area in region.json, from OSM data brought up to
 # date by pipeline/update-osm.sh.
 # Needs: osmium, tippecanoe, node, and what update-osm.sh needs.
@@ -26,11 +26,18 @@ osmium export "$WORK/filtered.osm.pbf" --add-unique-id=type_id -f geojsonseq -x 
 node pipeline/transform.mjs "$WORK/filtered.geojsonseq" "$WORK"
 
 echo "Building tiles"
+# Streets and places in files of their own, so each loads only for its layer.
 tippecanoe --force --quiet -o "$OUT/overlays.pmtiles" \
   -Z9 -z14 -r1 --read-parallel \
   --drop-densest-as-needed --extend-zooms-if-still-dropping \
-  --name "Bike Ottawa overlays" --attribution "© OpenStreetMap contributors" \
-  -L "ways:$WORK/ways.geojsonseq" -L "places:$WORK/places.geojsonseq"
+  --name "Bike Ottawa streets" --attribution "© OpenStreetMap contributors" \
+  -L "ways:$WORK/ways.geojsonseq"
+
+# Each place kind has its own zoom to appear from, so nothing needs dropping.
+tippecanoe --force --quiet -o "$OUT/places.pmtiles" \
+  -Z9 -z14 -r1 --read-parallel --no-feature-limit --no-tile-size-limit \
+  --name "Bike Ottawa places" --attribution "© OpenStreetMap contributors" \
+  -L "places:$WORK/places.geojsonseq"
 
 # The night layer, in a file of its own so it only loads when that layer is on:
 # every lit way from zoom 9, and the street lamps themselves from zoom 12.
@@ -42,5 +49,5 @@ tippecanoe --force --quiet -o "$OUT/night.pmtiles" \
 # Date of the OSM data: how far the change files have been applied.
 OSM_TIMESTAMP="$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$REGION")"
 printf '{"osmTimestamp":"%s","builtAt":"%s"}\n' "$OSM_TIMESTAMP" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT/meta.json"
-ls -lh "$OUT/overlays.pmtiles" "$OUT/night.pmtiles"
+ls -lh "$OUT/overlays.pmtiles" "$OUT/places.pmtiles" "$OUT/night.pmtiles"
 cat "$OUT/meta.json"
