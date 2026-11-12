@@ -46,14 +46,14 @@ export function collisionColors(basemap: BasemapId): Record<'none' | 'minimal' |
 }
 
 /**
- * The bike lanes overlay, drawn as on Google Maps: dedicated ways dark green,
- * painted lanes a lighter green, shared lanes (painted too) the same green dotted.
- * Brighter on dark ground.
+ * The bike lanes overlay: dedicated ways solid green, painted lanes a paler green
+ * dashed, shared lanes that green dotted. The dedicated green stands out most on
+ * any ground: darkest on pale maps, brightest on dark ones.
  */
 export const BIKEWAY_IDS = ['dedicated', 'lane', 'shared'] as const
 export type BikewayId = (typeof BIKEWAY_IDS)[number]
 const BIKEWAYS_ON_PALE: Record<BikewayId, string> = { dedicated: '#1E7B34', lane: '#5DBB63', shared: '#5DBB63' }
-const BIKEWAYS_ON_DARK: Record<BikewayId, string> = { dedicated: '#3FB560', lane: '#A3E3A6', shared: '#A3E3A6' }
+const BIKEWAYS_ON_DARK: Record<BikewayId, string> = { dedicated: '#7BE38A', lane: '#3FA557', shared: '#3FA557' }
 
 export function bikewayColors(basemap: BasemapId): Record<BikewayId, string> {
   return basemap === 'light' || basemap === 'grey' ? BIKEWAYS_ON_PALE : BIKEWAYS_ON_DARK

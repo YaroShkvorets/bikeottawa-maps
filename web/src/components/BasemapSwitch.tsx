@@ -69,7 +69,7 @@ export function BasemapSwitch({ basemap, onChange, bikeLanes, onBikeLanesChange 
               {BIKEWAY_IDS.map((id) => (
                 <li key={id}>
                   <span
-                    className={`swatch line ${id === 'shared' ? 'dotted' : ''}`}
+                    className={`swatch line ${id === 'shared' ? 'dotted' : id === 'lane' ? 'dashed' : ''}`}
                     style={{ color: bikewayColors('light')[id] }}
                   />
                   {t(`bikeway.${id}`)}

@@ -1137,6 +1137,11 @@ a {
   background: radial-gradient(circle, currentcolor 1.5px, transparent 1.6px) 0 50% / 5px 3px repeat-x;
 }
 
+/* Long dashes, as the map draws painted lanes: plainly not the dots. */
+.bike-lanes-key .swatch.line.dashed {
+  background: repeating-linear-gradient(to right, currentcolor 0 7px, transparent 7px 10px);
+}
+
 /* Phones: layer chips across the top, legend and details in a bottom sheet. */
 @media (max-width: 720px) {
   .sidebar {

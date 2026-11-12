@@ -5,6 +5,7 @@ import { SEVERITIES } from '../collisions'
 import type { Lang } from '../i18n'
 import {
   type BasemapId,
+  type BikewayId,
   bikewayColors,
   collisionColors,
   INK,
@@ -482,64 +483,51 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   }
   const width = scaled('bikeway_width')
   const whole: FilterSpecification = ['all', ['!', ['has', 'bikeway_left']], ['!', ['has', 'bikeway_right']]]
-  const solid = ['dedicated', 'lane']
+  // Told apart by pattern as well as colour: dedicated solid, painted lanes in
+  // long dashes, shared lanes in dots. Dash lengths are in line widths; the
+  // dashes have square ends so they stay long, the dots round ones.
+  const looks: Record<BikewayId, { cap: 'round' | 'butt'; dash?: number[] }> = {
+    dedicated: { cap: 'round' },
+    lane: { cap: 'butt', dash: [3, 1.5] },
+    shared: { cap: 'round', dash: [0, 2] },
+  }
+  const layer = (
+    id: string,
+    kind: BikewayId,
+    filter: FilterSpecification,
+    lineWidth: ExpressionSpecification,
+    offset?: ExpressionSpecification,
+  ): LayerSpecification => ({
+    ...way,
+    id,
+    filter,
+    layout: { 'line-cap': looks[kind].cap, 'line-join': 'round' },
+    paint: {
+      'line-color': colors[kind],
+      'line-width': lineWidth,
+      ...(offset && { 'line-offset': offset }),
+      ...(looks[kind].dash && { 'line-dasharray': looks[kind].dash }),
+    },
+  })
   // Streets: a line down each side that has a bike lane, left and right as the
   // way is drawn. Paths, which have no sides, are one line down the middle.
-  const sideLayers = (['left', 'right'] as const).flatMap((side): LayerSpecification[] => {
-    const kind = ['get', `bikeway_${side}`] as ExpressionSpecification
-    const sideWidth = scaled(`bikeway_${side}_width`)
-    const offset = byZoom((full) => (side === 'left' ? -0.45 : 0.45) * full)
-    return [
-      {
-        ...way,
-        id: `bike-lanes-${side}`,
-        filter: ['in', kind, ['literal', solid]],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: {
-          'line-color': ['match', kind, 'dedicated', colors.dedicated, colors.lane],
-          'line-width': sideWidth,
-          'line-offset': offset,
-        },
-      },
-      {
-        ...way,
-        id: `bike-lanes-${side}-shared`,
-        filter: ['==', kind, 'shared'],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: {
-          'line-color': colors.shared,
-          'line-width': sideWidth,
-          'line-offset': offset,
-          'line-dasharray': [0, 2],
-        },
-      },
-    ]
-  })
-  return [
-    ...sideLayers,
-    {
-      ...way,
-      id: 'bike-lanes',
-      filter: ['all', whole, ['in', ['get', 'bikeway'], ['literal', solid]]],
-      // Dedicated ways over the lanes where they meet.
-      layout: {
-        'line-cap': 'round',
-        'line-join': 'round',
-        'line-sort-key': ['match', ['get', 'bikeway'], 'dedicated', 1, 0],
-      },
-      paint: {
-        'line-color': ['match', ['get', 'bikeway'], 'dedicated', colors.dedicated, colors.lane],
-        'line-width': width,
-      },
-    },
-    {
-      ...way,
-      id: 'bike-lanes-shared',
-      filter: ['all', whole, ['==', ['get', 'bikeway'], 'shared']],
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': colors.shared, 'line-width': width, 'line-dasharray': [0, 2] },
-    },
-  ]
+  // Dedicated ways go on top where they meet the others.
+  const order: BikewayId[] = ['shared', 'lane', 'dedicated']
+  const sideLayers = (['left', 'right'] as const).flatMap((side) =>
+    order.map((kind) =>
+      layer(
+        `bike-lanes-${side}-${kind}`,
+        kind,
+        ['==', ['get', `bikeway_${side}`], kind],
+        scaled(`bikeway_${side}_width`),
+        byZoom((full) => (side === 'left' ? -0.45 : 0.45) * full),
+      ),
+    ),
+  )
+  const wholeLayers = order.map((kind) =>
+    layer(`bike-lanes-${kind}`, kind, ['all', whole, ['==', ['get', 'bikeway'], kind]], width),
+  )
+  return [...sideLayers, ...wholeLayers]
 }
 
 /** Bike lanes step aside for the reach map, which has the street lines to itself. */
