@@ -107,6 +107,8 @@ export function classifyWay(tags) {
   pick(tags, ['name', 'service', 'footway', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
   const facility = bikeway(tags)
   if (facility) props.bikeway = facility
+  // One-way bike paths are drawn thinner, as each carries half the traffic of a two-way one.
+  if (facility === 'dedicated' && (tags.oneway === 'yes' || tags.oneway === '-1')) props.oneway = 'yes'
   // Indoor walkways have no snow to plow, so they carry no winter status and
   // stay off the winter layer.
   const isIndoor = tags.indoor !== undefined && tags.indoor !== 'no'

@@ -464,6 +464,17 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   const colors = bikewayColors(state.basemap)
   const way = { type: 'line' as const, source: WAYS_SOURCE, 'source-layer': 'ways' }
   const width = lineWidth(-0.2)
+  // One-way paths at about 60% of the width, so a pair of them reads as one street's worth.
+  const oneway = ['==', ['get', 'oneway'], 'yes'] as ExpressionSpecification
+  const pathWidth: ExpressionSpecification = [
+    'interpolate',
+    ['exponential', 1.5],
+    ['zoom'],
+    ...[9, 13, 16, 19].flatMap((zoom, i) => {
+      const full = [0.6, 2, 4.8, 11.8][i]
+      return [zoom, ['case', oneway, full * 0.6, full]]
+    }),
+  ] as ExpressionSpecification
   return [
     {
       ...way,
@@ -477,7 +488,7 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
       },
       paint: {
         'line-color': ['match', ['get', 'bikeway'], 'dedicated', colors.dedicated, colors.lane],
-        'line-width': width,
+        'line-width': pathWidth,
       },
     },
     {

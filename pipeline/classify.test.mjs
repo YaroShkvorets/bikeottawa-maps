@@ -261,5 +261,7 @@ test('bike lanes: dedicated ways, painted lanes and shared lanes', () => {
   ]
   for (const [tags, kind] of cases) assert.equal(bikeway(tags), kind, JSON.stringify(tags))
   assert.equal(classifyWay({ highway: 'tertiary', cycleway: 'lane' }).props.bikeway, 'lane')
+  assert.equal(classifyWay({ highway: 'cycleway', oneway: 'yes' }).props.oneway, 'yes')
+  assert.equal('oneway' in classifyWay({ highway: 'primary', oneway: 'yes', cycleway: 'lane' }).props, false)
   assert.equal('bikeway' in classifyWay({ highway: 'residential' }).props, false)
 })

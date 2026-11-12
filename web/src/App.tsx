@@ -149,19 +149,19 @@ function rememberBasemap(key: string, basemap: BasemapId) {
 
 const BIKE_LANES_KEY = 'bike-lanes'
 
-/** The bike lanes overlay goes with the map style: remembered per browser. */
+/** The bike lanes overlay goes with the map style: on unless turned off, remembered per browser. */
 function storedBikeLanes(): boolean {
   try {
-    return localStorage.getItem(BIKE_LANES_KEY) === 'on'
+    return localStorage.getItem(BIKE_LANES_KEY) !== 'off'
   } catch {
-    return false
+    return true
   }
 }
 
 function rememberBikeLanes(on: boolean) {
   try {
-    if (on) localStorage.setItem(BIKE_LANES_KEY, 'on')
-    else localStorage.removeItem(BIKE_LANES_KEY)
+    if (on) localStorage.removeItem(BIKE_LANES_KEY)
+    else localStorage.setItem(BIKE_LANES_KEY, 'off')
   } catch {
     // Not remembered when storage is blocked.
   }

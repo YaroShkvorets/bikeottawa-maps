@@ -1094,6 +1094,7 @@ a {
   align-items: center;
   gap: 8px;
   padding: 2px 0;
+  white-space: nowrap;
 }
 
 .bike-lanes-key .swatch.line {
