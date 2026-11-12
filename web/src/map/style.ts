@@ -542,6 +542,9 @@ const PLACE_LABEL_ZOOM = 15
 export const COLLISIONS_SOURCE = 'collisions'
 const COLLISIONS_ATTRIBUTION =
   'Collisions: <a href="https://open.ottawa.ca/" target="_blank" rel="noopener">City of Ottawa</a>'
+/** The router's elevation (MRDEM-30), shown with a route. */
+const ELEVATION_ATTRIBUTION =
+  'Elevation: <a href="https://open.canada.ca/en/open-government-licence-canada" target="_blank" rel="noopener">NRCan</a>'
 
 /** Zoom from which single collisions show; further out they make a heat map. */
 const COLLISION_POINTS_FROM = 12.5
@@ -711,7 +714,11 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       }),
       // Loaded only while the night layer is on.
       ...(night && { night: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/night.pmtiles` } }),
-      route: { type: 'geojson', data: routeData(state.route) },
+      route: {
+        type: 'geojson',
+        data: routeData(state.route),
+        ...(state.route && { attribution: ELEVATION_ATTRIBUTION }),
+      },
       'route-stops': { type: 'geojson', data: stopsData(state.route) },
       ...(state.reach && { [REACH_SOURCE]: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }),
       // Loaded only while the collisions layer is on.

@@ -52,6 +52,8 @@ npm run router         # BRouter on localhost:17777, using the profiles from the
 npm run dev            # .env.development points the app at it
 ```
 
+Elevation comes from NRCan's [MRDEM-30](https://datacube.services.geo.ca/stac/api/collections/mrdem-30) terrain model (bare ground, lidar-based around Ottawa–Gatineau; Open Government Licence – Canada), resampled to 1-arcsecond tiles with GDAL; SRTM fills in outside Canada.
+
 `npm run router` mounts the two profiles in `routing/profiles` into the container, so profile edits take effect on the next route request; rebuild the image only for fresh OSM data or new lookup tags.
 
 Without `VITE_ROUTER_URL` the "Plan a route" page says that no routing server is connected. Place search and the addresses shown for points picked on the map come from [Photon](https://photon.komoot.io); set `VITE_GEOCODER_URL` to use another Photon server.
