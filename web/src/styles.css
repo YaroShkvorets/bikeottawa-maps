@@ -102,14 +102,16 @@ a {
 
 .lang-button {
   position: absolute;
-  top: 12px;
+  top: 15px;
   right: 12px;
-  min-width: 44px;
-  height: 44px;
+  min-width: 34px;
+  height: 30px;
+  padding: 0 6px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface);
-  font-size: 13px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -1089,9 +1091,13 @@ a {
     overflow-y: auto;
   }
 
+  /* Beside the mode switch on phones, and as tall as it: easy to tap. */
   .lang-button {
     position: static;
     flex: none;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 10px;
   }
 
   .route-form {
