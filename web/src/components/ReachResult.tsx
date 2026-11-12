@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n'
 import { type BasemapId, reachRamp } from '../layers'
+import type { PlaceKind } from '../places'
 import type { PlaceCount } from '../route/reachPlaces'
 import type { ReachState } from '../route/useReach'
 import { visibleReach } from '../route/useReach'
@@ -15,6 +16,10 @@ interface Props {
   places: PlaceCount[] | null
   /** Whether any places are picked on the Places layer. */
   picked: boolean
+  /** The kind kept picked out on the map. Pointing at a row picks it out; a click keeps it and zooms there. */
+  pinned: PlaceKind | null
+  onPoint: (kind: PlaceKind | null) => void
+  onPin: (kind: PlaceKind | null) => void
 }
 
 /** Square kilometres: one decimal below ten. */
@@ -24,7 +29,7 @@ export function formatArea(area: number, lang: string): string {
 }
 
 /** Status of the reach map and the key to its colours. */
-export function ReachResult({ state, minutes, basemap, area, places, picked }: Props) {
+export function ReachResult({ state, minutes, basemap, area, places, picked, pinned, onPoint, onPin }: Props) {
   const { t, lang } = useI18n()
   if (state.status === 'error') return <p className="route-message error">{t('reachError')}</p>
   const reach = visibleReach(state)
@@ -42,11 +47,29 @@ export function ReachResult({ state, minutes, basemap, area, places, picked }: P
         <div className="reach-places">
           <p className="footnote">{t('reach.placesWithin').replace('{minutes}', String(minutes))}</p>
           <ul>
-            {places.map(({ kind, count }) => (
+            {places.map(({ kind, points }) => (
               <li key={kind}>
-                <PlaceIcon kind={kind} />
-                <span>{t(`place.${kind}`)}</span>
-                <span className="share">{count.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')}</span>
+                <button
+                  type="button"
+                  className="comfort-part"
+                  title={t('showOnMap')}
+                  disabled={points.length === 0}
+                  aria-pressed={pinned === kind}
+                  // A tap is not pointing: on a touch screen only the click counts.
+                  onPointerEnter={(e) => e.pointerType === 'mouse' && onPoint(kind)}
+                  onPointerLeave={() => onPoint(null)}
+                  onFocus={(e) => e.target.matches(':focus-visible') && onPoint(kind)}
+                  onBlur={() => onPoint(null)}
+                  onClick={() => {
+                    // A second click lets go, even with the pointer still on the row.
+                    if (pinned === kind) onPoint(null)
+                    onPin(pinned === kind ? null : kind)
+                  }}
+                >
+                  <PlaceIcon kind={kind} />
+                  <span>{t(`place.${kind}`)}</span>
+                  <span className="share">{points.length.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')}</span>
+                </button>
               </li>
             ))}
           </ul>

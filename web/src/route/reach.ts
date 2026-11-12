@@ -127,9 +127,9 @@ export function reachCover(reach: Reach): ReachCover {
   return { area: (grid.length - outside) * cell * cell, covers }
 }
 
-/** How many of the places in a flat [lon, lat, lon, lat, ...] list the reach covers. */
-export function countCovered(flat: readonly number[], cover: ReachCover): number {
-  let count = 0
-  for (let i = 0; i < flat.length; i += 2) if (cover.covers(flat[i], flat[i + 1])) count++
-  return count
+/** The places in a flat [lon, lat, lon, lat, ...] list that the reach covers. */
+export function coveredPoints(flat: readonly number[], cover: ReachCover): LngLat[] {
+  const points: LngLat[] = []
+  for (let i = 0; i < flat.length; i += 2) if (cover.covers(flat[i], flat[i + 1])) points.push([flat[i], flat[i + 1]])
+  return points
 }

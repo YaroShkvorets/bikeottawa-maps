@@ -49,6 +49,8 @@ export interface StyleState {
   collisions: FeatureCollection | null
   /** The bike lanes overlay, drawn over any basemap and data layer. */
   bikeLanes?: boolean
+  /** Places of one kind picked out on the map: those within reach on How far. */
+  placeHighlight?: { kind: PlaceKind; points: readonly [number, number][] } | null
 }
 
 /** Layers a click can hit, per data layer. */
@@ -739,7 +741,42 @@ function collisionLayers(state: StyleState): { under: LayerSpecification[]; over
   }
 }
 
+const PLACE_HIGHLIGHT_SOURCE = 'place-highlight'
+
+/** Places picked out from the How far list: a yellow ring and their marker, however far out. */
+function placeHighlightLayers(state: StyleState, theme: Theme): LayerSpecification[] {
+  const highlight = state.placeHighlight
+  if (!highlight) return []
+  return [
+    {
+      id: 'place-highlight-ring',
+      type: 'circle',
+      source: PLACE_HIGHLIGHT_SOURCE,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 8, 14, 13, 17, 16],
+        'circle-color': HIGHLIGHT_COLOR,
+        'circle-stroke-color': theme.contrast,
+        'circle-stroke-width': 1,
+      },
+    },
+    {
+      id: 'place-highlight-icon',
+      type: 'symbol',
+      source: PLACE_HIGHLIGHT_SOURCE,
+      layout: {
+        'icon-image': placeImageId(highlight.kind),
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 0.85, 17, 1.1],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    },
+  ]
+}
+
 function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
+  // With a kind picked out, the others step back.
+  const kind = state.placeHighlight?.kind
+  const rest: ExpressionSpecification | number = kind ? ['case', ['==', ['get', 'kind'], kind], 1, 0.3] : 1
   return {
     id: 'places-icon',
     type: 'symbol',
@@ -766,6 +803,8 @@ function placesLayer(state: StyleState, theme: Theme): LayerSpecification {
       'text-color': theme.contrast,
       'text-halo-color': theme.halo,
       'text-halo-width': 1.5,
+      'icon-opacity': rest,
+      'text-opacity': rest,
     },
   }
 }
@@ -814,6 +853,19 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
         ...(state.route && { attribution: ELEVATION_ATTRIBUTION }),
       },
       'route-stops': { type: 'geojson', data: stopsData(state.route) },
+      ...(state.placeHighlight && {
+        [PLACE_HIGHLIGHT_SOURCE]: {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: state.placeHighlight.points.map((coordinates) => ({
+              type: 'Feature',
+              properties: {},
+              geometry: { type: 'Point', coordinates: [...coordinates] },
+            })),
+          },
+        },
+      }),
       ...(state.reach && { [REACH_SOURCE]: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } }),
       // Loaded only while the collisions layer is on.
       ...(collisions.over.length && {
@@ -834,6 +886,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
       ...(showsPlaces(state) ? [placesLayer(state, theme)] : []),
+      ...placeHighlightLayers(state, theme),
       ...collisions.over,
     ],
   }

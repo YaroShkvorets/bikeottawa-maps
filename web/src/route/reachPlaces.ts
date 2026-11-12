@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ASSETS_BASE } from '../config'
 import type { PlaceKind } from '../places'
-import { countCovered, type ReachCover } from './reach'
+import type { LngLat } from './brouter'
+import { coveredPoints, type ReachCover } from './reach'
 
 /** Each kind's places, as the pipeline writes them: [lon, lat, lon, lat, ...]. Fetched once each. */
 const points = new Map<PlaceKind, Promise<number[]>>()
@@ -23,7 +24,8 @@ function placePoints(kind: PlaceKind): Promise<number[]> {
 
 export interface PlaceCount {
   kind: PlaceKind
-  count: number
+  /** Where the places within reach are. */
+  points: LngLat[]
 }
 
 /** The places of each kind within reach; null until they are counted. */
@@ -34,7 +36,7 @@ export function useReachPlaces(cover: ReachCover | null, kinds: readonly PlaceKi
     if (!cover || !kinds.length) return
     let current = true
     Promise.all(kinds.map(placePoints)).then((lists) => {
-      if (current) setCounts(kinds.map((kind, i) => ({ kind, count: countCovered(lists[i], cover) })))
+      if (current) setCounts(kinds.map((kind, i) => ({ kind, points: coveredPoints(lists[i], cover) })))
     })
     return () => {
       current = false

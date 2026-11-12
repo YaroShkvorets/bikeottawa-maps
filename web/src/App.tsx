@@ -291,6 +291,22 @@ export function App() {
   // The places picked on the Places layer, counted within reach in the layer's order.
   const pickedKinds = useMemo(() => PLACE_KINDS.filter((kind) => placeKinds.includes(kind)), [placeKinds])
   const reachPlaces = useReachPlaces(reaching ? cover : null, pickedKinds)
+  // A kind in that list picked out on the map: pointed at, or kept by a click.
+  const [pointedKind, setPointedKind] = useState<PlaceKind | null>(null)
+  const [pinnedKind, setPinnedKind] = useState<PlaceKind | null>(null)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new count starts with nothing picked out
+  useEffect(() => {
+    setPointedKind(null)
+    setPinnedKind(null)
+  }, [reachPlaces])
+  const placesOf = (kind: PlaceKind | null) => reachPlaces?.find((count) => count.kind === kind)?.points ?? null
+  const highlightKind = pointedKind ?? pinnedKind
+  const highlightPoints = placesOf(highlightKind)
+  const placeHighlight = useMemo(
+    () => (highlightKind && highlightPoints ? { kind: highlightKind, points: highlightPoints } : null),
+    [highlightKind, highlightPoints],
+  )
+  const pinnedPoints = placesOf(pinnedKind)
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -520,8 +536,22 @@ export function App() {
       reach: reachStyle,
       collisions: layer === 'collisions' ? collisionGeo : null,
       bikeLanes,
+      placeHighlight,
     }),
-    [lang, basemap, layer, placeKinds, selected, route, routeHighlight, travel, reachStyle, collisionGeo, bikeLanes],
+    [
+      lang,
+      basemap,
+      layer,
+      placeKinds,
+      selected,
+      route,
+      routeHighlight,
+      travel,
+      reachStyle,
+      collisionGeo,
+      bikeLanes,
+      placeHighlight,
+    ],
   )
   const mapRouting = useMemo(
     () =>
@@ -639,6 +669,7 @@ export function App() {
         onBikeLanesChange={setBikeLanes}
         routing={mapRouting}
         reach={reach}
+        fitTo={pinnedPoints}
       />
       <div className="sidebar">
         <div className={`card topbar ${topOpen ? '' : 'folded'}`} ref={topbar}>
@@ -743,6 +774,9 @@ export function App() {
                 area={area}
                 places={reachPlaces}
                 picked={pickedKinds.length > 0}
+                pinned={pinnedKind}
+                onPoint={setPointedKind}
+                onPin={setPinnedKind}
               />
             )}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>

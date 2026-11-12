@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countCovered, isReachMinutes, type Reach, reachCover, reachUrl } from './reach'
+import { coveredPoints, isReachMinutes, type Reach, reachCover, reachUrl } from './reach'
 import { PRESETS } from './styles'
 
 describe('reachUrl', () => {
@@ -72,10 +72,13 @@ describe('reachCover', () => {
   })
 })
 
-describe('countCovered', () => {
-  it('counts the [lon, lat] pairs the reach covers', () => {
+describe('coveredPoints', () => {
+  it('keeps the [lon, lat] pairs the reach covers', () => {
     const cover = { area: 1, covers: (lon: number) => lon < 0 }
-    expect(countCovered([-1, 45, 1, 45, -2, 46], cover)).toBe(2)
-    expect(countCovered([], cover)).toBe(0)
+    expect(coveredPoints([-1, 45, 1, 45, -2, 46], cover)).toEqual([
+      [-1, 45],
+      [-2, 46],
+    ])
+    expect(coveredPoints([], cover)).toEqual([])
   })
 })
