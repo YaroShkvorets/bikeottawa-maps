@@ -17,7 +17,8 @@ describe('reachUrl', () => {
 describe('isReachMinutes', () => {
   it('accepts only the times on offer', () => {
     expect(isReachMinutes('20')).toBe(true)
-    expect(isReachMinutes('15')).toBe(false)
+    expect(isReachMinutes('5')).toBe(true)
+    expect(isReachMinutes('25')).toBe(false)
     expect(isReachMinutes('45')).toBe(false)
     expect(isReachMinutes(undefined)).toBe(false)
   })

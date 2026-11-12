@@ -18,16 +18,29 @@ export function ReachForm({ start, minutes, picker, onStartChange, onMinutesChan
   return (
     <div className="route-form">
       <PlaceInput id="reach-from" label={t('from')} marker="A" point={start} onChange={onStartChange} />
-      <fieldset className="style-picker">
-        <legend className="eyebrow">{t('reachTime')}</legend>
-        <div className="style-buttons">
+      {/* A slider over the times on offer, which are not evenly spaced: it moves stop by stop. */}
+      <label className="reach-minutes">
+        <span className="reach-minutes-value">
+          {t('reachTime')}
+          {t('colon')}
+          <b>{minutes} min</b>
+        </span>
+        <input
+          className="reach-minutes-input"
+          type="range"
+          min={0}
+          max={REACH_MINUTES.length - 1}
+          step={1}
+          value={REACH_MINUTES.indexOf(minutes)}
+          aria-valuetext={`${minutes} min`}
+          onChange={(e) => onMinutesChange(REACH_MINUTES[Number(e.target.value)])}
+        />
+        <span className="reach-minutes-ticks" aria-hidden="true">
           {REACH_MINUTES.map((m) => (
-            <button key={m} type="button" aria-pressed={m === minutes} onClick={() => onMinutesChange(m)}>
-              {m} min
-            </button>
+            <span key={m}>{m}</span>
           ))}
-        </div>
-      </fieldset>
+        </span>
+      </label>
       <StylePicker {...picker} />
     </div>
   )

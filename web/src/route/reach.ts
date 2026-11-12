@@ -9,8 +9,8 @@ import type { Profile } from './styles'
  */
 export type Reach = FeatureCollection<MultiLineString, { minutes: number }>
 
-/** Riding times on offer, in minutes. The router stops at 30. */
-export const REACH_MINUTES = [10, 20, 30] as const
+/** Riding times on offer, in minutes: the stops of the time slider. The router stops at 30. */
+export const REACH_MINUTES = [5, 10, 15, 20, 30] as const
 export type ReachMinutes = (typeof REACH_MINUTES)[number]
 export const DEFAULT_REACH_MINUTES: ReachMinutes = 20
 

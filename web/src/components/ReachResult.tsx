@@ -85,7 +85,7 @@ export function ReachResult({ state, minutes, basemap, area, places, picked, pin
         />
         <div className="reach-ticks">
           <span>0</span>
-          <span>{minutes / 2}</span>
+          <span>{(minutes / 2).toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA')}</span>
           <span>{minutes} min</span>
         </div>
       </div>

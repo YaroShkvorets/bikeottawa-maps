@@ -1383,6 +1383,29 @@ a {
   }
 }
 
+.reach-minutes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.reach-minutes-input {
+  width: 100%;
+  margin: 4px 0 0;
+  accent-color: var(--accent);
+}
+
+/* Under the stops of the slider: its ends are half a thumb in from the edges. */
+.reach-minutes-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .reach-places ul {
   display: flex;
   flex-direction: column;
