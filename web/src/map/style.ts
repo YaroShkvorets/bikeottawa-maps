@@ -459,8 +459,7 @@ const WAYS_SOURCE = 'overlays'
 
 /**
  * Bike lanes over the basemap: dedicated ways solid green, painted lanes dashed,
- * shared lanes dotted. Under the data layers and the street names, except on
- * How far, where they go over its lines so as not to be hidden by them.
+ * shared lanes dotted. Under the data layers, How far's lines and the street names.
  */
 function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   if (!showsBikeLanes(state)) return []
@@ -865,11 +864,10 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
     },
     layers: [
       ...base.slice(0, at),
-      ...(state.reach ? [] : bikeLaneLayers(state)),
+      ...bikeLaneLayers(state),
       ...overlayLayers(state, theme),
       ...(night && !state.reach ? nightLayers(theme) : []),
       ...reachLayers(state.reach, state.basemap),
-      ...(state.reach ? bikeLaneLayers(state) : []),
       ...collisions.under,
       ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
