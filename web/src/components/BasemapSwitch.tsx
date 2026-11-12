@@ -4,7 +4,7 @@ import grey from '../assets/basemaps/grey.webp'
 import light from '../assets/basemaps/light.webp'
 import satellite from '../assets/basemaps/satellite.webp'
 import { useI18n } from '../i18n'
-import { BASEMAP_IDS, type BasemapId, BIKEWAY_IDS, bikewayColors, ROUTE_COLORS, ROUTE_LEVEL_IDS } from '../layers'
+import { BASEMAP_IDS, type BasemapId, BIKEWAY_IDS, bikewayColors, ROUTE_LEVEL_IDS, routeBandColors } from '../layers'
 
 /** A small picture of each map style, taken from the map itself. */
 const PREVIEWS: Record<BasemapId, string> = { light, grey, dark, satellite }
@@ -95,7 +95,7 @@ export function BasemapSwitch({
             <ul className="bike-lanes-key">
               {ROUTE_LEVEL_IDS.map((id) => (
                 <li key={id}>
-                  <span className="swatch line route-band" style={{ color: ROUTE_COLORS[id] }} />
+                  <span className="swatch line route-band" style={{ color: routeBandColors('light')[id] }} />
                   {t(`routeKey.${id}`)}
                 </li>
               ))}

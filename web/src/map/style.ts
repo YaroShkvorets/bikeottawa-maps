@@ -15,7 +15,9 @@ import {
   LTS_COLORS,
   NO_BIKES_COLOR,
   ROUTE_COLORS,
+  type RouteLevelId,
   reachRamp,
+  routeBandColors,
   WINTER_COLORS,
 } from '../layers'
 import { type PlaceKind, placeImageId } from '../places'
@@ -470,16 +472,16 @@ function showsPlaces(state: StyleState): boolean {
 const WAYS_SOURCE = 'overlays'
 const ROUTES_SOURCE = 'routes'
 
-const routeColor: ExpressionSpecification = [
+const byLevel = (colors: Record<RouteLevelId, string>): ExpressionSpecification => [
   'match',
   ['get', 'level'],
   'national',
-  ROUTE_COLORS.national,
+  colors.national,
   'regional',
-  ROUTE_COLORS.regional,
+  colors.regional,
   'local',
-  ROUTE_COLORS.local,
-  ROUTE_COLORS.mtb,
+  colors.local,
+  colors.mtb,
 ]
 
 /**
@@ -513,7 +515,7 @@ function routeBandLayers(state: StyleState): LayerSpecification[] {
         // The highest-ranked route on top where they meet.
         'line-sort-key': ['match', ['get', 'level'], 'national', 3, 'regional', 2, 'local', 1, 0],
       },
-      paint: { 'line-color': routeColor, 'line-width': width(1), 'line-opacity': 0.45 },
+      paint: { 'line-color': byLevel(routeBandColors(state.basemap)), 'line-width': width(1) },
     },
   ]
 }
@@ -535,7 +537,7 @@ function routeLabelLayers(state: StyleState, theme: Theme): LayerSpecification[]
         'text-size': 12,
         'text-max-angle': 30,
       },
-      paint: { 'text-color': routeColor, 'text-halo-color': theme.halo, 'text-halo-width': 2 },
+      paint: { 'text-color': byLevel(ROUTE_COLORS), 'text-halo-color': theme.halo, 'text-halo-width': 2 },
     },
   ]
 }

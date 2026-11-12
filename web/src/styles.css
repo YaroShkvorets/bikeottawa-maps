@@ -1181,7 +1181,6 @@ a {
 .bike-lanes-key .swatch.line.route-band {
   height: 6px;
   border-radius: 3px;
-  opacity: 0.6;
 }
 
 /* Long dashes, as the map draws painted lanes: plainly not the dots. */

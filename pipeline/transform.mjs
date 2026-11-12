@@ -23,8 +23,8 @@ if (!input || !outDir) {
 const linesAt = transit ? stationLines(readFileSync(transit, 'utf8').split('\n')) : new Map()
 /** Signed bike and mountain-bike routes, and the ways on them. */
 const bikeRoutes = routeIndex(routesOpl ? readFileSync(routesOpl, 'utf8').split('\n') : [])
-/** Routes from far out by rank; local and mountain-bike ones once closer in. */
-const ROUTE_MINZOOM = { national: 9, regional: 9, local: 11, mtb: 11 }
+/** Every route shows from as far out as the map goes. */
+const ROUTE_MINZOOM = 9
 
 const ways = createWriteStream(path.join(outDir, 'ways.geojsonseq'))
 const places = createWriteStream(path.join(outDir, 'places.geojsonseq'))
@@ -96,7 +96,7 @@ for await (const line of lines()) {
       routeWayLength.set(String(id), metres(feature.geometry.coordinates))
       await write(routeWays, {
         type: 'Feature',
-        tippecanoe: { minzoom: ROUTE_MINZOOM[onRoute.level] },
+        tippecanoe: { minzoom: ROUTE_MINZOOM },
         properties: onRoute,
         geometry: feature.geometry,
       })

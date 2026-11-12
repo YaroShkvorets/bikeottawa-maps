@@ -61,7 +61,7 @@ export function bikewayColors(basemap: BasemapId): Record<BikewayId, string> {
 
 /**
  * The bike routes overlay: signed routes by rank, and mountain-bike trails. One
- * palette on every map; the bands are wide and soft, under the bike lanes.
+ * palette on every map, for labels and swatches; the bands use routeBandColors.
  */
 export const ROUTE_LEVEL_IDS = ['national', 'regional', 'local', 'mtb'] as const
 export type RouteLevelId = (typeof ROUTE_LEVEL_IDS)[number]
@@ -70,6 +70,32 @@ export const ROUTE_COLORS: Record<RouteLevelId, string> = {
   regional: '#E8590C',
   local: '#7950F2',
   mtb: '#B8652B',
+}
+
+/** Each map's ground, for the route bands to blend into. */
+const GROUND: Record<BasemapId, string> = { light: '#E9ECE4', grey: '#E4E4E4', dark: '#2A2A2A', satellite: '#2A2A2A' }
+
+function blend(color: string, ground: string, share: number): string {
+  const rgb = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+  const [a, b] = [rgb(color), rgb(ground)]
+  return `#${a
+    .map((c, i) =>
+      Math.round(c * share + b[i] * (1 - share))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`
+}
+
+/**
+ * The route bands: the route colours blended into the map's ground, so they look
+ * soft yet are solid. See-through bands darken wherever two of them overlap.
+ */
+export function routeBandColors(basemap: BasemapId): Record<RouteLevelId, string> {
+  const share = basemap === 'satellite' ? 0.8 : 0.6
+  return Object.fromEntries(
+    ROUTE_LEVEL_IDS.map((id) => [id, blend(ROUTE_COLORS[id], GROUND[basemap], share)]),
+  ) as Record<RouteLevelId, string>
 }
 
 export function isRouteLevelId(value: unknown): value is RouteLevelId {

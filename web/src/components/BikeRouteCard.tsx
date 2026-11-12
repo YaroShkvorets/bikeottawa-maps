@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ASSETS_BASE } from '../config'
 import { useI18n } from '../i18n'
-import { isRouteLevelId, ROUTE_COLORS, ROUTE_LEVEL_IDS, type RouteLevelId } from '../layers'
+import { isRouteLevelId, ROUTE_LEVEL_IDS, type RouteLevelId, routeBandColors } from '../layers'
 import type { Selected } from '../map/style'
 
 /** A signed route as the pipeline writes it to routes.json, by relation id. */
@@ -76,7 +76,7 @@ export function BikeRouteCard({ selected, onClose, onFocus }: Props) {
         title={t('showOnMap')}
         onClick={() => onFocus(id)}
       >
-        <span className="swatch line" style={{ background: ROUTE_COLORS[level] }} />
+        <span className="swatch line" style={{ background: routeBandColors('light')[level] }} />
         <span className="bike-route-name">
           {nameOf(id)}
           <small>
