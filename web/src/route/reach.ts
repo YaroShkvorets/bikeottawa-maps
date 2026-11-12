@@ -44,11 +44,11 @@ export async function fetchReach(
 
 const M_PER_DEG = 111_320
 /** Grid cell for the area, in metres. Bigger for a very large reach, to stay quick. */
-const CELL = 10
+const CELL = 25
 const MAX_CELLS = 16_000_000
 
 /**
- * The area the reach covers, in square metres: on a 10 m grid, every cell a
+ * The area the reach covers, in square metres: on a 25 m grid, every cell a
  * reached way passes through, and every cell those ways close off from the
  * outside (city blocks, parks, the river between two bridges). Dead ends and
  * bays open to the outside are left out.

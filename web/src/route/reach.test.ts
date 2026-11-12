@@ -54,10 +54,10 @@ describe('reachArea', () => {
         [0.01, 0.01],
       ],
     ])
-    // Two sides about 1.1 km long, each a strip a cell or two wide.
+    // Two sides about 1.1 km long, each a strip a cell or two (25 m) wide.
     const area = reachArea(corner)
-    expect(area).toBeGreaterThan(2 * side * 10)
-    expect(area).toBeLessThan(2 * side * 25)
+    expect(area).toBeGreaterThan(2 * side * 20)
+    expect(area).toBeLessThan(2 * side * 60)
   })
 
   it('is zero with nothing reached', () => {
