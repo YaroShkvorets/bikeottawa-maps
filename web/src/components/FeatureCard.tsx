@@ -6,7 +6,7 @@ import type { Selected } from '../map/style'
 import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, streetViewUrl } from '../photos'
 import { isPlaceKind } from '../places'
 import { wayType } from '../wayType'
-import { RouteIcon } from './icons'
+import { DirectionsIcon } from './icons'
 import { PlaceIcon } from './PlaceIcon'
 import { CardPhoto, hasPhoto } from './PlacePhoto'
 
@@ -166,6 +166,17 @@ export function FeatureCard({ selected, onClose, onRouteHere }: Props) {
           {/* The kind is the title when there is no name, so it is not repeated. */}
           {name && kindLabel && <p>{kindLabel}</p>}
         </div>
+        {selected.kind === 'place' && onRouteHere && (
+          <button
+            type="button"
+            className="feature-route"
+            title={t('routeHere')}
+            aria-label={t('routeHere')}
+            onClick={() => onRouteHere(name ?? kindLabel)}
+          >
+            <DirectionsIcon />
+          </button>
+        )}
         <button type="button" className="feature-close" aria-label={t('close')} onClick={onClose}>
           <svg
             aria-hidden="true"
@@ -181,14 +192,6 @@ export function FeatureCard({ selected, onClose, onRouteHere }: Props) {
           </svg>
         </button>
       </header>
-      {selected.kind === 'place' && onRouteHere && (
-        <div className="feature-actions">
-          <button type="button" className="primary" onClick={() => onRouteHere(name ?? kindLabel)}>
-            <RouteIcon />
-            {t('routeHere')}
-          </button>
-        </div>
-      )}
       <CardPhoto at={selected.at} props={selected.kind === 'place' ? props : undefined} />
       {hasFacts && (
         <dl>

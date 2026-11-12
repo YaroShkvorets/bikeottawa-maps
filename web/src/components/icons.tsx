@@ -56,3 +56,11 @@ export const WalkIcon = () => (
     <path d="m12 8-1.5 6.5M10.5 14.5l3 2.5v4.5M10.5 14.5 8.5 21.5M12 8 9 10.5V13M12 8l2 3.5 3 1" />
   </Icon>
 )
+
+/** A turn ahead: the way to somewhere. */
+export const DirectionsIcon = () => (
+  <Icon>
+    <path d="M6 20v-6a4 4 0 0 1 4-4h9" />
+    <path d="M15 6l4 4-4 4" />
+  </Icon>
+)
