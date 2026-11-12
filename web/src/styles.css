@@ -500,6 +500,12 @@ a {
 
 .mode-switch button {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 4px;
+  white-space: nowrap;
   min-height: 40px;
   border: 0;
   border-radius: 9px;
@@ -517,6 +523,29 @@ a {
   background: var(--surface);
   color: var(--ink);
   box-shadow: 0 1px 3px rgb(22 36 43 / 15%);
+}
+
+.mode-switch .icon {
+  flex: none;
+}
+
+/* Narrow phones: smaller icons, and the smallest fit the labels only. */
+@media (max-width: 400px) {
+  .mode-switch button {
+    gap: 4px;
+    padding: 0 2px;
+  }
+
+  .mode-switch .icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 359px) {
+  .mode-switch .icon {
+    display: none;
+  }
 }
 
 .route-form {

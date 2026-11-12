@@ -11,6 +11,7 @@ import {
   type WalkStyleId,
   WEIGHT_KEYS,
 } from '../route/styles'
+import { BikeIcon, WalkIcon } from './icons'
 
 export interface StylePickerProps {
   travel: Travel
@@ -43,6 +44,7 @@ export function StylePicker({
         <div className="mode-switch travel-switch">
           {TRAVEL_MODES.map((id) => (
             <button key={id} type="button" aria-pressed={id === travel} onClick={() => onTravelChange(id)}>
+              {id === 'bike' ? <BikeIcon /> : <WalkIcon />}
               {t(`travel.${id}`)}
             </button>
           ))}
