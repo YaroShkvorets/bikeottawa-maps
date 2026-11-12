@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isReachMinutes, reachUrl } from './reach'
+import { isReachMinutes, type Reach, reachArea, reachUrl } from './reach'
 import { PRESETS } from './styles'
 
 describe('reachUrl', () => {
@@ -20,5 +20,35 @@ describe('isReachMinutes', () => {
     expect(isReachMinutes('15')).toBe(false)
     expect(isReachMinutes('45')).toBe(false)
     expect(isReachMinutes(undefined)).toBe(false)
+  })
+})
+
+describe('reachArea', () => {
+  const reach = (lines: number[][][]): Reach => ({
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { minutes: 1 }, geometry: { type: 'MultiLineString', coordinates: lines } },
+    ],
+  })
+
+  it('is the convex hull around every way reached, in square metres', () => {
+    // A cross 0.01° each way at the equator: its hull is a diamond of about 2.48 km².
+    const cross = reach([
+      [
+        [-0.01, 0],
+        [0, 0],
+        [0.01, 0],
+      ],
+      [
+        [0, -0.01],
+        [0, 0.005],
+        [0, 0.01],
+      ],
+    ])
+    expect(reachArea(cross) / 1e6).toBeCloseTo((2 * (0.02 * 111.32) ** 2) / 4, 3)
+  })
+
+  it('is zero with nothing reached', () => {
+    expect(reachArea({ type: 'FeatureCollection', features: [] })).toBe(0)
   })
 })

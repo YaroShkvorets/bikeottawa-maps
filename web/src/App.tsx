@@ -13,7 +13,7 @@ import { LayerPicker } from './components/LayerPicker'
 import { Legend } from './components/Legend'
 import { type Mode, ModeSwitch } from './components/ModeSwitch'
 import { ReachForm } from './components/ReachForm'
-import { ReachResult } from './components/ReachResult'
+import { formatArea, ReachResult } from './components/ReachResult'
 import { RouteForm } from './components/RouteForm'
 import { RouteResult } from './components/RouteResult'
 import { LayerPeek, ReachPeek, RoutePeek } from './components/SheetPeek'
@@ -26,7 +26,7 @@ import type { Selected, StyleState } from './map/style'
 import { isPlaceKind, type PlaceKind } from './places'
 import type { LngLat, RouteHighlight } from './route/brouter'
 import { reverseLabel } from './route/geocode'
-import { DEFAULT_REACH_MINUTES, isReachMinutes, type ReachMinutes } from './route/reach'
+import { DEFAULT_REACH_MINUTES, isReachMinutes, type ReachMinutes, reachArea } from './route/reach'
 import {
   formatParams,
   formatPoints,
@@ -285,6 +285,7 @@ export function App() {
   const route = planning ? visibleRoute(routeState) : null
   const reachState = useReach(ROUTER_URL, points[0]?.lngLat ?? null, minutes, profile, reaching)
   const reach = reaching ? visibleReach(reachState) : null
+  const area = useMemo(() => (reach ? reachArea(reach) : 0), [reach])
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -554,7 +555,7 @@ export function App() {
     ? `${(route.distance / 1000).toFixed(1)} km · ${Math.max(1, Math.round(route.time / 60))} min · ↑ ${Math.round(route.ascent)} m`
     : routing
       ? reaching && points[0]
-        ? `${t('mode.reach')} · ${minutes} min`
+        ? `${t('mode.reach')} · ${minutes} min${reach ? ` · ${formatArea(area, lang)}` : ''}`
         : t(`mode.${mode}`)
       : t(`layer.${layer}`)
   const status = planning ? routeState.status : reachState.status
@@ -697,7 +698,7 @@ export function App() {
                 onPinPart={setPinnedPart}
               />
             )}
-            {reaching && <ReachResult state={reachState} minutes={minutes} basemap={basemap} />}
+            {reaching && <ReachResult state={reachState} minutes={minutes} basemap={basemap} area={area} />}
             {phone && details}
             <div className={(phone && details) || hasResult ? 'sheet-rest when-selected' : 'sheet-rest'}>
               {!routing && (
