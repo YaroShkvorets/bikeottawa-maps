@@ -84,7 +84,7 @@ export const PRESETS: Record<PresetId, RouteParams> = {
   },
 }
 
-export const DEFAULT_STYLE: PresetId = 'relaxed'
+export const DEFAULT_STYLE: PresetId = 'balanced'
 
 export function isStyleId(value: unknown): value is StyleId {
   return STYLE_IDS.includes(value as StyleId)
