@@ -263,6 +263,7 @@ const en = {
   avoid: 'Avoid',
   noRouter: 'Route planning is not available on this site yet: no routing server is connected.',
   toggleSheet: 'Show or hide details',
+  toggleTop: 'Show or hide options',
   routeHint: 'Click the map or search to set your start and destination. Drag a marker to adjust.',
   routeLoading: 'Finding a route…',
   routeError: 'No route found. Try moving a point closer to a street or path.',
@@ -557,6 +558,7 @@ const fr: Record<keyof typeof en, string> = {
   noRouter:
     'La planification d’itinéraires n’est pas encore offerte sur ce site : aucun serveur de routage n’est connecté.',
   toggleSheet: 'Afficher ou masquer les détails',
+  toggleTop: 'Afficher ou masquer les options',
   routeHint: 'Cliquez sur la carte ou cherchez pour choisir le départ et l’arrivée. Glissez un marqueur pour ajuster.',
   routeLoading: 'Recherche d’un trajet…',
   routeError: 'Aucun trajet trouvé. Rapprochez un point d’une rue ou d’un sentier.',

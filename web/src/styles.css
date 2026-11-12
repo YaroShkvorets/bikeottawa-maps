@@ -1172,6 +1172,34 @@ a {
     padding-bottom: max(4px, env(safe-area-inset-bottom));
   }
 
+  /* A grab bar along the bottom of the top panel folds it to the mode switch. */
+  .topbar-toggle {
+    position: sticky;
+    bottom: -6px;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 22px;
+    margin: -8px 0 -6px;
+    padding: 0;
+    border: 0;
+    background: var(--surface);
+  }
+
+  .topbar-toggle::before {
+    content: "";
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: #c9d0d3;
+  }
+
+  .topbar.folded > :not(.topbar-row, .topbar-toggle) {
+    display: none;
+  }
+
   .sheet.collapsed .sheet-body {
     display: none;
   }

@@ -246,6 +246,7 @@ export function App() {
   // On phones the bottom sheet starts folded away so the map gets the screen.
   const phone = usePhoneLayout()
   const [sheetOpen, setSheetOpen] = useState(() => !window.matchMedia(PHONE_LAYOUT).matches)
+  const [topOpen, setTopOpen] = useState(true)
   const i18n = useMemo(() => ({ lang, t: translator(lang) }), [lang])
   const { t } = i18n
   const dataDate = useDataDate(lang)
@@ -321,6 +322,7 @@ export function App() {
     (next: Mode) => {
       update({ mode: next })
       setSelected(null)
+      setTopOpen(true)
     },
     [update],
   )
@@ -555,7 +557,7 @@ export function App() {
         reach={reach}
       />
       <div className="sidebar">
-        <div className="card topbar" ref={topbar}>
+        <div className={`card topbar ${topOpen ? '' : 'folded'}`} ref={topbar}>
           <header className="brand">
             <img className="brand-logo" src={bikeOttawaLogo} alt="" width="60" height="28" />
             <h1>{t('title')}</h1>
@@ -591,6 +593,16 @@ export function App() {
               vias={viaPoints}
               onViaChange={changeVia}
               onReverse={() => update({ points: [points[1], points[0]], vias: [...vias].reverse() })}
+            />
+          )}
+          {/* On phones the panel folds down to the mode switch, to leave the map room. */}
+          {phone && (
+            <button
+              type="button"
+              className="topbar-toggle"
+              aria-expanded={topOpen}
+              aria-label={t('toggleTop')}
+              onClick={() => setTopOpen(!topOpen)}
             />
           )}
         </div>
