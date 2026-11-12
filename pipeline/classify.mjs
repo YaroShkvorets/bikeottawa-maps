@@ -77,10 +77,16 @@ export function bikeway(tags, options) {
   return bikewayProps(tags, options).bikeway
 }
 
+/** The side traffic keeps to on a one-way street, as the way is drawn. */
+const TRAFFIC_SIDE = { yes: 'right', true: 'right', 1: 'right', '-1': 'left' }
+const OTHER_SIDE = { left: 'right', right: 'left' }
+
 /**
- * The way's `bikeway` (the best on either side), and, where the two sides of a
- * street differ (a painted lane one way, a shared lane the other),
- * `bikeway_left` and `bikeway_right` too, so each side can be drawn.
+ * The way's `bikeway` (the best on either side), and `bikeway_left` and
+ * `bikeway_right` too where each side is drawn on its own: on one-way streets,
+ * and where the two sides of a street differ (a painted lane one way, a shared
+ * lane the other). On a one-way street a plain `cycleway` tag is the side
+ * traffic keeps to, or the other side for a contraflow (`opposite_*`) lane.
  * @returns {{bikeway?: string, bikeway_left?: string, bikeway_right?: string}}
  */
 export function bikewayProps(tags, { ignoreTrack = false } = {}) {
@@ -88,17 +94,19 @@ export function bikewayProps(tags, { ignoreTrack = false } = {}) {
   if (PATH_HIGHWAYS.has(highway)) {
     return highway === 'cycleway' || tags.bicycle === 'designated' ? { bikeway: 'dedicated' } : {}
   }
+  const trafficSide = TRAFFIC_SIDE[tags.oneway]
+  const plainSide = trafficSide && (tags.cycleway?.startsWith('opposite') ? OTHER_SIDE[trafficSide] : trafficSide)
   const sideKind = (side) => {
-    const value = tags[`cycleway:${side}`] ?? tags['cycleway:both'] ?? tags.cycleway
+    const plain = !trafficSide || side === plainSide ? tags.cycleway : undefined
+    const value = tags[`cycleway:${side}`] ?? tags['cycleway:both'] ?? plain
     return ignoreTrack && value === 'track' ? undefined : STREET_BIKEWAYS[value]
   }
   const left = sideKind('left')
   const right = sideKind('right')
   const best = BIKEWAYS.find((kind) => kind === left || kind === right)
   if (!best) return {}
-  return left && right && left !== right
-    ? { bikeway: best, bikeway_left: left, bikeway_right: right }
-    : { bikeway: best }
+  if (!trafficSide && !(left && right && left !== right)) return { bikeway: best }
+  return { bikeway: best, ...(left && { bikeway_left: left }), ...(right && { bikeway_right: right }) }
 }
 
 /**

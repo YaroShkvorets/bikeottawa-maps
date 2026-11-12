@@ -477,10 +477,10 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   const thin = byZoom((full) => full * 0.6)
   const oneway = ['==', ['get', 'oneway'], 'yes'] as ExpressionSpecification
   const pathWidth = byZoom((full) => ['case', oneway, full * 0.6, full])
-  const whole: FilterSpecification = ['!', ['has', 'bikeway_left']]
+  const whole: FilterSpecification = ['all', ['!', ['has', 'bikeway_left']], ['!', ['has', 'bikeway_right']]]
   const solid = ['dedicated', 'lane']
-  // A street with a painted lane one way and a shared lane the other: a thin line
-  // down each side, left and right as the way is drawn.
+  // A one-way street, or one with a painted lane one way and a shared lane the
+  // other: a thin line down each side that has one, left and right as the way is drawn.
   const sideLayers = (['left', 'right'] as const).flatMap((side): LayerSpecification[] => {
     const kind = ['get', `bikeway_${side}`] as ExpressionSpecification
     const offset = byZoom((full) => (side === 'left' ? -0.45 : 0.45) * full)
