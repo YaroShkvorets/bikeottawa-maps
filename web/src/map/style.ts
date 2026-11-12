@@ -458,9 +458,9 @@ function showsPlaces(state: StyleState): boolean {
 const WAYS_SOURCE = 'overlays'
 
 /**
- * Bike lanes over the basemap, as on Google Maps: dedicated ways solid dark
- * green, painted lanes lighter green, shared lanes dotted. Under the data layers
- * and the street names.
+ * Bike lanes over the basemap: dedicated ways solid green, painted lanes dashed,
+ * shared lanes dotted. Under the data layers and the street names, except on
+ * How far, where they go over its lines so as not to be hidden by them.
  */
 function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   if (!showsBikeLanes(state)) return []
@@ -530,9 +530,8 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
   return [...sideLayers, ...wholeLayers]
 }
 
-/** Bike lanes step aside for the reach map, which has the street lines to itself. */
 function showsBikeLanes(state: StyleState): boolean {
-  return Boolean(state.bikeLanes) && !state.reach
+  return Boolean(state.bikeLanes)
 }
 const PLACES_SOURCE = 'places'
 
@@ -866,10 +865,11 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
     },
     layers: [
       ...base.slice(0, at),
-      ...bikeLaneLayers(state),
+      ...(state.reach ? [] : bikeLaneLayers(state)),
       ...overlayLayers(state, theme),
       ...(night && !state.reach ? nightLayers(theme) : []),
       ...reachLayers(state.reach, state.basemap),
+      ...(state.reach ? bikeLaneLayers(state) : []),
       ...collisions.under,
       ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
