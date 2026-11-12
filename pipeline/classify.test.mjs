@@ -111,6 +111,18 @@ test('beaches need a name; swimming spots count as beaches', () => {
   assert.equal(classifyPlace({ leisure: 'swimming_area' }).props.kind, 'beach')
 })
 
+test('stations say what runs through them and whether they are still being built', () => {
+  const light = { railway: 'station', station: 'light_rail', light_rail: 'yes', wheelchair: 'yes' }
+  assert.deepEqual(classifyPlace(light).props, { kind: 'station', wheelchair: 'yes', station: 'light_rail' })
+  assert.equal(classifyPlace({ railway: 'station', train: 'yes' }).props.station, 'train')
+  assert.equal('station' in classifyPlace({ railway: 'station' }).props, false)
+  const built = classifyPlace({ ...light, 'construction:railway': 'station', opening_date: '2026' }).props
+  assert.equal(built.construction, 'yes')
+  assert.equal(built.opening_date, '2026')
+  // A station that has opened keeps its opening date to itself.
+  assert.equal('opening_date' in classifyPlace({ ...light, opening_date: '2024-11' }).props, false)
+})
+
 test('stops, connections and obstacles useful on a ride are recognised', () => {
   const cases = [
     [{ amenity: 'bicycle_rental' }, 'rental'],

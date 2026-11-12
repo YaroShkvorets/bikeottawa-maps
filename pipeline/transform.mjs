@@ -1,20 +1,23 @@
 // Reads `osmium export` output (one GeoJSON feature per line) and writes
 // ways, places, lamps and lit (lit ways, for the night layer) .geojsonseq files
 // ready for tippecanoe.
-// Usage: node pipeline/transform.mjs <input.geojsonseq> <output-dir>
+// Usage: node pipeline/transform.mjs <input.geojsonseq> <output-dir> [transit.opl]
 
 import { once } from 'node:events'
-import { createReadStream, createWriteStream } from 'node:fs'
+import { createReadStream, createWriteStream, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline'
 import { centreOf, classifyPlace, classifyWay, isStreetLamp, middleOf, parseOsmId } from './classify.mjs'
 import { isLit, lampIndex } from './lamps.mjs'
+import { stationLines } from './stations.mjs'
 
-const [input, outDir] = process.argv.slice(2)
+const [input, outDir, transit] = process.argv.slice(2)
 if (!input || !outDir) {
-  console.error('Usage: node pipeline/transform.mjs <input.geojsonseq> <output-dir>')
+  console.error('Usage: node pipeline/transform.mjs <input.geojsonseq> <output-dir> [transit.opl]')
   process.exit(1)
 }
+/** Lines stopping at each station, from route and stop-area relations. */
+const linesAt = transit ? stationLines(readFileSync(transit, 'utf8').split('\n')) : new Map()
 
 const ways = createWriteStream(path.join(outDir, 'ways.geojsonseq'))
 const places = createWriteStream(path.join(outDir, 'places.geojsonseq'))
@@ -91,10 +94,11 @@ for await (const line of lines()) {
     counts.places++
     const geometry =
       geomType === 'Point' ? feature.geometry : { type: 'Point', coordinates: centreOf(feature.geometry) }
+    const lines = place.props.kind === 'station' ? linesAt.get(`${type}/${id}`) : undefined
     await write(places, {
       type: 'Feature',
       tippecanoe: { minzoom: place.minzoom },
-      properties: { ...place.props, osm: `${type}/${id}` },
+      properties: { ...place.props, ...(lines && { lines }), osm: `${type}/${id}` },
       geometry,
     })
   }

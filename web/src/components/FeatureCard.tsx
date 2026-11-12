@@ -31,16 +31,27 @@ const PLACE_FACTS = [
   'seasonal',
   'opening_hours',
   'phone',
+  'wheelchair',
   'operator',
 ] as const
 
 /** Shows an OSM tag value in plain words: yes/no translated, units added, underscores removed. */
 function formatValue(key: string, value: unknown, t: Translate): string {
   const text = String(value)
-  if (text === 'yes' || text === 'no') return t(text)
+  if (text === 'yes' || text === 'no' || text === 'limited') return t(text)
   if (key === 'width' && /^[\d.]+$/.test(text)) return `${text} m`
   if (key === 'maxspeed' && /^\d+$/.test(text)) return `${text} km/h`
   return text.replaceAll('_', ' ').replaceAll(';', ', ')
+}
+
+/** An OSM date ("2026", "2026-09") in words: "2026", "September 2026". */
+function formatMonth(date: string, locale: string): string {
+  const match = /^(\d{4})-(\d{2})/.exec(date)
+  if (!match) return date
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString(locale, {
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
 function osmPath(selected: Props['selected']): string {
@@ -56,7 +67,13 @@ interface Props {
 export function FeatureCard({ selected, onClose }: Props) {
   const { t, lang } = useI18n()
   const { props } = selected
-  const kindKey = `${selected.kind === 'way' ? 'kind' : 'place'}.${props.kind}`
+  const locale = lang === 'fr' ? 'fr-CA' : 'en-CA'
+  // Stations say what runs through them; the legend keeps the one word for all.
+  const stationKey = `station.${props.station}`
+  const kindKey =
+    selected.kind === 'place' && isMessageKey(stationKey)
+      ? stationKey
+      : `${selected.kind === 'way' ? 'kind' : 'place'}.${props.kind}`
   const kindLabel = (selected.kind === 'way' && wayType(props, t)) || (isMessageKey(kindKey) ? t(kindKey) : '')
   const name = typeof props.name === 'string' ? props.name : null
   const [type, id] = osmPath(selected).split('/')
@@ -73,6 +90,20 @@ export function FeatureCard({ selected, onClose }: Props) {
       const winter = String(props.winter) as keyof typeof WINTER_COLORS
       facts.push({ label: t('fact.winter'), value: t(`winter.${winter}`), color: WINTER_COLORS[winter] })
     }
+  } else if (props.kind === 'station') {
+    if (props.construction === 'yes') {
+      // A date already past only means the map is behind; it is left out.
+      const date = typeof props.opening_date === 'string' ? props.opening_date.slice(0, 7) : ''
+      const opens = /^\d{4}/.test(date) && date >= new Date().toISOString().slice(0, date.length) ? date : null
+      facts.push({
+        label: t('fact.status'),
+        value: t('station.construction'),
+        note: opens ? t('station.opens').replace('{date}', formatMonth(opens, locale)) : undefined,
+      })
+    }
+    // VIA's trains are numbered, not lined: their "line" is just the operator again.
+    const lines = typeof props.lines === 'string' && props.lines !== props.operator ? props.lines : null
+    if (lines) facts.push({ label: t(/[,/]/.test(lines) ? 'fact.lines' : 'fact.line'), value: lines })
   }
   for (const key of selected.kind === 'way' ? WAY_FACTS : PLACE_FACTS) {
     if (props[key] === undefined) continue
@@ -81,7 +112,7 @@ export function FeatureCard({ selected, onClose }: Props) {
     const week = key === 'opening_hours' ? parseHours(String(props[key])) : null
     if (week) {
       const status = hoursStatus(week, weekTimeIn(REGION.timeZone))
-      const words = describeStatus(status, lang === 'fr' ? 'fr-CA' : 'en-CA', {
+      const words = describeStatus(status, locale, {
         openUntil: t('hours.openUntil'),
         open24: t('hours.open24'),
         opensAt: t('hours.opensAt'),

@@ -178,6 +178,7 @@ const PLACE_TAGS = [
   'phone',
   'website',
   'operator',
+  'wheelchair',
   'barrier',
   'maxwidth:physical',
   // Photos of the place: a Mapillary image id, or a link to one.
@@ -195,7 +196,23 @@ export function classifyPlace(tags) {
   if (!match) return null
   if (tags.access === 'private' || tags.access === 'no') return null
   const [, , kind, minzoom] = match
-  return { props: pick(tags, PLACE_TAGS, { kind }), minzoom, line: LINE_KINDS.has(kind) }
+  const props = pick(tags, PLACE_TAGS, { kind })
+  if (kind === 'station') Object.assign(props, stationProps(tags))
+  return { props, minzoom, line: LINE_KINDS.has(kind) }
+}
+
+const STATION_TYPES = ['light_rail', 'subway', 'tram', 'train']
+
+/** What runs through a station, and whether it is still being built. */
+function stationProps(tags) {
+  const props = {}
+  const type = STATION_TYPES.includes(tags.station) ? tags.station : STATION_TYPES.find((mode) => tags[mode] === 'yes')
+  if (type) props.station = type
+  if (tags['construction:railway'] || tags.railway === 'construction') {
+    props.construction = 'yes'
+    if (tags.opening_date) props.opening_date = tags.opening_date
+  }
+  return props
 }
 
 /** The middle point of a line, for places mapped as one. */

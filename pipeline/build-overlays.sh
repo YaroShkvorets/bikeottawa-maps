@@ -23,7 +23,12 @@ osmium extract --bbox "$BBOX" "$WORK/tagged.osm.pbf" --overwrite -o "$WORK/filte
 osmium export "$WORK/filtered.osm.pbf" --add-unique-id=type_id -f geojsonseq -x print_record_separator=false \
   --overwrite -o "$WORK/filtered.geojsonseq"
 
-node pipeline/transform.mjs "$WORK/filtered.geojsonseq" "$WORK"
+# Train and light rail routes, and the stop areas that tie them to stations.
+osmium tags-filter "$REGION" r/route=train,light_rail,subway,tram r/public_transport=stop_area -R \
+  --overwrite -o "$WORK/transit.osm.pbf"
+osmium cat "$WORK/transit.osm.pbf" -f opl --overwrite -o "$WORK/transit.opl"
+
+node pipeline/transform.mjs "$WORK/filtered.geojsonseq" "$WORK" "$WORK/transit.opl"
 
 echo "Building tiles"
 # Streets and places in files of their own, so each loads only for its layer.
