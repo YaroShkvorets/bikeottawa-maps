@@ -662,25 +662,35 @@ export function App() {
                   onCollisionFiltersChange={changeCollisions}
                 />
               )}
-              {dataDate && (
-                <p className="footnote">
-                  {t('updated')} {dataDate}
-                  {phone ? '.' : ' · '}
-                  {!phone && (
-                    // The map moves without re-rendering this, so the link is
-                    // pointed at the current view just before it is used.
-                    <a
-                      href="https://www.openstreetmap.org/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onPointerEnter={followMap}
-                      onFocus={followMap}
-                    >
-                      OpenStreetMap
-                    </a>
-                  )}
-                </p>
-              )}
+              <p className="footnote">
+                {dataDate && (
+                  <>
+                    {t('updated')} {dataDate}
+                    {phone ? '.' : ' · '}
+                    {!phone && (
+                      // The map moves without re-rendering this, so the link is
+                      // pointed at the current view just before it is used.
+                      <a
+                        href="https://www.openstreetmap.org/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onPointerEnter={followMap}
+                        onFocus={followMap}
+                      >
+                        OpenStreetMap
+                      </a>
+                    )}
+                    <br />
+                  </>
+                )}
+                <a href="https://bikeottawa.ca/" target="_blank" rel="noopener noreferrer">
+                  Bike Ottawa
+                </a>
+                {' · '}
+                <a href="https://github.com/YaroShkvorets/bikeottawa-maps" target="_blank" rel="noopener noreferrer">
+                  GitHub
+                </a>
+              </p>
             </div>
           </div>
         </div>
