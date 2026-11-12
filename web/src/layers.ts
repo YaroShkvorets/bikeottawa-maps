@@ -52,7 +52,7 @@ export function collisionColors(basemap: BasemapId): Record<'none' | 'minimal' |
  */
 export const BIKEWAY_IDS = ['dedicated', 'lane', 'shared'] as const
 export type BikewayId = (typeof BIKEWAY_IDS)[number]
-const BIKEWAYS_ON_PALE: Record<BikewayId, string> = { dedicated: '#1E7B34', lane: '#5DBB63', shared: '#5DBB63' }
+const BIKEWAYS_ON_PALE: Record<BikewayId, string> = { dedicated: '#1E7B34', lane: '#3FA34D', shared: '#3FA34D' }
 const BIKEWAYS_ON_DARK: Record<BikewayId, string> = { dedicated: '#7BE38A', lane: '#3FA557', shared: '#3FA557' }
 
 export function bikewayColors(basemap: BasemapId): Record<BikewayId, string> {
