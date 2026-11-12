@@ -30,22 +30,34 @@ describe('reachArea', () => {
       { type: 'Feature', properties: { minutes: 1 }, geometry: { type: 'MultiLineString', coordinates: lines } },
     ],
   })
+  // 0.01° at the equator is about 1.11 km.
+  const side = 0.01 * 111_320
 
-  it('is the convex hull around every way reached, in square metres', () => {
-    // A cross 0.01° each way at the equator: its hull is a diamond of about 2.48 km².
-    const cross = reach([
+  it('counts what a loop of ways closes off', () => {
+    const loop = reach([
       [
-        [-0.01, 0],
         [0, 0],
         [0.01, 0],
-      ],
-      [
-        [0, -0.01],
-        [0, 0.005],
+        [0.01, 0.01],
         [0, 0.01],
+        [0, 0],
       ],
     ])
-    expect(reachArea(cross) / 1e6).toBeCloseTo((2 * (0.02 * 111.32) ** 2) / 4, 3)
+    expect(reachArea(loop) / side ** 2).toBeCloseTo(1, 1)
+  })
+
+  it('counts only the ways themselves where nothing is closed off', () => {
+    const corner = reach([
+      [
+        [0, 0],
+        [0.01, 0],
+        [0.01, 0.01],
+      ],
+    ])
+    // Two sides about 1.1 km long, each a strip a cell or two wide.
+    const area = reachArea(corner)
+    expect(area).toBeGreaterThan(2 * side * 10)
+    expect(area).toBeLessThan(2 * side * 25)
   })
 
   it('is zero with nothing reached', () => {
