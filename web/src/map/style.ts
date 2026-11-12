@@ -471,18 +471,21 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
       ['zoom'],
       ...[9, 13, 16, 19].flatMap((zoom, i) => [zoom, value([0.6, 2, 4.8, 11.8][i])]),
     ] as ExpressionSpecification
-  const width = byZoom((full) => full)
-  // Thinner lines at about 60% of the width: one-way paths, so a pair of them
-  // reads as one street's worth, and each side of a street whose sides differ.
-  const thin = byZoom((full) => full * 0.6)
-  const oneway = ['==', ['get', 'oneway'], 'yes'] as ExpressionSpecification
-  const pathWidth = byZoom((full) => ['case', oneway, full * 0.6, full])
+  // Lines as wide as the bikeway, relative to a 3 m two-way path drawn at the
+  // full width; held between about a third and one and a half of it so that
+  // trails and plazas stay readable.
+  const scaled = (key: string) => {
+    const factor = ['min', 1.5, ['max', 0.35, ['/', ['coalesce', ['get', key], 3], 3]]]
+    return byZoom((full) => ['*', full, factor])
+  }
+  const width = scaled('bikeway_width')
   const whole: FilterSpecification = ['all', ['!', ['has', 'bikeway_left']], ['!', ['has', 'bikeway_right']]]
   const solid = ['dedicated', 'lane']
   // A one-way street, or one with a painted lane one way and a shared lane the
-  // other: a thin line down each side that has one, left and right as the way is drawn.
+  // other: a line down each side that has one, left and right as the way is drawn.
   const sideLayers = (['left', 'right'] as const).flatMap((side): LayerSpecification[] => {
     const kind = ['get', `bikeway_${side}`] as ExpressionSpecification
+    const sideWidth = scaled(`bikeway_${side}_width`)
     const offset = byZoom((full) => (side === 'left' ? -0.45 : 0.45) * full)
     return [
       {
@@ -492,7 +495,7 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': ['match', kind, 'dedicated', colors.dedicated, colors.lane],
-          'line-width': thin,
+          'line-width': sideWidth,
           'line-offset': offset,
         },
       },
@@ -501,7 +504,12 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
         id: `bike-lanes-${side}-shared`,
         filter: ['==', kind, 'shared'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': colors.shared, 'line-width': thin, 'line-offset': offset, 'line-dasharray': [0, 2] },
+        paint: {
+          'line-color': colors.shared,
+          'line-width': sideWidth,
+          'line-offset': offset,
+          'line-dasharray': [0, 2],
+        },
       },
     ]
   })
@@ -519,7 +527,7 @@ function bikeLaneLayers(state: StyleState): LayerSpecification[] {
       },
       paint: {
         'line-color': ['match', ['get', 'bikeway'], 'dedicated', colors.dedicated, colors.lane],
-        'line-width': pathWidth,
+        'line-width': width,
       },
     },
     {

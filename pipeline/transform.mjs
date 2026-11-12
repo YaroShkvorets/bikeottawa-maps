@@ -74,7 +74,7 @@ for await (const line of lines()) {
     if (!way) continue
     // A street's track that is also mapped on its own is drawn once, as that way.
     if (way.props.kind === 'street' && way.props.bikeway === 'dedicated' && hasSidepath(feature.geometry.coordinates)) {
-      for (const key of ['bikeway', 'bikeway_left', 'bikeway_right']) delete way.props[key]
+      for (const key of Object.keys(way.props)) if (key.startsWith('bikeway')) delete way.props[key]
       Object.assign(way.props, bikewayProps(tags, { ignoreTrack: true }))
     }
     counts.ways++

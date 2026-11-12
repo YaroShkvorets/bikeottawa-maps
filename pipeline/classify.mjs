@@ -81,32 +81,66 @@ export function bikeway(tags, options) {
 const TRAFFIC_SIDE = { yes: 'right', true: 'right', 1: 'right', '-1': 'left' }
 const OTHER_SIDE = { left: 'right', right: 'left' }
 
+/** A width tag in metres, or undefined when missing, zero or in feet. */
+function metres(value) {
+  if (!value || /['"]|ft/.test(value)) return undefined
+  const n = Number.parseFloat(value)
+  return n > 0 && n < 20 ? n : undefined
+}
+
+/** Widths in metres for bikeways without a width tag. */
+const ONE_WAY_WIDTH = 1.5
+const TWO_WAY_WIDTH = 3
+const LANE_WIDTH = 1.5
+
 /**
  * The way's `bikeway` (the best on either side), and `bikeway_left` and
  * `bikeway_right` too where each side is drawn on its own: on one-way streets,
  * and where the two sides of a street differ (a painted lane one way, a shared
  * lane the other). On a one-way street a plain `cycleway` tag is the side
  * traffic keeps to, or the other side for a contraflow (`opposite_*`) lane.
- * @returns {{bikeway?: string, bikeway_left?: string, bikeway_right?: string}}
+ * Each comes with its width in metres (`bikeway_width`, `bikeway_left_width`,
+ * `bikeway_right_width`), from the tags or a default for its kind; a street's
+ * `bikeway_width` is both its sides together.
+ * @returns {Record<string, string | number>}
  */
 export function bikewayProps(tags, { ignoreTrack = false } = {}) {
   const { highway } = tags
   if (PATH_HIGHWAYS.has(highway)) {
-    return highway === 'cycleway' || tags.bicycle === 'designated' ? { bikeway: 'dedicated' } : {}
+    if (highway !== 'cycleway' && tags.bicycle !== 'designated') return {}
+    const oneway = tags.oneway === 'yes' || tags.oneway === '-1'
+    const width = metres(tags['cycleway:width']) ?? metres(tags.width) ?? (oneway ? ONE_WAY_WIDTH : TWO_WAY_WIDTH)
+    return { bikeway: 'dedicated', bikeway_width: width }
   }
   const trafficSide = TRAFFIC_SIDE[tags.oneway]
   const plainSide = trafficSide && (tags.cycleway?.startsWith('opposite') ? OTHER_SIDE[trafficSide] : trafficSide)
+  const sideTag = (side, suffix = '') => {
+    const plain = !trafficSide || side === plainSide ? tags[`cycleway${suffix}`] : undefined
+    return tags[`cycleway:${side}${suffix}`] ?? tags[`cycleway:both${suffix}`] ?? plain
+  }
   const sideKind = (side) => {
-    const plain = !trafficSide || side === plainSide ? tags.cycleway : undefined
-    const value = tags[`cycleway:${side}`] ?? tags['cycleway:both'] ?? plain
+    const value = sideTag(side)
     return ignoreTrack && value === 'track' ? undefined : STREET_BIKEWAYS[value]
+  }
+  const sideWidth = (side, kind) => {
+    if (!kind) return 0
+    const twoWay = kind === 'dedicated' && sideTag(side, ':oneway') === 'no'
+    return (
+      metres(sideTag(side, ':width')) ?? (kind !== 'dedicated' ? LANE_WIDTH : twoWay ? TWO_WAY_WIDTH : ONE_WAY_WIDTH)
+    )
   }
   const left = sideKind('left')
   const right = sideKind('right')
   const best = BIKEWAYS.find((kind) => kind === left || kind === right)
   if (!best) return {}
-  if (!trafficSide && !(left && right && left !== right)) return { bikeway: best }
-  return { bikeway: best, ...(left && { bikeway_left: left }), ...(right && { bikeway_right: right }) }
+  const [leftWidth, rightWidth] = [sideWidth('left', left), sideWidth('right', right)]
+  const whole = { bikeway: best, bikeway_width: leftWidth + rightWidth }
+  if (!trafficSide && !(left && right && left !== right)) return whole
+  return {
+    ...whole,
+    ...(left && { bikeway_left: left, bikeway_left_width: leftWidth }),
+    ...(right && { bikeway_right: right, bikeway_right_width: rightWidth }),
+  }
 }
 
 /**
@@ -133,9 +167,6 @@ export function classifyWay(tags) {
   const props = { lts, kind: isPath ? 'path' : 'street', highway }
   pick(tags, ['name', 'service', 'footway', 'surface', 'smoothness', 'width', 'lit', 'maxspeed', 'lanes'], props)
   Object.assign(props, bikewayProps(tags))
-  const facility = props.bikeway
-  // One-way bike paths are drawn thinner, as each carries half the traffic of a two-way one.
-  if (facility === 'dedicated' && (tags.oneway === 'yes' || tags.oneway === '-1')) props.oneway = 'yes'
   // Indoor walkways have no snow to plow, so they carry no winter status and
   // stay off the winter layer.
   const isIndoor = tags.indoor !== undefined && tags.indoor !== 'no'

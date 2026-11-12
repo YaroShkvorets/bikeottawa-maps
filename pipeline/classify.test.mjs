@@ -19,6 +19,7 @@ test('cycleways are low-stress paths shown from far out', () => {
     highway: 'cycleway',
     surface: 'asphalt',
     bikeway: 'dedicated',
+    bikeway_width: 3,
     winter: 'yes',
   })
   assert.equal(minzoom, 10)
@@ -278,7 +279,30 @@ test('bike lanes: dedicated ways, painted lanes and shared lanes', () => {
   assert.deepEqual(sides({ oneway: 'yes', 'cycleway:left': 'lane', 'cycleway:left:oneway': '-1' }), ['lane', undefined])
   assert.deepEqual(sides({ oneway: 'yes', 'cycleway:both': 'lane' }), ['lane', 'lane'])
   assert.deepEqual(sides({ oneway: 'yes', cycleway: 'shared_lane' }), [undefined, 'shared'])
-  assert.equal(classifyWay({ highway: 'cycleway', oneway: 'yes' }).props.oneway, 'yes')
-  assert.equal('oneway' in classifyWay({ highway: 'primary', oneway: 'yes', cycleway: 'lane' }).props, false)
   assert.equal('bikeway' in classifyWay({ highway: 'residential' }).props, false)
+})
+
+test('bike lanes: width in metres, from the tags or a default for the kind', () => {
+  const props = (tags) => classifyWay(tags).props
+  const width = (tags) => props(tags).bikeway_width
+  // Paths: the bike side of a segregated path, else the whole path.
+  assert.equal(width({ highway: 'cycleway', width: '4' }), 4)
+  assert.equal(width({ highway: 'cycleway', width: '5', segregated: 'yes', 'cycleway:width': '2.5' }), 2.5)
+  assert.equal(width({ highway: 'path', bicycle: 'designated', width: '2 m' }), 2)
+  assert.equal(width({ highway: 'cycleway' }), 3)
+  assert.equal(width({ highway: 'cycleway', oneway: 'yes' }), 1.5)
+  // Zero and feet are not widths.
+  assert.equal(width({ highway: 'cycleway', width: '0' }), 3)
+  assert.equal(width({ highway: 'cycleway', width: "10'" }), 3)
+  // Streets: both sides together, each side on its own where drawn on its own.
+  assert.equal(width({ highway: 'secondary', 'cycleway:both': 'lane' }), 3)
+  assert.equal(width({ highway: 'secondary', 'cycleway:right': 'lane' }), 1.5)
+  assert.equal(width({ highway: 'secondary', cycleway: 'lane', 'cycleway:width': '1.8' }), 3.6)
+  const oneway = props({ highway: 'secondary', oneway: 'yes', cycleway: 'track', 'cycleway:right:width': '2' })
+  assert.deepEqual([oneway.bikeway_right_width, 'bikeway_left_width' in oneway], [2, false])
+  const mixed = props({ highway: 'residential', 'cycleway:right': 'lane', 'cycleway:left': 'shared_lane' })
+  assert.deepEqual([mixed.bikeway_left_width, mixed.bikeway_right_width], [1.5, 1.5])
+  const tracks = props({ highway: 'primary', oneway: 'yes', 'cycleway:left': 'track', 'cycleway:left:oneway': 'no' })
+  assert.equal(tracks.bikeway_left_width, 3)
+  assert.equal(width({ highway: 'primary', cycleway: 'track' }), 3)
 })
