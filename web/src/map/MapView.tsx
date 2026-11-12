@@ -25,7 +25,15 @@ import type { Reach } from '../route/reach'
 import type { RoutePoints } from '../route/state'
 import { renderPlaceImage } from './placeImage'
 import { renderStopImage } from './stopImage'
-import { buildStyle, INTERACTIVE_LAYERS, REACH_SOURCE, type Selected, type StyleState, stopImageId } from './style'
+import {
+  buildStyle,
+  INTERACTIVE_LAYERS,
+  REACH_SOURCE,
+  ROUTE_LAYERS,
+  type Selected,
+  type StyleState,
+  stopImageId,
+} from './style'
 
 // MapLibre finds its worker relative to its own file, which bundling breaks, so point it at the bundled copy.
 setWorkerUrl(workerUrl)
@@ -44,6 +52,7 @@ interface Props {
   onSelect: (selected: Selected | null) => void
   onBasemapChange: (basemap: BasemapId) => void
   onBikeLanesChange: (on: boolean) => void
+  onBikeRoutesChange: (on: boolean) => void
   /** Details of the selection, shown in a popup beside it. Null where they go elsewhere (phones). */
   popup: ReactNode | null
   /** How far you get, drawn when the style has a reach source. */
@@ -108,7 +117,16 @@ function showReach(map: MapLibreMap, data: Reach | null, shown: { current: Reach
   shown.current = { source, data }
 }
 
-export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, popup, reach, routing }: Props) {
+export function MapView({
+  state,
+  onSelect,
+  onBasemapChange,
+  onBikeLanesChange,
+  onBikeRoutesChange,
+  popup,
+  reach,
+  routing,
+}: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markers = useRef<(Marker | null)[]>([null, null])
@@ -175,7 +193,7 @@ export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, p
     const featureAt = (point: { x: number; y: number }, lngLat: { lng: number; lat: number }): Selected | null => {
       // Planning a route or how far, only places are picked; a click anywhere else is a route point.
       const { routing, state } = latest.current
-      const layers = INTERACTIVE_LAYERS[state.layer].filter(
+      const layers = [...INTERACTIVE_LAYERS[state.layer], ...(routing ? [] : ROUTE_LAYERS)].filter(
         (id) => map.getLayer(id) && (!routing || INTERACTIVE_LAYERS.places.includes(id)),
       )
       if (!layers.length) return null
@@ -191,6 +209,10 @@ export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, p
       if (feature.layer.id === 'collisions-point' && feature.geometry.type === 'Point') {
         const [x, y] = feature.geometry.coordinates
         return { kind: 'collision', spot: String(feature.properties.key), at: [x, y] }
+      }
+      if (feature.layer.id === 'routes-band') {
+        const routes = String(feature.properties.routes ?? '').split(',')
+        return { kind: 'route', routes, focus: routes[0], at: [lngLat.lng, lngLat.lat] }
       }
       if (feature.sourceLayer === 'places') {
         // A place is anchored at its own position, a street where it was clicked.
@@ -455,6 +477,8 @@ export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, p
             onChange={onBasemapChange}
             bikeLanes={Boolean(state.bikeLanes)}
             onBikeLanesChange={onBikeLanesChange}
+            bikeRoutes={Boolean(state.bikeRoutes)}
+            onBikeRoutesChange={onBikeRoutesChange}
           />,
           styleControl,
         )}

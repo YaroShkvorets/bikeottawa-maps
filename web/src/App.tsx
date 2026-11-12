@@ -7,6 +7,7 @@ import {
   parseCollisionFilters,
   spotsGeoJSON,
 } from './collisions'
+import { BikeRouteCard } from './components/BikeRouteCard'
 import { CollisionCard } from './components/CollisionCard'
 import { FeatureCard } from './components/FeatureCard'
 import { LayerPicker } from './components/LayerPicker'
@@ -150,6 +151,25 @@ function rememberBasemap(key: string, basemap: BasemapId) {
 }
 
 const BIKE_LANES_KEY = 'bike-lanes'
+const BIKE_ROUTES_KEY = 'bike-routes'
+
+/** The bike routes overlay: off unless turned on, remembered per browser. */
+function storedBikeRoutes(): boolean {
+  try {
+    return localStorage.getItem(BIKE_ROUTES_KEY) === 'on'
+  } catch {
+    return false
+  }
+}
+
+function rememberBikeRoutes(on: boolean) {
+  try {
+    if (on) localStorage.setItem(BIKE_ROUTES_KEY, 'on')
+    else localStorage.removeItem(BIKE_ROUTES_KEY)
+  } catch {
+    // Not remembered when storage is blocked.
+  }
+}
 
 /** The bike lanes overlay goes with the map style: on unless turned off, remembered per browser. */
 function storedBikeLanes(): boolean {
@@ -258,6 +278,7 @@ export function App() {
   // The night layer keeps a map style of its own: dark unless another is picked while it is on.
   const [nightBasemap, setNightBasemap] = useState<BasemapId>(() => storedBasemap(NIGHT_BASEMAP_KEY, 'dark'))
   const [bikeLanes, setBikeLanes] = useState(storedBikeLanes)
+  const [bikeRoutes, setBikeRoutes] = useState(storedBikeRoutes)
   const [selected, setSelected] = useState<Selected | null>(null)
   // Metres along the route under the pointer, shared by the map and the elevation chart.
   const [routeHover, setRouteHover] = useState<number | null>(null)
@@ -318,6 +339,7 @@ export function App() {
   useEffect(() => rememberBasemap(BASEMAP_KEY, dayBasemap), [dayBasemap])
   useEffect(() => rememberBasemap(NIGHT_BASEMAP_KEY, nightBasemap), [nightBasemap])
   useEffect(() => rememberBikeLanes(bikeLanes), [bikeLanes])
+  useEffect(() => rememberBikeRoutes(bikeRoutes), [bikeRoutes])
 
   // Back/forward and pasted links change the hash without going through React.
   useEffect(() => {
@@ -351,6 +373,12 @@ export function App() {
   useEffect(() => {
     if (selected) setSheetOpen(true)
   }, [selected])
+
+  // Turning the routes off lets go of a route picked on them.
+  const changeBikeRoutes = useCallback((on: boolean) => {
+    setBikeRoutes(on)
+    if (!on) setSelected((current) => (current?.kind === 'route' ? null : current))
+  }, [])
 
   const update = useCallback((patch: Partial<UrlState>) => setUrl((current) => ({ ...current, ...patch })), [])
 
@@ -535,6 +563,7 @@ export function App() {
       reach: reachStyle,
       collisions: layer === 'collisions' ? collisionGeo : null,
       bikeLanes,
+      bikeRoutes,
       placeHighlight,
     }),
     [
@@ -549,6 +578,7 @@ export function App() {
       reachStyle,
       collisionGeo,
       bikeLanes,
+      bikeRoutes,
       placeHighlight,
     ],
   )
@@ -643,7 +673,13 @@ export function App() {
 
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
   const details =
-    !selected || (routing && selected.kind !== 'place') ? null : selected.kind === 'collision' ? (
+    !selected || (routing && selected.kind !== 'place') ? null : selected.kind === 'route' ? (
+      <BikeRouteCard
+        selected={selected}
+        onClose={() => setSelected(null)}
+        onFocus={(focus) => setSelected({ ...selected, focus })}
+      />
+    ) : selected.kind === 'collision' ? (
       <CollisionCard
         items={spotByKey.get(selected.spot)?.items ?? []}
         at={selected.at}
@@ -666,6 +702,7 @@ export function App() {
         popup={details && !phone ? details : null}
         onBasemapChange={layer === 'night' ? setNightBasemap : setDayBasemap}
         onBikeLanesChange={setBikeLanes}
+        onBikeRoutesChange={changeBikeRoutes}
         routing={mapRouting}
         reach={reach}
       />

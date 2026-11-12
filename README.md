@@ -6,6 +6,8 @@ No map vendor or API keys: the basemap and data layers are static [PMTiles](http
 
 A "Bike lanes" switch in the map style menu (on by default) draws bike infrastructure over any map, as Google Maps does: segregated cycleways and pathways dark green, painted lanes (`cycleway*=lane`) a paler green in dashes, shared lanes that green in dots; segregated paths stand out most on any map. Streets get a line down each side that has a lane. Lines are as wide as the bikeway (`cycleway:width`, else `width`; without a tag 3 m for a two-way path, 1.5 m for a one-way one or a lane).
 
+A "Bike routes" switch below it (off by default) draws signed routes from OSM route relations (`route=bicycle` and `route=mtb`) as wide soft bands under the bike lanes, coloured by rank: national (`ncn`: Trans Canada Trail, Route Verte), regional (`rcn`: Capital Pathway, Ottawa Valley Recreation Trail), local (`lcn`: Crosstown Bikeways and named pathways) and mountain-bike trails. Routes nest, so a way takes the rank of the most important route it is part of. Clicking one lists its routes with their length here and the routes they are part of, and picks out the one chosen. The pipeline writes the ways to `routes.pmtiles` and the routes to `routes.json`.
+
 The site installs as an app on phones and desktops (`vite-plugin-pwa` in `web/vite.config.ts`). Its service worker keeps the app's own files, so it opens offline; tiles, routing and search always need the network. A new version takes over once the app has been closed.
 
 ## Layout

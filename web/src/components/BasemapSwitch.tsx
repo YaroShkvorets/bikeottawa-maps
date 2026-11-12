@@ -4,7 +4,7 @@ import grey from '../assets/basemaps/grey.webp'
 import light from '../assets/basemaps/light.webp'
 import satellite from '../assets/basemaps/satellite.webp'
 import { useI18n } from '../i18n'
-import { BASEMAP_IDS, type BasemapId, BIKEWAY_IDS, bikewayColors } from '../layers'
+import { BASEMAP_IDS, type BasemapId, BIKEWAY_IDS, bikewayColors, ROUTE_COLORS, ROUTE_LEVEL_IDS } from '../layers'
 
 /** A small picture of each map style, taken from the map itself. */
 const PREVIEWS: Record<BasemapId, string> = { light, grey, dark, satellite }
@@ -15,10 +15,20 @@ interface Props {
   /** The bike lanes overlay, drawn over any map style. */
   bikeLanes: boolean
   onBikeLanesChange: (on: boolean) => void
+  /** The bike routes overlay: signed routes and mountain-bike trails. */
+  bikeRoutes: boolean
+  onBikeRoutesChange: (on: boolean) => void
 }
 
 /** Map control: a button that opens the list of map styles. */
-export function BasemapSwitch({ basemap, onChange, bikeLanes, onBikeLanesChange }: Props) {
+export function BasemapSwitch({
+  basemap,
+  onChange,
+  bikeLanes,
+  onBikeLanesChange,
+  bikeRoutes,
+  onBikeRoutesChange,
+}: Props) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return (
@@ -73,6 +83,20 @@ export function BasemapSwitch({ basemap, onChange, bikeLanes, onBikeLanesChange 
                     style={{ color: bikewayColors('light')[id] }}
                   />
                   {t(`bikeway.${id}`)}
+                </li>
+              ))}
+            </ul>
+          )}
+          <label className="check bike-lanes-toggle">
+            <input type="checkbox" checked={bikeRoutes} onChange={(e) => onBikeRoutesChange(e.target.checked)} />
+            {t('bikeRoutes')}
+          </label>
+          {bikeRoutes && (
+            <ul className="bike-lanes-key">
+              {ROUTE_LEVEL_IDS.map((id) => (
+                <li key={id}>
+                  <span className="swatch line route-band" style={{ color: ROUTE_COLORS[id] }} />
+                  {t(`routeKey.${id}`)}
                 </li>
               ))}
             </ul>

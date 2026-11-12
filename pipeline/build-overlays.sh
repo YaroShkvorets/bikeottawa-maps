@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds web/public/tiles/overlays.pmtiles (streets), places.pmtiles, night.pmtiles
-# (lit ways + street lamps) and places/<kind>.json (where each kind of place is) for
-# the map area in region.json, from OSM data brought up to date by pipeline/update-osm.sh.
+# (lit ways + street lamps), routes.pmtiles and routes.json (signed bike routes) and
+# places/<kind>.json (where each kind of place is) for the map area in region.json,
+# from OSM data brought up to date by pipeline/update-osm.sh.
 # Needs: osmium, tippecanoe, node, and what update-osm.sh needs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +29,12 @@ osmium tags-filter "$REGION" r/route=train,light_rail,subway,tram r/public_trans
   --overwrite -o "$WORK/transit.osm.pbf"
 osmium cat "$WORK/transit.osm.pbf" -f opl --overwrite -o "$WORK/transit.opl"
 
-node pipeline/transform.mjs "$WORK/filtered.geojsonseq" "$WORK" "$WORK/transit.opl"
+# Signed bike and mountain-bike routes, and the routes they are part of.
+osmium tags-filter "$REGION" r/route=bicycle,mtb -R --overwrite -o "$WORK/routes.osm.pbf"
+osmium cat "$WORK/routes.osm.pbf" -f opl --overwrite -o "$WORK/routes.opl"
+
+node pipeline/transform.mjs "$WORK/filtered.geojsonseq" "$WORK" "$WORK/transit.opl" "$WORK/routes.opl"
+cp "$WORK/routes.json" "$OUT/routes.json"
 # Where each kind of place is, for counting the places within reach.
 node pipeline/place-points.mjs "$WORK/places.geojsonseq" "$OUT/places"
 
@@ -46,6 +52,12 @@ tippecanoe --force --quiet -o "$OUT/places.pmtiles" \
   --name "Bike Ottawa places" --attribution "© OpenStreetMap contributors" \
   -L "places:$WORK/places.geojsonseq"
 
+# Signed bike routes, for the routes overlay: few enough to keep every one.
+tippecanoe --force --quiet -o "$OUT/routes.pmtiles" \
+  -Z9 -z14 -r1 --read-parallel --no-feature-limit --no-tile-size-limit \
+  --name "Bike Ottawa routes" --attribution "© OpenStreetMap contributors" \
+  -L "routes:$WORK/routes.geojsonseq"
+
 # The night layer, in a file of its own so it only loads when that layer is on:
 # every lit way from zoom 9, and the street lamps themselves from zoom 12.
 tippecanoe --force --quiet -o "$OUT/night.pmtiles" \
@@ -56,5 +68,5 @@ tippecanoe --force --quiet -o "$OUT/night.pmtiles" \
 # Date of the OSM data: how far the change files have been applied.
 OSM_TIMESTAMP="$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$REGION")"
 printf '{"osmTimestamp":"%s","builtAt":"%s"}\n' "$OSM_TIMESTAMP" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT/meta.json"
-ls -lh "$OUT/overlays.pmtiles" "$OUT/places.pmtiles" "$OUT/night.pmtiles"
+ls -lh "$OUT/overlays.pmtiles" "$OUT/places.pmtiles" "$OUT/night.pmtiles" "$OUT/routes.pmtiles"
 cat "$OUT/meta.json"

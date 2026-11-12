@@ -14,6 +14,7 @@ import {
   type LayerId,
   LTS_COLORS,
   NO_BIKES_COLOR,
+  ROUTE_COLORS,
   reachRamp,
   WINTER_COLORS,
 } from '../layers'
@@ -26,6 +27,12 @@ export type Selected =
   | { kind: 'place'; osm: string; props: Record<string, unknown>; at: [number, number] }
   /** A spot on the collisions layer, by its key (see collisionSpots). */
   | { kind: 'collision'; spot: string; at: [number, number] }
+  /**
+   * A way on the bike routes overlay: the routes it is directly on (relation
+   * ids, best first) and the one picked out on the map, which may be a route
+   * those are part of.
+   */
+  | { kind: 'route'; routes: string[]; focus: string; at: [number, number] }
 
 export interface StyleState {
   lang: Lang
@@ -50,9 +57,14 @@ export interface StyleState {
   collisions: FeatureCollection | null
   /** The bike lanes overlay, drawn over any basemap and data layer. */
   bikeLanes?: boolean
+  /** The bike routes overlay: signed routes and mountain-bike trails. */
+  bikeRoutes?: boolean
   /** Places of one kind picked out on the map: those within reach on How far. */
   placeHighlight?: { kind: PlaceKind; points: readonly [number, number][] } | null
 }
+
+/** Layers of the bike routes overlay a click can hit, under those of the data layer. */
+export const ROUTE_LAYERS = ['routes-band']
 
 /** Layers a click can hit, per data layer. */
 export const INTERACTIVE_LAYERS: Record<LayerId, string[]> = {
@@ -456,6 +468,77 @@ function showsPlaces(state: StyleState): boolean {
 
 /** Street data and places come in tile sets of their own, so each loads only for its layer. */
 const WAYS_SOURCE = 'overlays'
+const ROUTES_SOURCE = 'routes'
+
+const routeColor: ExpressionSpecification = [
+  'match',
+  ['get', 'level'],
+  'national',
+  ROUTE_COLORS.national,
+  'regional',
+  ROUTE_COLORS.regional,
+  'local',
+  ROUTE_COLORS.local,
+  ROUTE_COLORS.mtb,
+]
+
+/**
+ * Signed bike routes as soft wide bands under the bike lanes, coloured by rank;
+ * a picked route ringed in yellow. Their names go with the street names.
+ */
+function routeBandLayers(state: StyleState): LayerSpecification[] {
+  if (!state.bikeRoutes) return []
+  const route = { type: 'line' as const, source: ROUTES_SOURCE, 'source-layer': 'routes' }
+  const width = (scale: number): ExpressionSpecification => [
+    'interpolate',
+    ['exponential', 1.5],
+    ['zoom'],
+    ...[9, 13, 16, 19].flatMap((zoom, i) => [zoom, [3.5, 8, 16, 32][i] * scale]),
+  ]
+  const focus = state.selected?.kind === 'route' ? state.selected.focus : ''
+  return [
+    {
+      ...route,
+      id: 'routes-picked',
+      filter: ['in', `,${focus},`, ['get', 'all']],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': HIGHLIGHT_COLOR, 'line-width': width(1.6) },
+    },
+    {
+      ...route,
+      id: 'routes-band',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        // The highest-ranked route on top where they meet.
+        'line-sort-key': ['match', ['get', 'level'], 'national', 3, 'regional', 2, 'local', 1, 0],
+      },
+      paint: { 'line-color': routeColor, 'line-width': width(1), 'line-opacity': 0.45 },
+    },
+  ]
+}
+
+function routeLabelLayers(state: StyleState, theme: Theme): LayerSpecification[] {
+  if (!state.bikeRoutes) return []
+  return [
+    {
+      id: 'routes-label',
+      type: 'symbol',
+      source: ROUTES_SOURCE,
+      'source-layer': 'routes',
+      minzoom: 12,
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 400,
+        'text-field': ['coalesce', ['get', 'label'], ''],
+        'text-font': ['Noto Sans Medium'],
+        'text-size': 12,
+        'text-max-angle': 30,
+      },
+      paint: { 'text-color': routeColor, 'text-halo-color': theme.halo, 'text-halo-width': 2 },
+    },
+  ]
+}
 
 /**
  * Bike lanes over the basemap: dedicated ways solid green, painted lanes dashed,
@@ -828,6 +911,9 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...((showsWays(state) || showsBikeLanes(state)) && {
         [WAYS_SOURCE]: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/overlays.pmtiles` },
       }),
+      ...(state.bikeRoutes && {
+        [ROUTES_SOURCE]: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/routes.pmtiles` },
+      }),
       ...(showsPlaces(state) && {
         [PLACES_SOURCE]: { type: 'vector', url: `pmtiles://${assetsBase}/tiles/places.pmtiles` },
       }),
@@ -864,6 +950,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
     },
     layers: [
       ...base.slice(0, at),
+      ...routeBandLayers(state),
       ...bikeLaneLayers(state),
       ...overlayLayers(state, theme),
       ...(night && !state.reach ? nightLayers(theme) : []),
@@ -871,6 +958,7 @@ export function buildStyle(state: StyleState, assetsBase: string): StyleSpecific
       ...collisions.under,
       ...routeLayers(theme, state.routeHighlight, state.routeOnFoot ?? false),
       ...base.slice(at),
+      ...routeLabelLayers(state, theme),
       ...(showsPlaces(state) ? [placesLayer(state, theme)] : []),
       ...placeHighlightLayers(state, theme),
       ...collisions.over,

@@ -61,7 +61,7 @@ function osmPath(selected: Props['selected']): string {
 
 interface Props {
   /** A street, path or place; collisions have a card of their own. */
-  selected: Exclude<Selected, { kind: 'collision' }>
+  selected: Extract<Selected, { kind: 'way' | 'place' }>
   onClose: () => void
   /** Plans a route to a place, named as given; left out where there is no router. */
   onRouteHere?: (label: string) => void

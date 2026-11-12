@@ -466,6 +466,46 @@ a {
   color: var(--muted);
 }
 
+.bike-routes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.bike-route .swatch.line {
+  width: 16px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.bike-route-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.bike-route-name small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* The larger routes a route is part of, under it and set in. */
+.bike-route-parents {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 0 22px;
+  font-size: 13px;
+}
+
+.bike-route-parents > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .feature-links {
   display: flex;
   flex-wrap: wrap;
@@ -1135,6 +1175,13 @@ a {
 .bike-lanes-key .swatch.line.dotted {
   height: 3px;
   background: radial-gradient(circle, currentcolor 1.5px, transparent 1.6px) 0 50% / 5px 3px repeat-x;
+}
+
+/* A soft wide band, as the map draws the bike routes. */
+.bike-lanes-key .swatch.line.route-band {
+  height: 6px;
+  border-radius: 3px;
+  opacity: 0.6;
 }
 
 /* Long dashes, as the map draws painted lanes: plainly not the dots. */

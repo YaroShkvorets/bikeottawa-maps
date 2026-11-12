@@ -59,6 +59,23 @@ export function bikewayColors(basemap: BasemapId): Record<BikewayId, string> {
   return basemap === 'light' || basemap === 'grey' ? BIKEWAYS_ON_PALE : BIKEWAYS_ON_DARK
 }
 
+/**
+ * The bike routes overlay: signed routes by rank, and mountain-bike trails. One
+ * palette on every map; the bands are wide and soft, under the bike lanes.
+ */
+export const ROUTE_LEVEL_IDS = ['national', 'regional', 'local', 'mtb'] as const
+export type RouteLevelId = (typeof ROUTE_LEVEL_IDS)[number]
+export const ROUTE_COLORS: Record<RouteLevelId, string> = {
+  national: '#C2255C',
+  regional: '#E8590C',
+  local: '#7950F2',
+  mtb: '#B8652B',
+}
+
+export function isRouteLevelId(value: unknown): value is RouteLevelId {
+  return ROUTE_LEVEL_IDS.includes(value as RouteLevelId)
+}
+
 export function isBikewayId(value: unknown): value is BikewayId {
   return BIKEWAY_IDS.includes(value as BikewayId)
 }
