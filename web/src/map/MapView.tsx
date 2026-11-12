@@ -146,7 +146,7 @@ export function MapView({ state, onSelect, onBasemapChange, onBikeLanesChange, p
     switcher.className = 'maplibregl-ctrl maplibregl-ctrl-group basemap-ctrl'
     map.addControl({ onAdd: () => switcher, onRemove: () => switcher.remove() }, 'top-right')
     setStyleControl(switcher)
-    map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right')
+    map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left')
 
     // Markers are drawn the first time a style asks for them; a style rebuilt
     // from scratch (new basemap) simply asks again.

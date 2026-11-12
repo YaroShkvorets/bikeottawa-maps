@@ -18,7 +18,7 @@ import type { RouteState } from '../route/useRoute'
 import { visibleRoute } from '../route/useRoute'
 import { ElevationChart } from './ElevationChart'
 
-const COMFORT: Record<ComfortKey, { color: string; label: MessageKey }> = {
+export const COMFORT: Record<ComfortKey, { color: string; label: MessageKey }> = {
   lts1: { color: LTS_COLORS[0], label: 'lts.1' },
   lts2: { color: LTS_COLORS[1], label: 'lts.2' },
   lts3: { color: LTS_COLORS[2], label: 'lts.3' },

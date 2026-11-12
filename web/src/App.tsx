@@ -16,6 +16,7 @@ import { ReachForm } from './components/ReachForm'
 import { ReachResult } from './components/ReachResult'
 import { RouteForm } from './components/RouteForm'
 import { RouteResult } from './components/RouteResult'
+import { LayerPeek, ReachPeek, RoutePeek } from './components/SheetPeek'
 import { ASSETS_BASE, ROUTER_URL } from './config'
 import { osmViewUrl, parseHash, withHashParam } from './hash'
 import { initialLang, type Lang, LangContext, rememberLang, translator } from './i18n'
@@ -547,14 +548,37 @@ export function App() {
     setPinnedPart(null)
   }, [route])
   const hasResult = (planning && routeState.status !== 'idle') || (reaching && reachState.status !== 'idle')
-  // What the folded sheet says it holds.
-  const sheetSummary = route
-    ? `${(route.distance / 1000).toFixed(1)} km · ${Math.max(1, Math.round(route.time / 60))} min`
+  // What the folded sheet says it holds: a title, and under it a key or the
+  // state of the route.
+  const sheetTitle = route
+    ? `${(route.distance / 1000).toFixed(1)} km · ${Math.max(1, Math.round(route.time / 60))} min · ↑ ${Math.round(route.ascent)} m`
     : routing
       ? reaching && points[0]
         ? `${t('mode.reach')} · ${minutes} min`
         : t(`mode.${mode}`)
-      : t('legend')
+      : t(`layer.${layer}`)
+  const status = planning ? routeState.status : reachState.status
+  const sheetPeek = !routing ? (
+    <LayerPeek
+      layer={layer}
+      basemap={basemap}
+      placeKinds={placeKinds}
+      collisionSpots={spots}
+      collisionFilters={collisions}
+    />
+  ) : route ? (
+    <RoutePeek route={route} travel={travel} />
+  ) : reach ? (
+    <ReachPeek minutes={minutes} basemap={basemap} />
+  ) : planning || reaching ? (
+    <span className="peek-text">
+      {status === 'error'
+        ? t(planning ? 'routeError' : 'reachError')
+        : status === 'loading'
+          ? t(planning ? 'routeLoading' : 'reachLoading')
+          : t(planning ? 'peek.routeHint' : 'peek.reachHint')}
+    </span>
+  ) : null
 
   // Details of the selection: a popup beside it on the map, or the bottom sheet on phones.
   const details =
@@ -642,7 +666,10 @@ export function App() {
             onClick={() => setSheetOpen(!sheetOpen)}
           >
             <span className="sheet-handle" aria-hidden="true" />
-            <span className="sheet-summary">{sheetSummary}</span>
+            <span className="sheet-summary">
+              <span className="sheet-title">{sheetTitle}</span>
+              {sheetPeek && <span className="sheet-peek">{sheetPeek}</span>}
+            </span>
             <svg
               aria-hidden="true"
               width="18"

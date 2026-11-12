@@ -593,7 +593,8 @@ a {
   border: 1px solid #c9d0d3;
   border-radius: 10px;
   font: inherit;
-  font-size: 15px;
+  /* Smaller and iOS zooms the page in on focus, and leaves it zoomed. */
+  font-size: 16px;
   color: var(--ink);
   text-overflow: ellipsis;
 }
@@ -1209,8 +1210,10 @@ a {
     padding: 0 16px max(16px, env(safe-area-inset-bottom));
   }
 
+  /* Folded, the sheet reaches into the strip kept for the home indicator, just
+     clear of it, and stays far enough in from the sides for rounded corners. */
   .sheet.collapsed {
-    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    padding-bottom: max(6px, calc(env(safe-area-inset-bottom) - 14px));
   }
 
   /* A grab bar along the bottom of the top panel folds it to the mode switch. */
@@ -1257,13 +1260,74 @@ a {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     width: 100%;
     min-height: 48px;
-    padding: 10px 0 4px;
+    padding: 14px 0 4px;
     border: 0;
     background: var(--surface);
     font-size: 14px;
     font-weight: 600;
+  }
+
+  .sheet-summary {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    text-align: start;
+  }
+
+  .sheet-title {
+    overflow: hidden;
+    font-size: 15px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* A one-line key under the title, only while the sheet is folded. */
+  .sheet-peek {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 18px;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .sheet:not(.collapsed) .sheet-peek {
+    display: none;
+  }
+
+  .sheet-peek > * {
+    flex: none;
+  }
+
+  .sheet-peek > .peek-bar {
+    display: flex;
+    flex: 1;
+    gap: 2px;
+    min-width: 40px;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 3px;
+  }
+
+  .peek-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .sheet-peek > .peek-text {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .sheet-handle {
