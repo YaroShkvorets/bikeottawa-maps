@@ -438,6 +438,34 @@ export function App() {
   // How far has only a start, and a click moves it.
   const placeStart = useCallback((lngLat: LngLat) => setPoint(0, { lngLat }), [setPoint])
   const setStart = useCallback((point: RoutePoint | null) => setPoint(0, point), [setPoint])
+  // Where the device is, as the start, unless a start was set meanwhile.
+  const locateStart = useCallback(() => {
+    navigator.geolocation?.getCurrentPosition(
+      ({ coords }) =>
+        setUrl((current) => {
+          if (current.points[0]) return current
+          const here: RoutePoint = { lngLat: [coords.longitude, coords.latitude], label: t('myLocation') }
+          return { ...current, points: [here, current.points[1]] }
+        }),
+      // Without the location the start stays empty, for a click or a search.
+      () => {},
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+    )
+  }, [t])
+
+  // A route to a place picked on the map: from the start already set while
+  // planning or on How far, else from where the device is.
+  const routeHere = useCallback(
+    (lngLat: LngLat, label: string) => {
+      const start = mode === 'explore' ? null : points[0]
+      update({ mode: 'route', points: [start, { lngLat, label }], vias: [] })
+      setSelected(null)
+      setTopOpen(true)
+      if (!start) locateStart()
+    },
+    [mode, points, update, locateStart],
+  )
+
   const changeMinutes = useCallback((next: ReachMinutes) => update({ minutes: next }), [update])
 
   const changeParam = useCallback((key: ParamKey, value: number) => {
@@ -595,7 +623,11 @@ export function App() {
         onClose={() => setSelected(null)}
       />
     ) : (
-      <FeatureCard selected={selected} onClose={() => setSelected(null)} />
+      <FeatureCard
+        selected={selected}
+        onClose={() => setSelected(null)}
+        onRouteHere={ROUTER_URL ? (label) => routeHere(selected.at, label) : undefined}
+      />
     )
 
   return (

@@ -6,6 +6,7 @@ import type { Selected } from '../map/style'
 import { commonsLink, directImage, imageLink, mapillaryId, mapillaryViewerUrl, streetViewUrl } from '../photos'
 import { isPlaceKind } from '../places'
 import { wayType } from '../wayType'
+import { RouteIcon } from './icons'
 import { PlaceIcon } from './PlaceIcon'
 import { CardPhoto, hasPhoto } from './PlacePhoto'
 
@@ -62,9 +63,11 @@ interface Props {
   /** A street, path or place; collisions have a card of their own. */
   selected: Exclude<Selected, { kind: 'collision' }>
   onClose: () => void
+  /** Plans a route to a place, named as given; left out where there is no router. */
+  onRouteHere?: (label: string) => void
 }
 
-export function FeatureCard({ selected, onClose }: Props) {
+export function FeatureCard({ selected, onClose, onRouteHere }: Props) {
   const { t, lang } = useI18n()
   const { props } = selected
   const locale = lang === 'fr' ? 'fr-CA' : 'en-CA'
@@ -178,6 +181,14 @@ export function FeatureCard({ selected, onClose }: Props) {
           </svg>
         </button>
       </header>
+      {selected.kind === 'place' && onRouteHere && (
+        <div className="feature-actions">
+          <button type="button" className="primary" onClick={() => onRouteHere(name ?? kindLabel)}>
+            <RouteIcon />
+            {t('routeHere')}
+          </button>
+        </div>
+      )}
       <CardPhoto at={selected.at} props={selected.kind === 'place' ? props : undefined} />
       {hasFacts && (
         <dl>
