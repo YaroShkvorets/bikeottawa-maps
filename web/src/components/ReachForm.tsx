@@ -20,11 +20,7 @@ export function ReachForm({ start, minutes, picker, onStartChange, onMinutesChan
       <PlaceInput id="reach-from" label={t('from')} marker="A" point={start} onChange={onStartChange} />
       {/* A slider over the times on offer, which are not evenly spaced: it moves stop by stop. */}
       <label className="reach-minutes">
-        <span className="reach-minutes-value">
-          {t('reachTime')}
-          {t('colon')}
-          <b>{minutes} min</b>
-        </span>
+        <span className="visually-hidden">{t('reachTime')}</span>
         <input
           className="reach-minutes-input"
           type="range"
@@ -35,6 +31,9 @@ export function ReachForm({ start, minutes, picker, onStartChange, onMinutesChan
           aria-valuetext={`${minutes} min`}
           onChange={(e) => onMinutesChange(REACH_MINUTES[Number(e.target.value)])}
         />
+        <b className="reach-minutes-value" aria-hidden="true">
+          {minutes} min
+        </b>
         <span className="reach-minutes-ticks" aria-hidden="true">
           {REACH_MINUTES.map((m) => (
             <span key={m}>{m}</span>

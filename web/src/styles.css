@@ -1384,20 +1384,30 @@ a {
 }
 
 .reach-minutes {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
   font-size: 14px;
 }
 
 .reach-minutes-input {
   width: 100%;
-  margin: 4px 0 0;
+  margin: 0;
   accent-color: var(--accent);
+}
+
+/* Wide enough for "30 min", so the slider does not shift as the value changes. */
+.reach-minutes-value {
+  min-width: 4.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Under the stops of the slider: its ends are half a thumb in from the edges. */
 .reach-minutes-ticks {
+  grid-column: 1;
   display: flex;
   justify-content: space-between;
   padding: 0 4px;
