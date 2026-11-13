@@ -144,6 +144,9 @@ export function MapView({
   const applied = useRef(state)
   latest.current = { state, onSelect, routing, profile, reach }
   const reachShown = useRef<ReachShown>({ source: null, data: null })
+  // Whether the first style has loaded, and whether a change is waiting for it.
+  const styleReady = useRef(false)
+  const styleWait = useRef(false)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the map is created once; later state goes through setStyle below
   useEffect(() => {
@@ -256,6 +259,9 @@ export function MapView({
 
     // A rebuilt style brings an empty reach source; fill it again.
     map.on('styledata', () => showReach(map, latest.current.reach, reachShown))
+    map.once('style.load', () => {
+      styleReady.current = true
+    })
 
     mapRef.current = map
     applied.current = state
@@ -265,6 +271,8 @@ export function MapView({
       hoverMarker.current = null
       viaMarkers.current = []
       popupRef.current = null
+      styleReady.current = false
+      styleWait.current = false
       // MapLibre deletes its position from the URL when removed. Put it back so a
       // remount (React does one in development) starts where the link pointed.
       const { hash, pathname, search } = window.location
@@ -278,15 +286,21 @@ export function MapView({
     if (!map || applied.current === state) return
     const routeChanged = applied.current.route !== state.route
     applied.current = state
-    // A style can only be diffed once the current one has loaded; until then wait
-    // rather than restart loading from scratch.
+    // A style can only be diffed once it has loaded; until then wait rather than
+    // restart loading from scratch. Only the style itself: isStyleLoaded() is
+    // also false while any tile loads, which kept a new layer waiting until the
+    // whole map had loaded, many seconds on a slow connection.
     const apply = () => {
+      styleWait.current = false
       map.setStyle(buildStyle(latest.current.state, ASSETS_BASE))
       // A style rebuilt from scratch has a new, empty reach source to fill.
       showReach(map, latest.current.reach, reachShown)
     }
-    if (map.isStyleLoaded()) apply()
-    else map.once('idle', apply)
+    if (styleReady.current) apply()
+    else if (!styleWait.current) {
+      styleWait.current = true
+      map.once('style.load', apply)
+    }
 
     // Bring a new route into view, unless all of it already shows clear of the panels.
     if (routeChanged && state.route && state.route.coords.length > 1) {
