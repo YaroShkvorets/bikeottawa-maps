@@ -528,7 +528,6 @@ function routeLabelLayers(state: StyleState, theme: Theme): LayerSpecification[]
       type: 'symbol',
       source: ROUTES_SOURCE,
       'source-layer': 'routes',
-      minzoom: 12,
       layout: {
         'symbol-placement': 'line',
         'symbol-spacing': 400,
