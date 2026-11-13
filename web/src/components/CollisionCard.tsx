@@ -20,13 +20,16 @@ function coded(field: string, value: unknown, t: Translate): string | null {
   return isMessageKey(key) ? t(key) : value
 }
 
-/** "2 cyclists, 1 vehicle". */
+/**
+ * "2 cyclists, 1 vehicle". The city counts bicycles among the vehicles (a
+ * cyclist hit by a car is 1 bicycle, 2 vehicles), so they are taken out.
+ */
 function involved(p: CollisionProps, t: Translate): string {
   const count = (n: number, one: MessageKey, many: MessageKey) => (n > 0 ? `${n} ${t(n === 1 ? one : many)}` : null)
   return [
     count(p.bicycles, 'crash.cyclist', 'crash.cyclists'),
     count(p.pedestrians, 'crash.pedestrian', 'crash.pedestrians'),
-    count(p.vehicles, 'crash.vehicle', 'crash.vehicles'),
+    count(p.vehicles - p.bicycles, 'crash.vehicle', 'crash.vehicles'),
   ]
     .filter(Boolean)
     .join(', ')
